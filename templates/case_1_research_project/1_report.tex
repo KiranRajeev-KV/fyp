@@ -1,0 +1,135 @@
+\documentclass[11pt, a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage[margin=0.8in]{geometry}
+\usepackage{times}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+% --- Amrita Colors ---
+\definecolor{amritaMaroon}{HTML}{A4123F}
+
+% --- Title & Section Formatting ---
+\titlespacing*{\section}{0pt}{10pt}{3pt} 
+\titleformat{\section}{\large\bfseries\color{amritaMaroon}}{\thesection}{1em}{}
+
+\pagestyle{empty} 
+
+\begin{document}
+
+% ==========================================
+% HEADER 
+% ==========================================
+\noindent
+\begin{minipage}{\textwidth}
+    \centering
+    {\Large \textbf{\textcolor{amritaMaroon}{
+    AMRITA VISHWA VIDYAPEETHAM \\
+    SCHOOL OF COMPUTING \\
+    DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING \\
+    }}} 
+    \vspace{0.2cm}
+    {\large \textbf{PROJECT TITLE HERE}} \\
+    \vspace{0.1cm}
+    23CSE399 -- Project Phase 1 (Panel Review 1)\\
+    \today %Date of submission
+\end{minipage}
+
+\vspace{0.3cm}
+\hrule
+\vspace{0.3cm}
+
+% --- Team & Guide Details ---
+\noindent
+\begin{center}
+    \renewcommand{\arraystretch}{1.5}
+    \setlength{\tabcolsep}{5pt}
+    \begin{tabular}{|l|p{4.2cm}|p{4cm}|p{2.5cm}|c|}
+        \hline
+        \multicolumn{2}{|c|}{\textbf{Team Members}} & \textbf{Guide} & \textbf{Project Type} & \textbf{Marks} \\ 
+        \hline
+        
+        % Row 1
+        \small CB.EN.U4CSE23XXX & \small \raggedright Student Name & 
+        \multirow{4}{=}{\raggedright \small \textbf{Dr/Mr/Ms. Guide Name} \newline \textit{Designation, \newline Dept. of CSE}} & 
+        \multirow{4}{=}{\raggedright \small \textbf{Type 1} \newline Research} & 
+        \multirow{4}{*}{\textbf{\huge \dots / 5}} \\ \cline{1-2}
+        
+        % Row 2
+        \small CB.EN.U4CSE23XXX & \small Student Name 2 & & & \\ \cline{1-2}
+        
+        % Row 3
+        \small CB.EN.U4CSE23XXX & \small Student Name 3 & & & \\ \cline{1-2}
+        
+        % Row 4
+        \small CB.EN.U4CSE23XXX & \small Student Name 4 & & & \\ 
+        \cline{1-2}
+        
+        % Row 5
+        \small CB.EN.U4CSE23XXX & \small Student Name 5 & & & \\ 
+        \hline
+    \end{tabular}
+\end{center}
+\vspace{0.2cm}
+
+% ==========================================
+% MAIN CONTENT
+% ==========================================
+
+% --- 1. PROBLEM & ORIGINALITY ---
+\section{Problem Definition \& Originality}
+\textbf{Problem Statement:} Define the core research problem clearly here. \\
+\textbf{Originality Claim:} \textit{(Select one based on Rubric )}
+\begin{itemize}[noitemsep, topsep=0pt]
+    \item \textbf{Novel Idea:} We propose a fully novel approach that...
+    \item \textbf{Extension:} We extend the work of [Author, Year] by introducing...
+\end{itemize}
+
+% --- 2. LITERATURE SURVEY ---
+\section{Literature Survey \& Gap Analysis}
+\textit{(Rubric: Justify research direction based on survey )}
+\begin{itemize}[noitemsep, topsep=0pt]
+    \item \textbf{Existing Solutions:} Current state-of-the-art methods (e.g., Method A, Method B) focus on [Feature].
+    \item \textbf{Limitations:} However, they fail to address [Specific Limitation/Issue].
+    \item \textbf{Research Gap:} There is a lack of efficient algorithms for [Specific Task] in [Context].
+\end{itemize}
+
+% --- 3. TECHNICAL KNOWLEDGE ---
+\section{Proposed Methodology (Technical Knowledge)}
+\textit{(Rubric: Clearly demonstrated technical knowledge (algorithms/models) )}
+
+\textbf{Core Concept:} We propose using [Algorithm/Model Name] because...
+
+% FIGURE PLACEHOLDER
+\begin{figure}[H]
+    \centering
+    % Adjust height to fit page
+    \fbox{\begin{minipage}[c][4cm]{0.9\textwidth}
+        \centering
+        \vspace{1.5cm}
+        \textbf{[Insert Conceptual/Algorithmic Flow Diagram Here]} \\
+        \small (Required: Visual representation of the Algorithm or Model Flow)
+    \end{minipage}}
+    \caption{Proposed Methodological Flow}
+\end{figure}
+
+\textbf{Mathematical/Logical Basis:} Brief explanation of the model (e.g., "The model optimizes loss function L using...").
+
+% --- 4. PLAN ---
+\section{Current Status \& Plan}
+\textbf{Status:} Literature survey completed; Problem formalized; Algorithm selected. \\
+\textbf{Next Steps:} Data collection (Phase 2); Model implementation; Benchmarking.
+
+% --- REFERENCES (Compact) ---
+\vspace{0.2cm}
+\renewcommand{\refname}{\normalsize References}
+\bibliographystyle{IEEEtran}
+\bibliography{ref} %List the references in the file ref.bib
+
+\end{document}
