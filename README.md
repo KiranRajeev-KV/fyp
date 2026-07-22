@@ -29,3 +29,6 @@ See `ppo/README.md` for how to run everything.
 
 ### Members
 [Kiran Rajeev](https://github.com/KiranRajeev-KV)
+[Nandgopal R Nair](https://github.com/Nandgopal-R/)
+[Adarssh KG](https://github.com/adar-ssh)
+[Vijay S B](https://github.com/vijay-sb)
