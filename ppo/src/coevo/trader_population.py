@@ -28,20 +28,33 @@ HYPERPARAM_BOUNDS = {
 }
 
 
-def sample_hyperparams(rng):
+def make_bounds(ent_coef_max=None):
+    """Copy of HYPERPARAM_BOUNDS with the ent_coef upper bound optionally lowered.
+
+    High ent_coef (up to 0.1) drives random action-flipping, which the diagnostic
+    tied to churn-driven losses. Capping it (e.g. 0.02) lets PBT prefer calmer
+    policies. None keeps the original 0.1 ceiling.
+    """
+    if ent_coef_max is None:
+        return HYPERPARAM_BOUNDS
+    lo, _ = HYPERPARAM_BOUNDS["ent_coef"]
+    return {**HYPERPARAM_BOUNDS, "ent_coef": (lo, ent_coef_max)}
+
+
+def sample_hyperparams(rng, bounds=HYPERPARAM_BOUNDS):
     return {
         name: float(np.exp(rng.uniform(np.log(lo), np.log(hi))))
-        for name, (lo, hi) in HYPERPARAM_BOUNDS.items()
+        for name, (lo, hi) in bounds.items()
     }
 
 
-def crossover_hyperparams(a, b, rng):
-    return {name: (a if rng.uniform() < 0.5 else b)[name] for name in HYPERPARAM_BOUNDS}
+def crossover_hyperparams(a, b, rng, bounds=HYPERPARAM_BOUNDS):
+    return {name: (a if rng.uniform() < 0.5 else b)[name] for name in bounds}
 
 
-def mutate_hyperparams(hp, rng, factor=1.25):
+def mutate_hyperparams(hp, rng, factor=1.25, bounds=HYPERPARAM_BOUNDS):
     out = {}
-    for name, (lo, hi) in HYPERPARAM_BOUNDS.items():
+    for name, (lo, hi) in bounds.items():
         scale = factor if rng.uniform() < 0.5 else 1.0 / factor
         out[name] = float(np.clip(hp[name] * scale, lo, hi))
     return out
@@ -81,8 +94,9 @@ def make_env(df, feature_columns, segments, env_kwargs, seed=None):
     return Monitor(env)
 
 
-def create_trader(trader_id, df, feature_columns, env_kwargs, seed, rng, policy_kwargs=None):
-    hp = sample_hyperparams(rng)
+def create_trader(trader_id, df, feature_columns, env_kwargs, seed, rng,
+                  policy_kwargs=None, gamma=0.99, bounds=HYPERPARAM_BOUNDS):
+    hp = sample_hyperparams(rng, bounds)
     env = make_env(df, feature_columns, None, env_kwargs, seed=seed)
     model = PPO(
         policy="MlpPolicy",
@@ -92,7 +106,7 @@ def create_trader(trader_id, df, feature_columns, env_kwargs, seed, rng, policy_
         clip_range=hp["clip_range"],
         n_steps=1024,
         batch_size=256,
-        gamma=0.99,
+        gamma=gamma,          # higher gamma => longer horizon (value multi-week trends)
         gae_lambda=0.95,
         vf_coef=0.5,
         max_grad_norm=0.5,
@@ -132,7 +146,7 @@ def evaluate_on_segments(trader, df, feature_columns, segments, env_kwargs,
     return score, per_segment
 
 
-def pbt_step(traders, rng, exploit_frac=0.25):
+def pbt_step(traders, rng, exploit_frac=0.25, bounds=HYPERPARAM_BOUNDS):
     """Bottom quantile copies weights from a top-quantile parent, takes
     hyperparams from a crossover of two top parents, then mutates them."""
     ranked = sorted(traders, key=lambda t: t.fitness, reverse=True)
@@ -148,7 +162,7 @@ def pbt_step(traders, rng, exploit_frac=0.25):
 
         loser.model.set_parameters(parent_a.model.get_parameters())
         loser.hyperparams = mutate_hyperparams(
-            crossover_hyperparams(parent_a.hyperparams, parent_b.hyperparams, rng),
-            rng,
+            crossover_hyperparams(parent_a.hyperparams, parent_b.hyperparams, rng, bounds),
+            rng, bounds=bounds,
         )
         loser.apply_hyperparams()

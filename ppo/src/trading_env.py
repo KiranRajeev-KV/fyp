@@ -31,6 +31,7 @@ class TradingEnv(gym.Env):
         slippage=0.0005,
         segments=None,
         max_episode_steps=5000,
+        trade_penalty=0.0,
     ):
 
         super().__init__()
@@ -42,6 +43,10 @@ class TradingEnv(gym.Env):
         self.slippage = slippage
         self.segments = segments
         self.max_episode_steps = max_episode_steps
+        # extra reward penalty applied whenever a buy/sell actually executes —
+        # discourages high-churn policies that bleed capital to fees/slippage
+        # (the observed dominant failure mode). 0.0 = disabled (original behavior).
+        self.trade_penalty = trade_penalty
 
         self._close = self.df["close"].astype(float).values
         self._features = self.df[feature_columns].values.astype(np.float32)
@@ -113,6 +118,8 @@ class TradingEnv(gym.Env):
             self.btc_held * current_price
         )
 
+        traded = False
+
         # -----------------------------
         # BUY (fills above close: slippage against the trader)
         # -----------------------------
@@ -127,6 +134,7 @@ class TradingEnv(gym.Env):
             self.cash = 0
             self.position = 1
             self.trade_count += 1
+            traded = True
 
         # -----------------------------
         # SELL (fills below close)
@@ -144,6 +152,7 @@ class TradingEnv(gym.Env):
             self.btc_held = 0
             self.position = 0
             self.trade_count += 1
+            traded = True
 
         # -----------------------------
         # Next Step
@@ -166,6 +175,10 @@ class TradingEnv(gym.Env):
             new_portfolio_value /
             max(old_portfolio_value, 1e-8)
         )
+
+        # discourage churn: subtract a fixed penalty on any executed trade
+        if traded:
+            reward -= self.trade_penalty
 
         info = {
             "portfolio_value": new_portfolio_value,
