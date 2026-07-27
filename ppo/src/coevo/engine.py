@@ -43,9 +43,17 @@ class EngineConfig:
     exploit_frac: float = 0.25
     elite_frac: float = 0.25
     sharing_strength: float = 1.0
+    env_weight_sigma: float = 0.3      # adversary weight mutation scale
+    env_temp_sigma: float = 0.15       # adversary temperature mutation scale
+    env_fresh_frac: float = 0.0        # fraction of fresh random adversaries per gen
+    tournament_k: int = 3              # adversary tournament selection size
     initial_balance: float = 10000.0
     trading_fee: float = 0.001
     slippage: float = 0.0005
+    # anti-churn / horizon fixes (defaults reproduce the original behavior)
+    trade_penalty: float = 0.0         # extra reward penalty per executed trade
+    gamma: float = 0.99                # PPO discount; raise (0.995+) for longer horizon
+    ent_coef_max: float = 0.1          # upper bound on evolved entropy coef
 
 
 class CoevolutionEngine:
@@ -63,7 +71,12 @@ class CoevolutionEngine:
             "initial_balance": config.initial_balance,
             "trading_fee": config.trading_fee,
             "slippage": config.slippage,
+            "trade_penalty": config.trade_penalty,
         }
+        # entropy-capped hyperparameter bounds (anti-churn); None ent_coef_max
+        # keeps the original 0.1 ceiling
+        self.bounds = tp.make_bounds(
+            config.ent_coef_max if config.ent_coef_max < 0.1 else None)
 
         n_traders = 1 if config.mode == "single" else config.n_traders
         self.traders = [
@@ -74,6 +87,8 @@ class CoevolutionEngine:
                 env_kwargs=self.env_kwargs,
                 seed=config.seed * 1000 + i,
                 rng=self.rng,
+                gamma=config.gamma,
+                bounds=self.bounds,
             )
             for i in range(n_traders)
         ]
@@ -237,9 +252,13 @@ class CoevolutionEngine:
             if self.env_pop is not None:
                 self.env_pop = ep.evolve(
                     self.env_pop, self.rng,
-                    elite_frac=cfg.elite_frac)
+                    elite_frac=cfg.elite_frac,
+                    tournament_k=cfg.tournament_k,
+                    weight_sigma=cfg.env_weight_sigma,
+                    temp_sigma=cfg.env_temp_sigma,
+                    fresh_frac=cfg.env_fresh_frac)
             if cfg.mode != "single":
-                tp.pbt_step(self.traders, self.rng, cfg.exploit_frac)
+                tp.pbt_step(self.traders, self.rng, cfg.exploit_frac, bounds=self.bounds)
 
         best_trader = max(self.traders, key=lambda t: t.fitness)
         model_path = os.path.join(self.out_dir, "best_trader")

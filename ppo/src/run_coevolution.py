@@ -34,6 +34,25 @@ def main():
     parser.add_argument("--timesteps-per-match", type=int, default=8192)
     parser.add_argument("--segment-length", type=int, default=720)
     parser.add_argument("--segment-stride", type=int, default=168)
+    parser.add_argument("--matches-per-trader", type=int, default=3)
+    parser.add_argument("--segments-per-match", type=int, default=4)
+    parser.add_argument("--fitness-metric", default="sharpe",
+                        choices=["sharpe", "sortino", "calmar",
+                                 "total_return_pct", "max_drawdown_pct"])
+    parser.add_argument("--elite-frac", type=float, default=0.25)
+    parser.add_argument("--sharing-strength", type=float, default=1.0)
+    parser.add_argument("--env-weight-sigma", type=float, default=0.3,
+                        help="adversary weight mutation scale (raise to fight disengagement)")
+    parser.add_argument("--env-temp-sigma", type=float, default=0.15,
+                        help="adversary temperature mutation scale")
+    parser.add_argument("--env-fresh-frac", type=float, default=0.0,
+                        help="fraction of fresh random adversaries injected per generation (try 0.25)")
+    parser.add_argument("--trade-penalty", type=float, default=0.0,
+                        help="anti-churn: extra reward penalty per executed trade (try 0.001-0.005)")
+    parser.add_argument("--gamma", type=float, default=0.99,
+                        help="PPO discount; raise to 0.995-0.999 for a longer horizon")
+    parser.add_argument("--ent-coef-max", type=float, default=0.1,
+                        help="cap on evolved entropy coef (try 0.02 to reduce random flipping)")
     args = parser.parse_args()
 
     train_df = pd.read_parquet(args.train_data)
@@ -64,6 +83,17 @@ def main():
             n_traders=args.n_traders,
             n_env=args.n_env,
             timesteps_per_match=args.timesteps_per_match,
+            matches_per_trader=args.matches_per_trader,
+            segments_per_match=args.segments_per_match,
+            fitness_metric=args.fitness_metric,
+            elite_frac=args.elite_frac,
+            sharing_strength=args.sharing_strength,
+            env_weight_sigma=args.env_weight_sigma,
+            env_temp_sigma=args.env_temp_sigma,
+            env_fresh_frac=args.env_fresh_frac,
+            trade_penalty=args.trade_penalty,
+            gamma=args.gamma,
+            ent_coef_max=args.ent_coef_max,
         )
         out_dir = f"{args.out_root}/{args.mode}_seed{seed}"
         engine = CoevolutionEngine(config, pool, feature_columns, val_df, out_dir)
