@@ -100,10 +100,24 @@ def apply_fitness_sharing(population, descriptor_matrix, sharing_strength=1.0):
         ind.fitness = ind.raw_fitness / niche if ind.raw_fitness > 0 else ind.raw_fitness * niche
 
 
-def evolve(population, rng, elite_frac=0.25, tournament_k=3):
-    """Truncation elitism + tournament-selected crossover/mutation offspring."""
+def evolve(population, rng, elite_frac=0.25, tournament_k=3,
+           weight_sigma=0.3, temp_sigma=0.15, fresh_frac=0.0):
+    """Truncation elitism + tournament-selected crossover/mutation offspring.
+
+    weight_sigma / temp_sigma set the adversary variation rate — raise them to
+    keep the environment population engaged (mitigates disengagement, where the
+    adversary is outrun by the trader and its fitness collapses).
+
+    fresh_frac injects that fraction of brand-new random individuals each
+    generation ("fresh blood"). Once the population converges on the few segment
+    types a strong trader has already mastered, its fitness collapses; fresh
+    random adversaries keep probing unexplored regions of the segment pool,
+    slowing that collapse. 0.0 = disabled (original behavior).
+    """
     ranked = sorted(population, key=lambda ind: ind.fitness, reverse=True)
-    n_elite = max(1, int(len(ranked) * elite_frac))
+    n = len(ranked)
+    n_elite = max(1, int(n * elite_frac))
+    n_fresh = int(n * fresh_frac)
     elites = [
         EnvIndividual(weights=e.weights.copy(), temperature=e.temperature)
         for e in ranked[:n_elite]
@@ -114,8 +128,9 @@ def evolve(population, rng, elite_frac=0.25, tournament_k=3):
         return ranked[min(contenders)]
 
     offspring = []
-    while len(elites) + len(offspring) < len(population):
+    while len(elites) + len(offspring) + n_fresh < n:
         child = crossover(tournament(), tournament(), rng)
-        offspring.append(mutate(child, rng))
+        offspring.append(mutate(child, rng, weight_sigma=weight_sigma, temp_sigma=temp_sigma))
 
-    return elites + offspring
+    fresh = [random_individual(rng) for _ in range(n_fresh)]
+    return elites + offspring + fresh
