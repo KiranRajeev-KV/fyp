@@ -320,49 +320,96 @@ The engine already supports **any single metric** as fitness via `EngineConfig.f
 ---
 
 <a name="9-results"></a>
-## 9. First results & the two failure modes
+## 9. Results & the two failure modes
 
-**Test set (Oct 2025 – Jun 2026; 9 segments: 6 sideways, 3 bear; 3 seeds; mean ± std):**
+Three runs exist:
+- **V1** (`runs/`) — 3 seeds, all defaults.
+- **V2** (`runs/v2/`) — 6 seeds (42–47), tuned adversary variation
+  (`env-weight-σ 0.7`, `env-temp-σ 0.35`, `n-env 16`, `segments-per-match 6`).
+- **V3** (`runs/v3/`) — **the headline.** V2 settings plus the diagnostic-driven fixes:
+  `trade-penalty 0.003`, `gamma 0.997`, `ent-coef-max 0.02`, `env-fresh-frac 0.25`.
 
-| Arm | Sharpe | Return % | Max DD % | Beats B&H? |
-|---|---|---|---|---|
-| **Coevolution** | **−1.04 ± 0.75** | **−2.60** | **−5.26** | ✅ |
-| Single (control) | −1.64 ± 0.55 | −4.02 | −9.02 | ❌ |
-| Population-only | −1.80 ± 0.81 | −5.50 | −12.64 | ❌ |
-| Buy & Hold | −1.30 | −6.33 | −16.20 | — |
-| MA-crossover | −0.47 | −1.51 | −7.72 | — |
+**V3 test set (Oct 2025 – Jun 2026; 9 segments: 6 sideways, 3 bear; 6 seeds; mean ± std):**
+
+| Arm | Sharpe | Return % | Max DD % | P(≤ B&H) | Beats B&H? |
+|---|---|---|---|---|---|
+| **Coevolution** | **−0.38 ± 0.32** | **−1.81** | **−5.57** | **0.131** | ✅ |
+| Single (control) | −1.27 ± 0.46 | −4.93 | −12.56 | 0.479 | ❌ |
+| Population-only | −1.49 ± 0.21 | −6.14 | −15.28 | 0.874 | ❌ |
+| Buy & Hold | −1.30 | −6.33 | −16.20 | — | — |
+| MA-crossover | −0.47 | −1.51 | −7.72 | — | — |
+
+**Progression across the three runs (coevolution arm):**
+
+| | V1 (3 seeds) | V2 (6 seeds) | **V3 (6 seeds + fixes)** |
+|---|---|---|---|
+| Sharpe | −1.04 ± 0.75 | −0.65 ± 0.76 | **−0.38 ± 0.32** |
+| Seed spread (std) | 0.75 | 0.76 | **0.32** (halved) |
+| P(≤ B&H) | 0.393 | 0.244 | **0.131** |
 
 **Reading it:**
-- Ordering **coevolution > single > population**. Coevolution is the **only RL arm to beat Buy & Hold**
-  out-of-regime, with **one-third the drawdown**. **Directional support** for the generalization hypothesis.
-- **The in→out flip is the core evidence:** population-only reached the *best* in-distribution
-  (val/bull) fitness yet did *worst* out-of-regime (it overfit); coevolution looked mediocre
-  in-distribution but generalized best.
-- **NOT statistically significant** — 9 segments × 3 seeds → wide error bars; paired-bootstrap
-  P(coevolution ≤ B&H) = 0.39. A promising lean, not proof.
+- **The fixes worked.** Best Sharpe yet, and the **seed variance halved** (0.76 → 0.32) — the
+  anti-churn/horizon changes made the result far more consistent, which matters more for a rigor
+  paper than the mean alone.
+- Ordering **coevolution > single > population** has now held across all three runs — the robust part.
+- Coevolution is the only RL arm beating Buy & Hold, with roughly **one-third its drawdown**.
+- **Per-regime (V3):** bear — coevolution −1.72 vs B&H −4.72, single −3.46, population −4.64;
+  sideways — coevolution **+0.29** (first time positive) vs B&H +0.42.
+- **Still not statistically significant.** P(≤ B&H) = 0.131 is the closest yet but above 0.05.
+  Coevolution also edges MA-crossover on mean Sharpe (−0.38 vs −0.47), but P(≤ MA) = 0.485 — a
+  coin flip, so **do not claim it beats MA-crossover**. The next lever is **more test data**
+  (walk-forward across windows, incl. a bull one), not more seeds.
 - Everything lost money (down/choppy test period); comparison is risk-adjusted & relative.
-  MA-crossover's better Sharpe is mostly from sitting in cash (defensive by construction).
+  MA-crossover's respectable Sharpe is mostly from sitting in cash (defensive by construction).
 
-**Arms-race diagnostics (coevolution) — two documented failure modes appeared:**
-1. **Disengagement** — environment-population fitness collapsed **2.79 → ~0.4** by generation 8: the
-   trader outran the adversary, so the arms race stopped pushing.
-2. **Red Queen decoupling** — internal trader fitness rose to ~2.9 while the external val yardstick
-   stayed flat (per-seed correlation ≈ 0): "improvement" that didn't translate to real performance.
+**Arms-race diagnostics — the honest, persistent limitation:**
+Disengagement was **not** cured, in any run. Environment-population fitness collapses in all three,
+and `env-fresh-frac 0.25` did not prevent it:
 
-The generalization win happened **despite** this imperfect, non-sustained arms race — suggesting the
-effect could **strengthen** with variation rates tuned to keep the adversary engaged.
+| | V1 | V2 | V3 |
+|---|---|---|---|
+| Env fitness first → last | 2.78 → 0.61 | 2.87 → 0.42 | 2.19 → **0.21** |
+| corr(internal, external) | +0.10 | −0.10 | +0.05 |
+
+An early single-seed check during V2 *looked* fixed; averaged over 6 seeds it was not — verify
+arms-race health across seeds, never from one run.
+
+**The key finding is a decoupling of two questions.** V3's gains came from the **trader-side** fixes
+(anti-churn + longer horizon), not from re-arming the adversary. So coevolution's out-of-regime
+advantage **keeps improving despite an arms race that still dies out** — plausibly the adversarial
+*early curriculum* is what helps, not the sustained late-stage race. "Does coevolution generalize
+better?" (yes, consistently) is separate from "is our arms race well-behaved?" (no) — report both.
+Fixing the arms race remains open work (bounded perturbations, asymmetric pacing, adaptive variation).
+
+**Behavioral diagnosis that motivated the V3 fixes** (run on the V2 models):
+the trader had learned a high-churn, cash-hugging policy — 116–146 trades bleeding 17–22% of capital
+to fees/slippage, in-market only 2–17% of the time, and **4 of 6 seeds lost money on a rising (bull)
+validation window**. A controlled A/B (same seed, fixes off vs on) cut trades 240 → 21, raised
+time-in-market 31% → 85%, and turned −34.7% into **+7.8%** on that bull window. Note the residual
+tension: the fixed agent is now close to buy-and-hold (≈85% in market), so it profits in uptrends but
+does not reliably *exit* downtrends — being long-only, its only defense is moving to cash.
 
 ---
 
 <a name="10-next-steps"></a>
 ## 10. Next steps
 
-1. **10 seeds instead of 3** — biggest lever to shrink error bars toward significance.
-2. **Walk-forward across multiple test windows (including a bull one)** — turns "promising on one
-   window" into "robust across regimes." `segments.walk_forward_folds()` already exists.
-3. **Tune adversary variation rates** to prevent disengagement (keep the arms race alive).
-4. Optional: **fitness-metric mini-ablation** (Sharpe vs Sortino) as an extra experiment.
-5. Prospective/paper-trading validation on data frozen now, evaluated in a few weeks.
+1. **Walk-forward across multiple test windows (including a bull one)** — now the single biggest
+   lever. With P(≤ B&H) at 0.131, the binding constraint is only **9 test segments**, not seed
+   count (V3 already has 6 seeds and a tight ±0.32 spread). `run_walkforward.py` is built and
+   smoke-tested; it needs a compute slot.
+2. **Fix the arms race** — disengagement survived both tuned variation rates and fresh blood.
+   Remaining options: bounded perturbations of real segments (anticipated in `context.md` as the
+   sanctioned extension), stronger asymmetric pacing (fewer trader timesteps per generation), or
+   adaptive variation that scales up when adversary fitness drops.
+3. **Decide on shorting.** The test window is bear/sideways and the env is long-only, so no agent
+   can be *profitable* there — only less bad. Adding a short position raises the ceiling but changes
+   the problem definition, so run it as a separate, clearly-labeled experiment.
+4. **Tune the churn/participation balance** — V3's agent sits ≈85% in market (near buy-and-hold).
+   Lowering `--trade-penalty` toward 0.001 should recover some selectivity (exit downtrends) without
+   returning to the V2 churn.
+5. Optional: **fitness-metric mini-ablation** (Sharpe vs Sortino) as an extra experiment.
+6. Prospective/paper-trading validation on data frozen now, evaluated in a few weeks.
 
 ---
-*Notes generated 2026-07-22 covering the first full end-to-end run on real BTCUSDT data.*
+*Notes generated 2026-07-22; updated 2026-07-27 with the V3 run and the behavioral diagnosis.*
