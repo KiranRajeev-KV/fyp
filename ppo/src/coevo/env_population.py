@@ -26,7 +26,26 @@ class EnvIndividual:
     temperature: float
     fitness: float = 0.0
     raw_fitness: float = 0.0
+    # diagnostics filled in each generation, logged so the adversary side of
+    # the arms race can be read parameter-by-parameter
+    niche: float = 1.0           # 1 + strength * mean overlap with the others
+    origin: str = "random"       # random | elite | offspring | fresh
+    # Did this individual actually get tested this generation? With 8 traders
+    # drawing 3 opponents each from 16, some are never drawn. An untested
+    # individual has no evidence for or against it, so it must not be eligible
+    # to be copied forward as an elite -- see evolve().
+    evaluated: bool = False
     _scores: list = field(default_factory=list)
+
+    def selection_entropy(self, descriptor_matrix):
+        """Shannon entropy (nats) of the selection distribution.
+
+        Low = this adversary always serves the same few windows (specialised,
+        and a candidate for the diversity penalty); high = near-uniform, i.e.
+        it has stopped choosing and behaves like the random-lottery baseline.
+        """
+        p = self.selection_probs(descriptor_matrix)
+        return float(-np.sum(p * np.log(p + 1e-12)))
 
     def selection_probs(self, descriptor_matrix):
         logits = descriptor_matrix @ self.weights / self.temperature
@@ -45,6 +64,9 @@ class EnvIndividual:
         self._scores.append(-trader_score)
 
     def finalize_raw_fitness(self):
+        # raw_fitness stays 0.0 for an untested individual only so the sorting
+        # keys stay numeric; `evaluated` is what selection actually consults.
+        self.evaluated = bool(self._scores)
         self.raw_fitness = float(np.mean(self._scores)) if self._scores else 0.0
         self._scores = []
 
@@ -96,6 +118,7 @@ def apply_fitness_sharing(population, descriptor_matrix, sharing_strength=1.0):
             for j in range(n) if j != i
         ]
         niche = 1.0 + sharing_strength * float(np.mean(sims))
+        ind.niche = niche
         # shift-invariant sharing: divide the advantage, not the raw value
         ind.fitness = ind.raw_fitness / niche if ind.raw_fitness > 0 else ind.raw_fitness * niche
 
@@ -118,19 +141,35 @@ def evolve(population, rng, elite_frac=0.25, tournament_k=3,
     n = len(ranked)
     n_elite = max(1, int(n * elite_frac))
     n_fresh = int(n * fresh_frac)
+
+    # Only individuals that were actually tested may be carried forward or act
+    # as parents. Without this an individual that was never drawn as an
+    # opponent sits at raw_fitness 0.0, which outranks the typically-negative
+    # scores of individuals that did play, and gets copied forward as an elite
+    # on no evidence at all. Fall back to the full ranking in the degenerate
+    # case where nothing was tested.
+    eligible = [ind for ind in ranked if ind.evaluated] or ranked
+    n_elite = min(n_elite, len(eligible))
+
     elites = [
-        EnvIndividual(weights=e.weights.copy(), temperature=e.temperature)
-        for e in ranked[:n_elite]
+        EnvIndividual(weights=e.weights.copy(), temperature=e.temperature,
+                      origin="elite")
+        for e in eligible[:n_elite]
     ]
 
     def tournament():
-        contenders = rng.choice(len(ranked), size=min(tournament_k, len(ranked)), replace=False)
-        return ranked[min(contenders)]
+        contenders = rng.choice(len(eligible), size=min(tournament_k, len(eligible)), replace=False)
+        return eligible[min(contenders)]
 
     offspring = []
     while len(elites) + len(offspring) + n_fresh < n:
         child = crossover(tournament(), tournament(), rng)
+        child.origin = "offspring"
         offspring.append(mutate(child, rng, weight_sigma=weight_sigma, temp_sigma=temp_sigma))
 
-    fresh = [random_individual(rng) for _ in range(n_fresh)]
+    fresh = []
+    for _ in range(n_fresh):
+        ind = random_individual(rng)
+        ind.origin = "fresh"
+        fresh.append(ind)
     return elites + offspring + fresh

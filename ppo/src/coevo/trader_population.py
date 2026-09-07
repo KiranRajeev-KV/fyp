@@ -66,7 +66,14 @@ class Trader:
     hyperparams: dict
     model: PPO = None
     fitness: float = 0.0
+    # provenance: how this individual's *current* hyperparams came about.
+    # "init" at creation, then set by pbt_step each generation to either
+    # "survived" or "exploit<-{parent_id}". Logged so the hyperparameter
+    # trajectory can be read as a causal chain (fitness -> rank -> change).
+    origin: str = "init"
+    no_trade_frac: float = 0.0   # share of evaluated segments with zero trades
     _scores: list = field(default_factory=list)
+    _no_trade: list = field(default_factory=list)
 
     def apply_hyperparams(self):
         self.model.learning_rate = self.hyperparams["learning_rate"]
@@ -74,12 +81,16 @@ class Trader:
         self.model.ent_coef = self.hyperparams["ent_coef"]
         self.model.clip_range = _clip_schedule(self.hyperparams["clip_range"])
 
-    def record(self, score):
+    def record(self, score, no_trade_frac=None):
         self._scores.append(score)
+        if no_trade_frac is not None:
+            self._no_trade.append(no_trade_frac)
 
     def finalize_fitness(self):
         self.fitness = float(np.mean(self._scores)) if self._scores else 0.0
+        self.no_trade_frac = float(np.mean(self._no_trade)) if self._no_trade else 0.0
         self._scores = []
+        self._no_trade = []
 
 
 def make_env(df, feature_columns, segments, env_kwargs, seed=None):
@@ -117,6 +128,23 @@ def create_trader(trader_id, df, feature_columns, env_kwargs, seed, rng,
     return Trader(trader_id=trader_id, hyperparams=hp, model=model)
 
 
+PPO_DIAGNOSTICS = [
+    "train/clip_fraction",          # 0 => clip_range never binds, i.e. is inert
+    "train/approx_kl",              # how far each update actually moved the policy
+    "train/explained_variance",     # <=0 => the value head is learning nothing
+    "train/entropy_loss",           # how random the policy still is
+    "train/value_loss",
+    "train/policy_gradient_loss",
+]
+
+
+def ppo_diagnostics(trader):
+    """Latest SB3 training diagnostics for this trader, as a flat dict."""
+    vals = getattr(trader.model, "logger", None)
+    vals = getattr(vals, "name_to_value", {}) if vals is not None else {}
+    return {k.split("/", 1)[1]: float(vals[k]) for k in PPO_DIAGNOSTICS if k in vals}
+
+
 def train_on_segments(trader, df, feature_columns, segments, env_kwargs, timesteps, seed=None):
     env = make_env(df, feature_columns, segments, env_kwargs, seed=seed)
     trader.model.set_env(env)
@@ -137,32 +165,68 @@ def evaluate_on_segments(trader, df, feature_columns, segments, env_kwargs,
         obs, _ = env.reset(seed=0, options={"segment": i})
         values = [env_kwargs.get("initial_balance", 10000)]
         done = False
+        trades = 0
+        in_market = 0
+        steps = 0
         while not done:
             action, _ = trader.model.predict(obs, deterministic=True)
             obs, _, done, _, info = env.step(action)
             values.append(info["portfolio_value"])
-        per_segment.append(summarize(values))
+            trades = info["trade_count"]
+            in_market += 1 if info["btc_held"] > 0 else 0
+            steps += 1
+        metrics = summarize(values)
+        metrics["exposure"] = float(in_market / steps) if steps else 0.0
+        # A trader that never trades holds a flat portfolio, so the return std
+        # is 0 and sharpe_ratio returns its documented 0.0. That is a fine
+        # convention, but it makes "did nothing" indistinguishable from "traded
+        # and broke even" -- and the former says nothing about the adversary
+        # that served the window. Record the distinction rather than changing
+        # the metric, which every published number depends on.
+        metrics["trades"] = trades
+        metrics["no_trade"] = trades == 0
+        per_segment.append(metrics)
     score = float(np.mean([m[fitness_metric] for m in per_segment]))
     return score, per_segment
 
 
 def pbt_step(traders, rng, exploit_frac=0.25, bounds=HYPERPARAM_BOUNDS):
     """Bottom quantile copies weights from a top-quantile parent, takes
-    hyperparams from a crossover of two top parents, then mutates them."""
+    hyperparams from a crossover of two top parents, then mutates them.
+
+    Returns the list of exploit events (dicts) so the caller can log which
+    hyperparameter values were replaced by which, and why.
+    """
     ranked = sorted(traders, key=lambda t: t.fitness, reverse=True)
     n = len(ranked)
     n_exploit = max(1, int(n * exploit_frac))
     if n < 2:
-        return
+        return []
+
+    for t in ranked:
+        t.origin = "survived"
 
     tops = ranked[:max(2, n_exploit)]
+    events = []
     for loser in ranked[-n_exploit:]:
         parent_a, parent_b = rng.choice(len(tops), size=2, replace=False)
         parent_a, parent_b = tops[parent_a], tops[parent_b]
 
+        before = dict(loser.hyperparams)
         loser.model.set_parameters(parent_a.model.get_parameters())
-        loser.hyperparams = mutate_hyperparams(
-            crossover_hyperparams(parent_a.hyperparams, parent_b.hyperparams, rng, bounds),
-            rng, bounds=bounds,
-        )
+        crossed = crossover_hyperparams(
+            parent_a.hyperparams, parent_b.hyperparams, rng, bounds)
+        loser.hyperparams = mutate_hyperparams(crossed, rng, bounds=bounds)
         loser.apply_hyperparams()
+        loser.origin = f"exploit<-{parent_a.trader_id}"
+
+        events.append({
+            "trader_id": loser.trader_id,
+            "weights_from": parent_a.trader_id,
+            "hp_parent_a": parent_a.trader_id,
+            "hp_parent_b": parent_b.trader_id,
+            "before": before,
+            "crossed": crossed,
+            "after": dict(loser.hyperparams),
+        })
+    return events

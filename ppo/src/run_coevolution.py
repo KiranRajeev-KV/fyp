@@ -51,6 +51,9 @@ def main():
                         help="anti-churn: extra reward penalty per executed trade (try 0.001-0.005)")
     parser.add_argument("--gamma", type=float, default=0.99,
                         help="PPO discount; raise to 0.995-0.999 for a longer horizon")
+    parser.add_argument("--env-skip-no-trade-matches", action="store_true",
+                        help="drop matches where the trader never traded from adversary "
+                             "fitness (they measure trader collapse, not adversary skill)")
     parser.add_argument("--ent-coef-max", type=float, default=0.1,
                         help="cap on evolved entropy coef (try 0.02 to reduce random flipping)")
     args = parser.parse_args()
@@ -94,6 +97,7 @@ def main():
             trade_penalty=args.trade_penalty,
             gamma=args.gamma,
             ent_coef_max=args.ent_coef_max,
+            env_skip_no_trade_matches=args.env_skip_no_trade_matches,
         )
         out_dir = f"{args.out_root}/{args.mode}_seed{seed}"
         engine = CoevolutionEngine(config, pool, feature_columns, val_df, out_dir)
