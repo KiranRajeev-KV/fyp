@@ -8,15 +8,24 @@ The project aims to create a profitable trading strategy by providing an RL agen
 
 The project is split into an exploratory phase (Jupyter Notebooks) and a script-based execution phase.
 
+> **Note:** the single-agent PPO here is the *control* for the project's
+> real contribution — the competitive coevolutionary engine in `src/coevo/`
+> (trader population evolved via PBT vs. an adversarial environment
+> population that selects real historical segments). See `../context.md` for
+> the design and `../docs/design-history.md` for how the architecture got here.
+
 ## Dependencies
 
-The core libraries used in this project are:
+Install with `pip install -r requirements.txt`. The core libraries used:
 - `pandas` - For data manipulation and feature engineering.
 - `numpy` - For numerical operations.
 - `gymnasium` - For creating the custom RL trading environment.
-- `stable-baselines3` - For the PPO algorithm implementation.
-- `joblib` - For saving and loading the feature columns.
+- `stable-baselines3` (and its `torch` dependency) - For the PPO algorithm implementation.
+- `joblib` - For saving and loading the feature columns and scaler.
 - `tensorboard` - For monitoring training progress.
+- `scikit-learn` - For feature scaling (`StandardScaler`).
+- `ta` - For technical indicator computation.
+- `openpyxl` - For the Excel export in `feature_engineering.ipynb`.
 
 ## Project Structure
 
@@ -29,17 +38,88 @@ The core libraries used in this project are:
 ├── jupyter_project/       # Exploratory notebooks
 │   ├── data_collect.ipynb         # Web scraping / API data collection
 │   ├── feature_engineering.ipynb  # Adding technical indicators to data
-│   ├── trading_env.ipynb          # Designing the Gymnasium environment
-│   ├── train_ppo.ipynb            # Notebook for training the PPO agent
-│   └── train_test.ipynb           # Model evaluation and testing
+│   ├── trading_env.ipynb          # Imports TradingEnv from src/ (kept in sync, not duplicated)
+│   └── train_test.ipynb           # Train/val/test split + feature scaling
 ├── models/                # Saved trained models and metadata
 │   ├── feature_columns.pkl        # Saved list of features
-│   ├── ppo_btc.zip                # The trained PPO agent
-│   └── train_portfolio_curve.csv  # Portfolio values logged during training evaluation
+│   ├── feature_scaler.pkl         # StandardScaler fit on train only
+│   ├── ppo_btc_seed<N>.zip        # Trained PPO agent for seed N
+│   └── val_portfolio_curve_seed<N>.csv  # Held-out validation portfolio curve
+├── runs/                  # Coevolution run outputs (gitignored): config.json,
+│                          #   generations.csv, best_trader.zip per (mode, seed)
 ├── src/                   # Executable Python scripts
-│   ├── trading_env.py     # Custom Gymnasium environment implementation
-│   └── train_ppo.py       # PPO training script
+│   ├── trading_env.py     # Custom Gymnasium env (fees + slippage, segment-parameterized)
+│   ├── train_ppo.py       # Legacy single-run PPO script (seeded, held-out eval)
+│   ├── regimes.py         # Bull/bear/sideways regime labeling (trailing, no lookahead)
+│   ├── segments.py        # Segment pool + descriptors + walk-forward folds
+│   ├── baselines.py       # Buy-and-hold and MA-crossover baselines
+│   ├── metrics.py         # Shared risk-adjusted metrics (Sharpe, Sortino, Calmar, max DD)
+│   ├── run_coevolution.py # Entry point: single / population / coevolution, multi-seed
+│   ├── evaluate.py        # Held-out per-regime evaluation + bootstrap significance
+│   └── coevo/
+│       ├── engine.py             # Generation loop, internal vs external ledgers
+│       ├── trader_population.py  # PPO traders + PBT (hyperparam crossover/mutation)
+│       ├── env_population.py     # Adversarial segment selectors + fitness sharing
+│       └── hall_of_fame.py       # Archives for both populations (anti-cycling)
+├── tests/
+│   └── smoke_test.py      # End-to-end run on synthetic data (no real data needed)
+├── requirements.txt       # Python dependencies
 └── README.md              # This file
+```
+
+## Coevolutionary engine (`src/coevo/`)
+
+The core contribution. Two populations interact through the market simulator
+each generation:
+
+- **Trader population** — PPO agents. Evolution touches *hyperparameters
+  only* (PBT: exploit copies weights from a stronger agent, hyperparams come
+  from crossover of two top parents plus mutation). PPO's gradient does all
+  weight learning.
+- **Environment population** — segment-selection strategies: preference
+  weights over segment descriptors (volatility percentile, trend
+  strength/direction, drawdown depth, regime transitions) sampled through a
+  softmax. They can only *select* real historical windows, never invent
+  prices. Fitness is the inverted trader score, with competitive fitness
+  sharing so adversaries are rewarded for being difficult in different ways.
+
+Guardrails built in from day one: halls of fame on both sides (anti-cycling),
+fitness sharing (anti diversity-collapse), and a per-generation **external
+yardstick** — the best trader is evaluated every generation on fixed held-out
+data against fixed baselines, logged separately from internal fitness
+(anti Red Queen).
+
+Run the three-way ablation (this is the paper's core experiment):
+```bash
+cd src
+python run_coevolution.py --mode single       --seeds 42 43 44
+python run_coevolution.py --mode population   --seeds 42 43 44
+python run_coevolution.py --mode coevolution  --seeds 42 43 44
+```
+
+Then evaluate frozen models per-regime on the untouched test split:
+```bash
+python evaluate.py --models ../runs/coevolution_seed*/best_trader.zip \
+    --data ../data/processed/test.parquet --out ../runs/coevolution_eval.json
+```
+
+## Prospective validation (stage 5)
+
+Freeze a model (note the freeze date), keep collecting new Binance data with
+`data_collect.ipynb` + `feature_engineering.ipynb`, and after 4–8 weeks run
+`evaluate.py` pointing `--data` at a parquet containing **only bars after the
+freeze date**, scaled with the already-saved `feature_scaler.pkl`. Because
+that data did not exist at freeze time, overfitting to it is impossible.
+Start this around month 4–5 so the window elapses while the report is being
+written — it runs in wall-clock time.
+
+## Smoke test
+
+`tests/smoke_test.py` runs the entire machinery (regimes, segment pool,
+env with slippage, baselines, all three engine modes, halls of fame) on
+synthetic data in a few minutes, no real data required:
+```bash
+cd tests && python smoke_test.py
 ```
 
 ## Data Pipeline
@@ -72,12 +152,23 @@ This logically incentivizes the agent to exponentially grow the overall portfoli
 
 ## Training (`src/train_ppo.py`)
 
-Training is executed using the `train_ppo.py` script. The script applies the Proximal Policy Optimization (PPO) algorithm for 500,000 timesteps against the `.parquet` train data. 
+Training is executed using the `train_ppo.py` script. The script applies the Proximal Policy Optimization (PPO) algorithm for 500,000 timesteps (configurable) against the `.parquet` train data, then evaluates the trained policy on the **held-out validation split** (`val.parquet`), not the training data itself.
 
 To run the training:
 ```bash
 cd src
-python train_ppo.py
+python train_ppo.py --seed 42 --timesteps 500000
 ```
 
-Features and generated models are saved off seamlessly into the `models/` directory for later reference and evaluation. During training, live telemetry is recorded and can be monitored via TensorBoard logs configured in `src/tensorboard_logs/`.
+Runs are fully seeded (`--seed`, default 42) — `numpy`, `torch`, and the PPO model itself all take the same seed, and `TradingEnv` uses gymnasium's seeded `self.np_random` rather than global numpy state, so a given seed reproduces the same episode start points and training run. This makes multi-seed sweeps (`for s in 42 43 44 45; do python train_ppo.py --seed $s; done`) safe to run in parallel without clobbering each other's model/curve outputs.
+
+Features and generated models are saved into the `models/` directory, namespaced by seed. During training, live telemetry is recorded and can be monitored via TensorBoard logs configured in `src/tensorboard_logs/`.
+
+## Baselines and metrics (`src/baselines.py`, `src/metrics.py`)
+
+Before trusting any PPO result, compare it against real baselines computed on the same held-out split and cost model:
+```bash
+cd src
+python baselines.py --data ../data/processed/val.parquet
+```
+This reports buy-and-hold and a 20/50 MA-crossover strategy, using the same `metrics.summarize()` (total return, Sharpe, Sortino, max drawdown, Calmar) that `train_ppo.py` uses for the PPO agent — so all three are directly comparable.

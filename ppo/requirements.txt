@@ -1,0 +1,11 @@
+pandas
+numpy
+gymnasium
+stable-baselines3
+torch
+joblib
+pyarrow
+tensorboard
+scikit-learn
+ta
+openpyxl

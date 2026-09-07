@@ -27,3 +27,6 @@ tensorboard_logs/
 
 # Optional: macOS
 *.DS_Store
+
+# Coevolution run outputs
+ppo/runs/
