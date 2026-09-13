@@ -14,9 +14,9 @@ Every generation logs two ledgers separately (the anti-Red-Queen guardrail):
 import csv
 import json
 import os
+import subprocess
 import time
 from dataclasses import dataclass, asdict
-from types import SimpleNamespace
 
 import numpy as np
 
@@ -24,8 +24,22 @@ from baselines import buy_and_hold, ma_crossover
 from metrics import summarize
 from coevo import env_population as ep
 from coevo import trader_population as tp
-from coevo.hall_of_fame import HallOfFame
+from coevo.hall_of_fame import HallOfFame, snapshot_parameters
 from segments import DESCRIPTOR_NAMES
+
+
+def git_revision(path):
+    """Commit hash (+ '-dirty' if the tree has uncommitted changes) or None."""
+    try:
+        rev = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=path, stderr=subprocess.DEVNULL,
+            text=True).strip()
+        dirty = subprocess.run(
+            ["git", "diff", "--quiet", "HEAD"], cwd=path,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode != 0
+        return rev + ("-dirty" if dirty else "")
+    except (OSError, subprocess.CalledProcessError):
+        return None
 
 
 @dataclass
@@ -63,6 +77,19 @@ class EngineConfig:
     # drop such matches from adversary fitness. Default False reproduces the
     # original behaviour (and the published V1-V3 numbers).
     env_skip_no_trade_matches: bool = False
+    # How the adversary is scored on each segment it served:
+    #   neg_sharpe -- the original: -(trader fitness metric on that segment).
+    #                 Bounded above by 0 once the trader learns to hold cash on
+    #                 hard windows (a flat portfolio scores exactly 0), so the
+    #                 adversary's landscape has no gradient left late in a run.
+    #   regret     -- max(0, buy&hold, MA-crossover) on that segment minus the
+    #                 trader's score: "where does the trader do worse than a
+    #                 trivial policy?". Unbounded, and it moves as the trader
+    #                 learns instead of terminating.
+    env_fitness: str = "neg_sharpe"
+    # Refuse to start in an out_dir that already holds a populated
+    # generations.csv (a relaunch destroyed the V4 ledgers). True = overwrite.
+    overwrite: bool = False
 
 
 class CoevolutionEngine:
@@ -73,6 +100,15 @@ class CoevolutionEngine:
         self.feature_columns = feature_columns
         self.val_df = val_df.reset_index(drop=True)
         self.out_dir = out_dir
+        existing = os.path.join(out_dir, "generations.csv")
+        if os.path.exists(existing) and not config.overwrite:
+            with open(existing) as f:
+                n_rows = sum(1 for _ in f) - 1
+            if n_rows > 0:
+                raise FileExistsError(
+                    f"{out_dir} already holds a run with {n_rows} logged "
+                    f"generation(s). Pass overwrite=True / --overwrite to "
+                    f"replace it, or choose another --out-root.")
         os.makedirs(out_dir, exist_ok=True)
 
         self.rng = np.random.default_rng(config.seed)
@@ -109,6 +145,34 @@ class CoevolutionEngine:
 
         self.env_hof = HallOfFame(config.hof_capacity, self.rng)
         self.trader_hof = HallOfFame(config.hof_capacity, self.rng)
+        # A throwaway network that archived trader snapshots are loaded into
+        # when adversaries are scored against the hall of fame. Previously
+        # trader 0 was borrowed for this, and because SB3 parameter dicts alias
+        # the live tensors the "restore" was a no-op: trader 0 left every
+        # generation as a clone of the last archived entry. Never train this.
+        self._hof_shell = (
+            tp.create_trader(
+                trader_id=-1, df=pool.df, feature_columns=feature_columns,
+                env_kwargs=self.env_kwargs, seed=config.seed * 1000 + 999,
+                rng=np.random.default_rng(config.seed), gamma=config.gamma,
+                bounds=self.bounds)
+            if config.mode == "coevolution" else None
+        )
+
+        if config.env_fitness not in ("neg_sharpe", "regret"):
+            raise ValueError(f"unknown env_fitness {config.env_fitness!r}")
+        # regret reference per pool segment: the best trivial policy's score
+        # (cash = 0, buy & hold, MA-crossover) under the same fee model
+        self._ref_by_start = {}
+        if config.env_fitness == "regret" and self.env_pop is not None:
+            for sg in pool.segments:
+                seg_df = pool.slice(sg)
+                bh = summarize(buy_and_hold(
+                    seg_df, config.initial_balance, config.trading_fee, config.slippage))
+                ma = summarize(ma_crossover(
+                    seg_df, config.initial_balance, config.trading_fee, slippage=config.slippage))
+                self._ref_by_start[sg.start] = max(
+                    0.0, bh[config.fitness_metric], ma[config.fitness_metric])
 
         # which regime each segment belongs to, so the curriculum the adversary
         # actually served can be logged (not just the genome that chose it)
@@ -121,13 +185,17 @@ class CoevolutionEngine:
         self.val_segments = [(0, len(self.val_df))]
         self.baseline_metrics = {
             "buy_hold": summarize(buy_and_hold(
-                self.val_df, config.initial_balance, config.trading_fee)),
+                self.val_df, config.initial_balance, config.trading_fee,
+                config.slippage)),
             "ma_crossover": summarize(ma_crossover(
-                self.val_df, config.initial_balance, config.trading_fee)),
+                self.val_df, config.initial_balance, config.trading_fee,
+                slippage=config.slippage)),
         }
 
         with open(os.path.join(out_dir, "config.json"), "w") as f:
-            json.dump(asdict(config), f, indent=2)
+            json.dump({**asdict(config),
+                       "git_revision": git_revision(os.path.dirname(__file__))},
+                      f, indent=2)
 
         self.log_path = os.path.join(out_dir, "generations.csv")
         self._log_fields = [
@@ -427,7 +495,7 @@ class CoevolutionEngine:
                     if cfg.env_skip_no_trade_matches and all(no_trade):
                         counted = False
                     else:
-                        opp.record(score)
+                        opp.record(self._adversary_score(segs, per_seg, score))
                     if counted:
                         self._env_served[oi]["n"] += 1
                         self._env_served[oi]["regimes"] += [
@@ -453,20 +521,29 @@ class CoevolutionEngine:
 
         # symmetric anti-cycling: adversaries are also scored against
         # archived trader snapshots, so an env individual can't look strong
-        # merely by exploiting a quirk of the current generation's traders
+        # merely by exploiting a quirk of the current generation's traders.
+        # Snapshots are loaded into a dedicated shell network, never a live
+        # trader (see _hof_shell).
         if self.env_pop is not None and len(self.trader_hof) > 0:
-            shell = SimpleNamespace(model=self.traders[0].model)
+            shell = self._hof_shell
             for ind in self.env_pop:
                 for entry in self.trader_hof.sample(cfg.env_hof_matches):
-                    live_params = shell.model.get_parameters()
                     shell.model.set_parameters(entry.payload)
                     segs = ind.select_segments(self.pool, cfg.segments_per_match, self.rng)
-                    score, _ = tp.evaluate_on_segments(
+                    score, per_seg = tp.evaluate_on_segments(
                         shell, self.pool.df, self.feature_columns, segs,
                         self.env_kwargs, cfg.fitness_metric,
                     )
-                    shell.model.set_parameters(live_params)
-                    ind.record(score)
+                    ind.record(self._adversary_score(segs, per_seg, score))
+
+    def _adversary_score(self, segs, per_seg, score):
+        """What the adversary earns for a match it served (higher = harder)."""
+        if self.cfg.env_fitness == "regret":
+            return float(np.mean([
+                self._ref_by_start[st] - m[self.cfg.fitness_metric]
+                for (st, _), m in zip(segs, per_seg)
+            ]))
+        return -score
 
     def _external_eval(self, trader):
         _, per_segment = tp.evaluate_on_segments(
@@ -521,7 +598,8 @@ class CoevolutionEngine:
             diversity = self._policy_diversity()
 
             self.trader_hof.add(
-                best_trader.model.get_parameters(), best_trader.fitness, gen)
+                snapshot_parameters(best_trader.model.get_parameters()),
+                best_trader.fitness, gen)
             if self.env_pop is not None:
                 best_env = max(self.env_pop, key=lambda e: e.fitness)
                 self.env_hof.add(
@@ -598,4 +676,20 @@ class CoevolutionEngine:
         best_trader = max(self.traders, key=lambda t: t.fitness)
         model_path = os.path.join(self.out_dir, "best_trader")
         best_trader.model.save(model_path)
+
+        # The final-generation internal rank has ~zero correlation with
+        # held-out performance, so "best_trader" is one draw from the final
+        # population. Keep every final trader so evaluation can report the
+        # population mean as well as the rank-0 pick.
+        final_dir = os.path.join(self.out_dir, "final_traders")
+        os.makedirs(final_dir, exist_ok=True)
+        ranked = sorted(self.traders, key=lambda t: t.fitness, reverse=True)
+        with open(os.path.join(final_dir, "index.csv"), "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=["trader_id", "rank", "fitness", "path"])
+            w.writeheader()
+            for rank, t in enumerate(ranked):
+                p = os.path.join(final_dir, f"trader_{t.trader_id}")
+                t.model.save(p)
+                w.writerow({"trader_id": t.trader_id, "rank": rank,
+                            "fitness": t.fitness, "path": f"trader_{t.trader_id}.zip"})
         return best_trader, model_path

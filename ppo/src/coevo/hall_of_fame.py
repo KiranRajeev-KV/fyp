@@ -7,6 +7,7 @@ Trader snapshots are stored as SB3 parameter dicts (cheap, in-memory for
 small MLP policies).
 """
 
+import copy
 from dataclasses import dataclass
 
 import numpy as np
@@ -17,6 +18,27 @@ class HofEntry:
     payload: object     # EnvIndividual for env HOF; parameter dict for traders
     fitness: float
     generation: int
+
+
+def snapshot_parameters(params):
+    """Deep-copy an SB3 ``get_parameters()`` dict so the archive is a real snapshot.
+
+    ``get_parameters()`` returns ``state_dict()``s whose tensors SHARE STORAGE
+    with the live network. Archiving them directly means the "snapshot" keeps
+    tracking the live trader (including after PBT overwrites it), and any
+    ``set_parameters(entry)`` on a shell model that borrows a live trader's
+    tensors clobbers that trader. Cloning to CPU breaks both links.
+    """
+    out = {}
+    for key, value in params.items():
+        if isinstance(value, dict):
+            out[key] = {
+                name: (t.detach().clone().cpu() if hasattr(t, "detach") else copy.deepcopy(t))
+                for name, t in value.items()
+            }
+        else:
+            out[key] = copy.deepcopy(value)
+    return out
 
 
 class HallOfFame:

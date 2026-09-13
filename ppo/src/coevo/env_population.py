@@ -59,9 +59,11 @@ class EnvIndividual:
         idx = rng.choice(len(pool), size=n, replace=False, p=probs)
         return [(pool.segments[i].start, pool.segments[i].end) for i in idx]
 
-    def record(self, trader_score):
-        # adversary wants the trader to do badly
-        self._scores.append(-trader_score)
+    def record(self, adversary_score):
+        # Higher = the match was harder for the trader. The engine decides how
+        # that is measured (EngineConfig.env_fitness): -trader_score for the
+        # original objective, or regret against the best trivial policy.
+        self._scores.append(float(adversary_score))
 
     def finalize_raw_fitness(self):
         # raw_fitness stays 0.0 for an untested individual only so the sorting

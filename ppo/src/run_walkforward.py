@@ -1,29 +1,35 @@
 """Walk-forward ablation: train + evaluate across multiple rolling windows.
 
 The chronological single split (train<2025 / test Oct2025+) has NO bull regime
-in the test window, so it can't test bull-market generalization. This driver
-rolls train/test folds across the FULL feature history, so different folds land
-on different regimes (including bull), and runs the three-way ablation
-(single / population / coevolution) per fold.
+in the test window and only 9 non-overlapping test segments, so it can neither
+test bull-market generalization nor reach significance at the observed effect
+size. This driver rolls train/test folds across the FULL feature history, so
+different folds land on different regimes (including bull), and runs the
+ablation (single / population / coevolution, optionally a variant such as
+coevolution with the regret adversary) per fold.
 
 Per fold: the scaler is re-fit on that fold's train window only (no lookahead),
-the trader trains on the train window, and the frozen best trader is evaluated
+a validation tail is carved off the train window for the engine's external
+yardstick, the trader trains on the rest, and the frozen traders are evaluated
 per-regime on the fold's held-out test window against buy-and-hold and
-MA-crossover, with a paired-bootstrap significance check — reusing evaluate.py.
+MA-crossover under the same fee + slippage model.
 
-This RETRAINS per fold, so it is its own compute chunk: run with reduced
-seeds/generations. Start tiny to validate, then scale.
+Two phases, so the work can be sharded across processes (each fold x mode x
+seed is one independent job; see run_walkforward.sh):
 
-Example (from ppo/src):
-    python run_walkforward.py --seeds 42 43 44 --generations 20 \
-        --train-span 40000 --test-span 6000 --val-span 4000
+  train      python run_walkforward.py --folds 0 1 --modes coevolution --seeds 42 \
+                 [any engine flag from engine_cli.py] --out-root ../runs/walkforward
+  aggregate  python run_walkforward.py --aggregate-only --out-root ../runs/walkforward
+
+Engine knobs are the SAME flags as run_coevolution.py (engine_cli.py), so a
+walk-forward run with V5's flags uses V5's exact EngineConfig.
 """
 
 import argparse
+import glob
 import json
 import os
 import random
-from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -31,7 +37,8 @@ import torch
 from sklearn.preprocessing import StandardScaler
 
 from segments import build_segment_pool, walk_forward_folds
-from coevo.engine import CoevolutionEngine, EngineConfig
+from coevo.engine import CoevolutionEngine
+from engine_cli import add_engine_args, config_from_args
 import evaluate as ev
 
 
@@ -58,16 +65,18 @@ def evaluate_fold(models_by_mode, test_df, env_kwargs, feature_columns,
                   segment_length, segment_stride):
     """Per-regime metrics + paired bootstrap for each mode on the fold's test window.
 
-    Mirrors evaluate.py's aggregation, reusing its helpers, but takes the models
-    trained in-process for this fold.
+    Mirrors evaluate.py's aggregation, reusing its helpers. Also returns the
+    per-(mode, model, segment) Sharpe table so folds can be pooled later.
     """
     pool = build_segment_pool(test_df, segment_length=segment_length, stride=segment_stride)
     regimes = sorted({s.regime for s in pool.segments})
     baseline_rows = ev.eval_baselines_per_segment(
-        pool, env_kwargs["initial_balance"], env_kwargs["trading_fee"])
+        pool, env_kwargs["initial_balance"], env_kwargs["trading_fee"],
+        env_kwargs.get("slippage", 0.0))
 
     out = {"n_segments": len(pool), "regimes": pool.regimes(),
            "per_regime": {}, "overall": {}, "significance": {}}
+    table = []   # long-format rows for compare_arms.py
 
     def aggregate(rows_per_model, regime=None):
         agg = {}
@@ -84,12 +93,20 @@ def evaluate_fold(models_by_mode, test_df, env_kwargs, feature_columns,
         return agg
 
     for mode, model_paths in models_by_mode.items():
-        per_model = [ev.eval_model_per_segment(p, pool, env_kwargs, feature_columns)
-                     for p in model_paths]
+        per_model = []
+        for p in model_paths:
+            rows = ev.eval_model_per_segment(p, pool, env_kwargs, feature_columns)
+            per_model.append(rows)
+            for i, (r, s) in enumerate(zip(rows, pool.segments)):
+                table.append({"arm": mode, "model": p, "segment": i,
+                              "regime": s.regime, "start": s.start,
+                              "sharpe": r["sharpe"],
+                              "total_return_pct": r["total_return_pct"],
+                              "max_drawdown_pct": r["max_drawdown_pct"],
+                              "trades": r["trades"], "exposure": r["exposure"]})
         out["overall"].setdefault(mode, aggregate(per_model))
         for regime in regimes:
             out["per_regime"].setdefault(regime, {})[mode] = aggregate(per_model, regime)
-        # paired bootstrap on per-segment sharpe: model (mean across seeds) vs each baseline
         model_sharpes = np.mean([[r["sharpe"] for r in rows] for rows in per_model], axis=0)
         out["significance"][mode] = {
             name: ev.paired_bootstrap(model_sharpes, [r[name]["sharpe"] for r in baseline_rows])
@@ -105,15 +122,42 @@ def evaluate_fold(models_by_mode, test_df, env_kwargs, feature_columns,
             out["per_regime"].setdefault(regime, {})[name] = {
                 m: {"mean": float(np.mean([v[m] for v in vals])), "std": 0.0}
                 for m in ev.METRIC_KEYS}
-    return out
+        for i, (r, s) in enumerate(zip(baseline_rows, pool.segments)):
+            table.append({"arm": name, "model": name, "segment": i,
+                          "regime": s.regime, "start": s.start,
+                          "sharpe": r[name]["sharpe"],
+                          "total_return_pct": r[name]["total_return_pct"],
+                          "max_drawdown_pct": r[name]["max_drawdown_pct"],
+                          "trades": float("nan"), "exposure": float("nan")})
+    return out, table
+
+
+def fold_dir(out_root, k):
+    return os.path.join(out_root, f"fold{k}")
+
+
+def describe_folds(df, folds, time_col="open_time"):
+    rows = []
+    for k, f in enumerate(folds):
+        row = {"fold": k, "train_start": f.train_start, "train_end": f.train_end,
+               "test_start": f.test_start, "test_end": f.test_end}
+        if time_col in df.columns:
+            row["train_from"] = str(df[time_col].iloc[f.train_start])
+            row["test_from"] = str(df[time_col].iloc[f.test_start])
+            row["test_to"] = str(df[time_col].iloc[f.test_end - 1])
+        rows.append(row)
+    return rows
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--features", default="../data/features/btcusdt_features.parquet")
     parser.add_argument("--feature-cols", default="../models/feature_columns.pkl")
     parser.add_argument("--modes", nargs="+",
-                        default=["single", "population", "coevolution"])
+                        default=["single", "population", "coevolution"],
+                        help="engine modes to train; append ':name' to give a run a "
+                             "different directory name, e.g. coevolution:coevolution_regret")
     parser.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44])
     parser.add_argument("--out-root", default="../runs/walkforward")
     # fold geometry (rows are 1h bars)
@@ -122,86 +166,124 @@ def main():
     parser.add_argument("--val-span", type=int, default=4000,
                         help="held out from the tail of each train window for the yardstick")
     parser.add_argument("--step", type=int, default=None, help="defaults to test-span")
+    parser.add_argument("--folds", type=int, nargs="*", default=None,
+                        help="fold indices to train (default: all)")
     parser.add_argument("--max-folds", type=int, default=None)
-    # engine knobs (reduced defaults — walk-forward retrains per fold)
-    parser.add_argument("--generations", type=int, default=20)
-    parser.add_argument("--n-traders", type=int, default=8)
-    parser.add_argument("--n-env", type=int, default=12)
-    parser.add_argument("--timesteps-per-match", type=int, default=8192)
-    parser.add_argument("--segments-per-match", type=int, default=4)
-    parser.add_argument("--env-weight-sigma", type=float, default=0.3)
-    parser.add_argument("--env-temp-sigma", type=float, default=0.15)
     parser.add_argument("--segment-length", type=int, default=720)
     parser.add_argument("--segment-stride", type=int, default=168)
     parser.add_argument("--eval-segment-stride", type=int, default=720,
                         help="non-overlapping test segments for independent significance")
+    parser.add_argument("--aggregate-only", action="store_true",
+                        help="skip training; evaluate every model found under --out-root")
+    add_engine_args(parser)
     args = parser.parse_args()
 
     df = pd.read_parquet(args.features).reset_index(drop=True)
     feature_columns = load_feature_columns(args.feature_cols)
-    env_kwargs = {"initial_balance": 10000.0, "trading_fee": 0.001, "slippage": 0.0005}
+    env_kwargs = {"initial_balance": args.initial_balance,
+                  "trading_fee": args.trading_fee, "slippage": args.slippage}
 
     folds = walk_forward_folds(len(df), args.train_span, args.test_span, step=args.step)
     if args.max_folds:
         folds = folds[:args.max_folds]
     print(f"Walk-forward: {len(folds)} folds over {len(df)} rows "
-          f"(train {args.train_span}, test {args.test_span})")
-
+          f"(train {args.train_span}, test {args.test_span})", flush=True)
     os.makedirs(args.out_root, exist_ok=True)
+    folds_path = os.path.join(args.out_root, "folds.json")
+    if not os.path.exists(folds_path):
+        with open(folds_path, "w") as f:
+            json.dump({"geometry": {"train_span": args.train_span, "test_span": args.test_span,
+                                    "val_span": args.val_span, "step": args.step,
+                                    "features": args.features},
+                       "folds": describe_folds(df, folds)}, f, indent=2)
+
+    # ------------------------------------------------------------------
+    # train
+    # ------------------------------------------------------------------
+    if not args.aggregate_only:
+        which = args.folds if args.folds else list(range(len(folds)))
+        for k in which:
+            fold = folds[k]
+            train_raw = df.iloc[fold.train_start:fold.train_end]
+            test_raw = df.iloc[fold.test_start:fold.test_end]
+            train_s, test_s = scale_fold(train_raw, test_raw, feature_columns)
+            fdir = fold_dir(args.out_root, k)
+            os.makedirs(fdir, exist_ok=True)
+            test_path = os.path.join(fdir, "test_scaled.parquet")
+            if not os.path.exists(test_path):
+                test_s.to_parquet(test_path)   # the exact window the models are judged on
+
+            # carve a validation tail off the train window for the external yardstick;
+            # the trader trains only on the earlier part so it never sees the val tail
+            val_s = train_s.iloc[-args.val_span:].reset_index(drop=True)
+            pool_train = train_s.iloc[:-args.val_span].reset_index(drop=True)
+            pool = build_segment_pool(pool_train, segment_length=args.segment_length,
+                                      stride=args.segment_stride)
+            print(f"\n=== Fold {k}: train rows {len(pool_train)} "
+                  f"(pool {len(pool)} segments, {pool.regimes()}), "
+                  f"test rows {len(test_s)} ===", flush=True)
+
+            for spec in args.modes:
+                mode, _, name = spec.partition(":")
+                name = name or mode
+                for seed in args.seeds:
+                    random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
+                    config = config_from_args(args, mode, seed)
+                    out_dir = os.path.join(fdir, f"{name}_seed{seed}")
+                    engine = CoevolutionEngine(config, pool, feature_columns, val_s, out_dir)
+                    engine.run(on_generation=lambda g, r, n=name, s=seed, kk=k: print(
+                        f"  [fold{kk} {n} seed{s}] gen {g:3d} internal "
+                        f"{r['internal_trader_fitness_mean']:+.3f} external "
+                        f"{r['external_val_sharpe']:+.3f}", flush=True))
+                    print(f"  [fold{k} {name} seed{seed}] done", flush=True)
+        if args.folds:
+            print("\nShard finished. Run with --aggregate-only once every shard is done.")
+            return
+
+    # ------------------------------------------------------------------
+    # aggregate: everything that exists under out_root
+    # ------------------------------------------------------------------
     all_results = {"folds": [], "config": vars(args)}
-
-    for k, fold in enumerate(folds):
-        train_raw = df.iloc[fold.train_start:fold.train_end]
-        test_raw = df.iloc[fold.test_start:fold.test_end]
-        train_s, test_s = scale_fold(train_raw, test_raw, feature_columns)
-
-        # carve a validation tail off the train window for the external yardstick;
-        # the trader trains only on the earlier part so it never sees the val tail
-        val_s = train_s.iloc[-args.val_span:].reset_index(drop=True)
-        pool_train = train_s.iloc[:-args.val_span].reset_index(drop=True)
-        pool = build_segment_pool(pool_train, segment_length=args.segment_length,
-                                  stride=args.segment_stride)
-        print(f"\n=== Fold {k}: train rows {len(pool_train)} "
-              f"(pool {len(pool)} segments, {pool.regimes()}), "
-              f"test rows {len(test_s)} ===")
-
+    long_rows = []
+    for k in range(len(folds)):
+        fdir = fold_dir(args.out_root, k)
+        test_path = os.path.join(fdir, "test_scaled.parquet")
+        if not os.path.exists(test_path):
+            print(f"fold {k}: no test_scaled.parquet, skipping")
+            continue
+        test_s = pd.read_parquet(test_path)
         models_by_mode = {}
-        for mode in args.modes:
-            model_paths = []
-            for seed in args.seeds:
-                random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
-                config = EngineConfig(
-                    mode=mode, seed=seed, generations=args.generations,
-                    n_traders=args.n_traders, n_env=args.n_env,
-                    timesteps_per_match=args.timesteps_per_match,
-                    segments_per_match=args.segments_per_match,
-                    env_weight_sigma=args.env_weight_sigma,
-                    env_temp_sigma=args.env_temp_sigma,
-                )
-                out_dir = f"{args.out_root}/fold{k}/{mode}_seed{seed}"
-                engine = CoevolutionEngine(config, pool, feature_columns, val_s, out_dir)
-                _, model_path = engine.run()
-                model_paths.append(model_path + ".zip")
-                print(f"  [fold{k} {mode} seed{seed}] done")
-            models_by_mode[mode] = model_paths
-
-        fold_eval = evaluate_fold(models_by_mode, test_s, env_kwargs, feature_columns,
-                                  args.segment_length, args.eval_segment_stride)
+        for p in sorted(glob.glob(os.path.join(fdir, "*_seed*", "best_trader.zip"))):
+            name = os.path.basename(os.path.dirname(p)).rsplit("_seed", 1)[0]
+            models_by_mode.setdefault(name, []).append(p)
+        if not models_by_mode:
+            print(f"fold {k}: no models, skipping")
+            continue
+        fold_eval, table = evaluate_fold(models_by_mode, test_s, env_kwargs, feature_columns,
+                                         args.segment_length, args.eval_segment_stride)
         fold_eval["fold"] = k
         fold_eval["test_regimes"] = fold_eval["regimes"]
         all_results["folds"].append(fold_eval)
+        for r in table:
+            r["fold"] = k
+        long_rows += table
+        with open(os.path.join(fdir, "fold_eval.json"), "w") as f:
+            json.dump(fold_eval, f, indent=2)
 
         print(f"  fold {k} test regimes: {fold_eval['regimes']}")
-        for mode in args.modes:
+        bh = fold_eval["overall"]["buy_hold"]["sharpe"]["mean"]
+        for mode in models_by_mode:
             s = fold_eval["overall"][mode].get("sharpe", {})
-            bh = fold_eval["overall"]["buy_hold"]["sharpe"]["mean"]
             if s:
-                print(f"    {mode:12s} sharpe {s['mean']:+.3f}±{s['std']:.3f}  vs B&H {bh:+.3f}")
+                print(f"    {mode:20s} sharpe {s['mean']:+.3f}±{s['std']:.3f}  "
+                      f"(n={len(models_by_mode[mode])}) vs B&H {bh:+.3f}")
 
     out_path = os.path.join(args.out_root, "walkforward_results.json")
     with open(out_path, "w") as f:
         json.dump(all_results, f, indent=2)
-    print(f"\nResults written to {out_path}")
+    pd.DataFrame(long_rows).to_csv(os.path.join(args.out_root, "per_segment.csv"), index=False)
+    print(f"\nResults written to {out_path} and per_segment.csv "
+          f"(pool folds with compare_arms.py --walkforward-root)")
 
 
 if __name__ == "__main__":
