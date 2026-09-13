@@ -65,6 +65,7 @@ def evaluate_split(df, arms, env_kwargs, feature_columns, segment_length,
         for name in BASELINES:
             rows.append({"arm": name, "seed": -1, "kind": "baseline", "trader": -1,
                          "fold": fold, "segment": seg_offset + i, "regime": s.regime,
+                         "move_regime": s.move_regime,
                          "start": s.start, **{k: b[name][k] for k in ev.METRIC_KEYS},
                          "trades": np.nan, "exposure": np.nan})
 
@@ -83,7 +84,8 @@ def evaluate_split(df, arms, env_kwargs, feature_columns, segment_length,
                 for i, (r, s) in enumerate(zip(per_seg, pool.segments)):
                     rows.append({"arm": arm, "seed": seed, "kind": kind, "trader": tid,
                                  "fold": fold, "segment": seg_offset + i,
-                                 "regime": s.regime, "start": s.start,
+                                 "regime": s.regime, "move_regime": s.move_regime,
+                                 "start": s.start,
                                  **{k: r[k] for k in ev.METRIC_KEYS},
                                  "trades": r["trades"], "exposure": r["exposure"]})
     return rows, len(pool)
@@ -135,6 +137,7 @@ def summarize_arm(long, arm, kind, metric="sharpe"):
            "n_seeds": int(len(per_seed)), "per_seed": {int(s): float(v) for s, v in per_seed.items()}}
     d = long[(long.arm == arm) & (long.kind == kind)]
     out["per_regime"] = {r: float(g[metric].mean()) for r, g in d.groupby("regime")}
+    out["per_move_regime"] = {r: float(g[metric].mean()) for r, g in d.groupby("move_regime")}
     return out
 
 
@@ -213,12 +216,15 @@ def main():
     arm_names = list(arm_globs)
     results = {"metric": args.metric, "n_segments": int(long.segment.nunique()),
                "regimes": long[long.arm == BASELINES[0]].regime.value_counts().to_dict(),
+               "move_regimes": long[long.arm == BASELINES[0]].move_regime.value_counts().to_dict(),
                "arms": {}, "baselines": {}, "pairs": {}}
     for name in BASELINES:
         d = long[long.arm == name]
         results["baselines"][name] = {
             "mean": float(d[args.metric].mean()),
-            "per_regime": {r: float(g[args.metric].mean()) for r, g in d.groupby("regime")}}
+            "per_regime": {r: float(g[args.metric].mean()) for r, g in d.groupby("regime")},
+            "per_move_regime": {r: float(g[args.metric].mean())
+                                for r, g in d.groupby("move_regime")}}
     for kind in kinds:
         results["arms"][kind] = {a: summarize_arm(long, a, kind, args.metric) for a in arm_names}
         results["pairs"][kind] = {}
@@ -231,19 +237,22 @@ def main():
 
     # ---- report ----
     print(f"\nmetric: {args.metric}   segments: {results['n_segments']}  "
-          f"regimes: {results['regimes']}")
+          f"regimes (trailing-label majority): {results['regimes']}  "
+          f"(by segment's own move): {results['move_regimes']}")
     for kind in kinds:
         label = "rank-0 best_trader" if kind == "best" else "final-population mean"
         print(f"\n== per-seed model: {label} ==")
-        print(f"{'arm':16s}{'mean':>9s}{'sd(seeds)':>11s}{'n':>4s}   per-regime")
+        print(f"{'arm':16s}{'mean':>9s}{'sd(seeds)':>11s}{'n':>4s}   "
+              f"per-regime (trailing labels) | (segment move)")
+        fmt = lambda d: "  ".join(f"{r} {v:+.2f}" for r, v in sorted(d.items()))
         for a in arm_names:
             s = results["arms"][kind][a]
-            reg = "  ".join(f"{r} {v:+.2f}" for r, v in sorted(s["per_regime"].items()))
-            print(f"{a:16s}{s['mean']:+9.3f}{s['std_seeds']:11.3f}{s['n_seeds']:4d}   {reg}")
+            print(f"{a:16s}{s['mean']:+9.3f}{s['std_seeds']:11.3f}{s['n_seeds']:4d}   "
+                  f"{fmt(s['per_regime'])} | {fmt(s['per_move_regime'])}")
         for b in BASELINES:
             s = results["baselines"][b]
-            reg = "  ".join(f"{r} {v:+.2f}" for r, v in sorted(s["per_regime"].items()))
-            print(f"{b:16s}{s['mean']:+9.3f}{'':11s}{'':4s}   {reg}")
+            print(f"{b:16s}{s['mean']:+9.3f}{'':11s}{'':4s}   "
+                  f"{fmt(s['per_regime'])} | {fmt(s['per_move_regime'])}")
         print(f"\n{'P(A <= B)':34s}{'segments':>10s}{'seeds':>8s}{'hier.':>8s}"
               f"{'diff':>8s}{'wins':>7s}{'n@t=2':>7s}")
         for pair, r in results["pairs"][kind].items():
