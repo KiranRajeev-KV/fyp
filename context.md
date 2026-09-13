@@ -94,6 +94,15 @@ in from the start, don't retrofit them:
    Mitigate with a **hall of fame / archive**: keep past individuals from both
    populations and evaluate against them too, so nothing can "forget" how to
    beat old opponents. This is the single most effective anti-cycling fix.
+   **Implementation trap (found in the Sep 2026 audit, fixed in V5):** SB3's
+   `get_parameters()` returns dicts that alias the live tensors. Archiving
+   them without a deep copy makes the "snapshot" follow the live trader, and
+   loading an archive entry into a borrowed live model overwrites that model.
+   V1–V4's trader hall of fame had both defects, so in the coevolution arm
+   trader 0 was cloned from another live trader every generation and the
+   adversary-side archive was inert. `hall_of_fame.snapshot_parameters` and
+   the engine's dedicated shell network are the fix; the smoke test asserts
+   both.
 4. **Diversity collapse** on the environment side — all individuals converging
    on the same single exploit. Mitigate with diversity pressure / competitive
    fitness sharing so environment individuals are rewarded for being difficult

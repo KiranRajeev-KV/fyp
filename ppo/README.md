@@ -55,7 +55,11 @@ Install with `pip install -r requirements.txt`. The core libraries used:
 │   ├── baselines.py       # Buy-and-hold and MA-crossover baselines
 │   ├── metrics.py         # Shared risk-adjusted metrics (Sharpe, Sortino, Calmar, max DD)
 │   ├── run_coevolution.py # Entry point: single / population / coevolution, multi-seed
+│   ├── engine_cli.py      # The one shared EngineConfig argument surface
+│   ├── run_walkforward.py # Rolling-window ablation, shardable per (fold, mode, seed)
+│   ├── build_features.py  # Scripted data pipeline (clean -> features -> scaled test_ext)
 │   ├── evaluate.py        # Held-out per-regime evaluation + bootstrap significance
+│   ├── compare_arms.py    # Arm-vs-arm significance (the test the hypothesis needs)
 │   └── coevo/
 │       ├── engine.py             # Generation loop, internal vs external ledgers
 │       ├── trader_population.py  # PPO traders + PBT (hyperparam crossover/mutation)
@@ -96,12 +100,30 @@ python run_coevolution.py --mode single       --seeds 42 43 44
 python run_coevolution.py --mode population   --seeds 42 43 44
 python run_coevolution.py --mode coevolution  --seeds 42 43 44
 ```
+All engine knobs are defined once in `engine_cli.py` and shared with
+`run_walkforward.py`. The engine refuses to start in a run directory that
+already holds a finished run (pass `--overwrite` to replace it). The full
+multi-seed, four-arm run is `../run_v5.sh`; the walk-forward is
+`../run_walkforward.sh` (sharded per fold x arm x seed, re-launchable).
 
 Then evaluate frozen models per-regime on the untouched test split:
 ```bash
 python evaluate.py --models ../runs/coevolution_seed*/best_trader.zip \
     --data ../data/processed/test.parquet --out ../runs/coevolution_eval.json
 ```
+and test the hypothesis itself -- every arm against every other arm and both
+baselines, with segment / seed / hierarchical paired bootstraps, using either
+the saved rank-0 trader or the mean of each seed's final population:
+```bash
+python compare_arms.py --data ../data/processed/test.parquet \
+    --arms coevolution=../runs/v5/coevolution_seed*/best_trader.zip \
+           population=../runs/v5/population_seed*/best_trader.zip \
+           single=../runs/v5/single_seed*/best_trader.zip \
+    --final-traders --out ../runs/v5/compare_test.json
+```
+To extend the held-out window when Binance publishes new months, bump `END`
+in `../../download_klines.py`, run it, then `python build_features.py`
+(reproduces the notebooks bit-for-bit and writes only `*_ext` files).
 
 ## Prospective validation (stage 5)
 

@@ -392,12 +392,35 @@ does not reliably *exit* downtrends — being long-only, its only defense is mov
 ---
 
 <a name="10-next-steps"></a>
+### 9b. September 2026 audit (read before quoting any V4 number)
+
+Full write-up: [`audit-2026-09.md`](audit-2026-09.md). The short version:
+
+- **V4's per-generation ledgers were destroyed** by a relaunch on 2026-09-09 (16 of 18 runs);
+  the frozen models and eval JSONs survive, so the headline table reproduces, but the curriculum /
+  drift / cost analyses have no data behind them until V5 finishes. What survives is in
+  `docs/artifacts/v4_evidence.tar.gz`.
+- **The trader hall of fame was aliasing live weights and overwrote trader 0 every generation** in
+  the coevolution arm only (an unintended between-arm difference). Fixed; V5 is the re-run.
+- **Coevolution vs single / population was never significance-tested.** `compare_arms.py` now does
+  it: on V4, P(coevolution ≤ single) = 0.17 and P(≤ population) = 0.26 (hierarchical bootstrap);
+  coevolution wins 5/6 seeds on both.
+- **Two more held-out months (Jul–Aug 2026, both rallies) erase coevolution's mean advantage**:
+  on 11 segments coevolution −0.40, population −0.18, single −0.40 (`test_ext.parquet`). The bear
+  advantage is unchanged; the cost in rallies is now measured. Only the walk-forward can say
+  which dominates.
+- **Disengagement has a structural cause:** adversary fitness = −(in-sample Sharpe) is capped at 0
+  once the trader learns to hold cash, so no variation knob could ever fix it. V5 adds a
+  `coevolution_regret` arm whose adversary is scored on regret vs the best trivial policy.
+- Baselines now pay slippage; every final trader is saved; `config.json` records the git hash;
+  the engine refuses to overwrite a finished run.
+
 ## 10. Next steps
 
 1. **Walk-forward across multiple test windows (including a bull one)** — now the single biggest
    lever. With P(≤ B&H) at 0.131, the binding constraint is only **9 test segments**, not seed
-   count (V3 already has 6 seeds and a tight ±0.32 spread). `run_walkforward.py` is built and
-   smoke-tested; it needs a compute slot.
+   count (V3 already has 6 seeds and a tight ±0.32 spread). `run_walkforward.sh` is sharded and
+   queued behind V5 (`runs/walkforward.log`).
 2. **Fix the arms race** — disengagement survived both tuned variation rates and fresh blood.
    Remaining options: bounded perturbations of real segments (anticipated in `context.md` as the
    sanctioned extension), stronger asymmetric pacing (fewer trader timesteps per generation), or
