@@ -149,6 +149,27 @@ def main():
         assert engine._hof_shell.model is not engine.traders[0].model
         print("trader hall of fame is a genuine snapshot")
 
+        # --- checkpoint / resume ----------------------------------------
+        # the 2-generation coevolution run above left checkpoint/ with next_gen=2.
+        # (Must run before the overwrite-guard test, which truncates the ledgers.)
+        # Simulate a death after generation 2 was logged but before it was
+        # checkpointed: append a bogus row, then resume to 4 generations.
+        assert os.path.exists(os.path.join(out_dir, "checkpoint", "state.pkl"))
+        with open(os.path.join(out_dir, "generations.csv"), "a") as f:
+            f.write("2" + ",0" * (len(engine._log_fields) - 1) + "\n")
+        resumed = CoevolutionEngine(
+            EngineConfig(**{**config.__dict__, "generations": 4, "resume": True}),
+            pool, FEATURES, val_df, out_dir)
+        assert resumed._resuming
+        resumed.run()
+        log = pd.read_csv(os.path.join(out_dir, "generations.csv"))
+        assert log["generation"].tolist() == [0, 1, 2, 3], log["generation"].tolist()
+        adv = pd.read_csv(os.path.join(out_dir, "adversary_params.csv"))
+        assert sorted(adv["generation"].unique().tolist()) == [0, 1, 2, 3]
+        assert adv.groupby("generation").size().nunique() == 1   # no duplicated gen
+        assert len(resumed.trader_hof) == 4
+        print("checkpoint/resume ok (pruned the half-logged generation, no duplicates)")
+
         # --- the overwrite guard --------------------------------------------
         try:
             CoevolutionEngine(config, pool, FEATURES, val_df, out_dir)
@@ -163,6 +184,7 @@ def main():
         # --- regret reference table: cash floor at 0 ----------------------
         assert engine._ref_by_start and min(engine._ref_by_start.values()) >= 0.0
         print("regret reference table ok")
+
 
     print("\nSMOKE TEST PASSED")
 

@@ -54,6 +54,8 @@ def add_engine_args(parser):
                         "vs the best trivial policy on each served segment")
     g.add_argument("--overwrite", action="store_true", default=False,
                    help="allow replacing an out_dir that already holds a finished run")
+    g.add_argument("--resume", action="store_true", default=False,
+                   help="continue from out_dir/checkpoint/ if present (else start fresh)")
     return parser
 
 
@@ -64,7 +66,7 @@ ENGINE_FIELDS = [
     "elite_frac", "sharing_strength", "env_weight_sigma", "env_temp_sigma",
     "env_fresh_frac", "tournament_k", "initial_balance", "trading_fee",
     "slippage", "trade_penalty", "gamma", "ent_coef_max",
-    "env_skip_no_trade_matches", "env_fitness", "overwrite",
+    "env_skip_no_trade_matches", "env_fitness", "overwrite", "resume",
 ]
 
 

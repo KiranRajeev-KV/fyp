@@ -14,11 +14,16 @@ Every generation logs two ledgers separately (the anti-Red-Queen guardrail):
 import csv
 import json
 import os
+import pickle
+import random
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass, asdict
 
 import numpy as np
+import torch
+from stable_baselines3 import PPO
 
 from baselines import buy_and_hold, ma_crossover
 from metrics import summarize
@@ -90,6 +95,10 @@ class EngineConfig:
     # Refuse to start in an out_dir that already holds a populated
     # generations.csv (a relaunch destroyed the V4 ledgers). True = overwrite.
     overwrite: bool = False
+    # Continue from out_dir/checkpoint/ (written after every generation) if
+    # one exists; otherwise start fresh. Two overnight shutdowns have killed
+    # multi-hour runs; with this, a shutdown costs one generation.
+    resume: bool = False
 
 
 class CoevolutionEngine:
@@ -100,15 +109,17 @@ class CoevolutionEngine:
         self.feature_columns = feature_columns
         self.val_df = val_df.reset_index(drop=True)
         self.out_dir = out_dir
+        self._resuming = config.resume and self._checkpoint_dir() is not None
         existing = os.path.join(out_dir, "generations.csv")
-        if os.path.exists(existing) and not config.overwrite:
+        if os.path.exists(existing) and not config.overwrite and not self._resuming:
             with open(existing) as f:
                 n_rows = sum(1 for _ in f) - 1
             if n_rows > 0:
                 raise FileExistsError(
                     f"{out_dir} already holds a run with {n_rows} logged "
                     f"generation(s). Pass overwrite=True / --overwrite to "
-                    f"replace it, or choose another --out-root.")
+                    f"replace it, --resume to continue it from its checkpoint, "
+                    f"or choose another --out-root.")
         os.makedirs(out_dir, exist_ok=True)
 
         self.rng = np.random.default_rng(config.seed)
@@ -192,10 +203,11 @@ class CoevolutionEngine:
                 slippage=config.slippage)),
         }
 
-        with open(os.path.join(out_dir, "config.json"), "w") as f:
-            json.dump({**asdict(config),
-                       "git_revision": git_revision(os.path.dirname(__file__))},
-                      f, indent=2)
+        if not self._resuming:
+            with open(os.path.join(out_dir, "config.json"), "w") as f:
+                json.dump({**asdict(config),
+                           "git_revision": git_revision(os.path.dirname(__file__))},
+                          f, indent=2)
 
         self.log_path = os.path.join(out_dir, "generations.csv")
         self._log_fields = [
@@ -212,8 +224,9 @@ class CoevolutionEngine:
             "clip_fraction_mean", "explained_variance_mean",
             "seconds",
         ]
-        with open(self.log_path, "w", newline="") as f:
-            csv.DictWriter(f, fieldnames=self._log_fields).writeheader()
+        if not self._resuming:
+            with open(self.log_path, "w", newline="") as f:
+                csv.DictWriter(f, fieldnames=self._log_fields).writeheader()
 
         # ------------------------------------------------------------------
         # parameter ledgers: what the *search* is doing, generation by
@@ -227,8 +240,9 @@ class CoevolutionEngine:
             "learning_rate", "ent_coef", "clip_range", "no_trade_frac", "origin",
             "fitness_std", "n_matches", "exposure", "trades",
         ] + [k.split("/", 1)[1] for k in tp.PPO_DIAGNOSTICS]
-        with open(self.trader_log_path, "w", newline="") as f:
-            csv.DictWriter(f, fieldnames=self._trader_log_fields).writeheader()
+        if not self._resuming:
+            with open(self.trader_log_path, "w", newline="") as f:
+                csv.DictWriter(f, fieldnames=self._trader_log_fields).writeheader()
 
         self.pbt_log_path = os.path.join(out_dir, "pbt_events.csv")
         self._pbt_log_fields = (
@@ -237,8 +251,9 @@ class CoevolutionEngine:
             + [f"{name}_{stage}" for name in self.bounds
                for stage in ("before", "crossed", "after")]
         )
-        with open(self.pbt_log_path, "w", newline="") as f:
-            csv.DictWriter(f, fieldnames=self._pbt_log_fields).writeheader()
+        if not self._resuming:
+            with open(self.pbt_log_path, "w", newline="") as f:
+                csv.DictWriter(f, fieldnames=self._pbt_log_fields).writeheader()
 
         # one row per (generation, trader, match): the spread of scores that a
         # single fitness number averages away, the behaviour behind each score,
@@ -250,8 +265,9 @@ class CoevolutionEngine:
             "no_trade_segments", "n_segments", "counted_for_adversary",
             "segment_starts", "segment_regimes",
         ]
-        with open(self.match_log_path, "w", newline="") as f:
-            csv.DictWriter(f, fieldnames=self._match_log_fields).writeheader()
+        if not self._resuming:
+            with open(self.match_log_path, "w", newline="") as f:
+                csv.DictWriter(f, fieldnames=self._match_log_fields).writeheader()
 
         # held-out performance for EVERY trader, not just the best one, so the
         # internal-vs-external relationship can be measured within a generation
@@ -262,8 +278,9 @@ class CoevolutionEngine:
             "external_sharpe", "external_return_pct", "external_max_drawdown_pct",
             "external_trades", "external_exposure",
         ]
-        with open(self.ext_log_path, "w", newline="") as f:
-            csv.DictWriter(f, fieldnames=self._ext_log_fields).writeheader()
+        if not self._resuming:
+            with open(self.ext_log_path, "w", newline="") as f:
+                csv.DictWriter(f, fieldnames=self._ext_log_fields).writeheader()
 
         self.env_log_path = os.path.join(out_dir, "adversary_params.csv")
         self._env_log_fields = (
@@ -274,8 +291,97 @@ class CoevolutionEngine:
             + [f"w_{name}" for name in DESCRIPTOR_NAMES]
             + ["origin"]
         )
-        with open(self.env_log_path, "w", newline="") as f:
-            csv.DictWriter(f, fieldnames=self._env_log_fields).writeheader()
+        if not self._resuming:
+            with open(self.env_log_path, "w", newline="") as f:
+                csv.DictWriter(f, fieldnames=self._env_log_fields).writeheader()
+
+
+    # ------------------------------------------------------------------
+    # checkpoint / resume
+    # ------------------------------------------------------------------
+
+    def _checkpoint_dir(self):
+        """Path of a usable checkpoint, or None.
+
+        `checkpoint/` is the committed one; `checkpoint_new/` exists only if
+        the process died between writing the new one and swapping it in, in
+        which case it is complete and newer.
+        """
+        for name in ("checkpoint_new", "checkpoint"):
+            d = os.path.join(self.out_dir, name)
+            if os.path.exists(os.path.join(d, "state.pkl")):
+                return d
+        return None
+
+    def save_checkpoint(self, next_gen):
+        """Everything needed to continue from generation `next_gen`."""
+        final = os.path.join(self.out_dir, "checkpoint")
+        new = os.path.join(self.out_dir, "checkpoint_new")
+        shutil.rmtree(new, ignore_errors=True)
+        os.makedirs(new)
+        for t in self.traders:
+            t.model.save(os.path.join(new, f"trader_{t.trader_id}"))
+        state = {
+            "next_gen": next_gen,
+            "traders": [{"trader_id": t.trader_id, "hyperparams": dict(t.hyperparams),
+                         "origin": t.origin, "fitness": t.fitness,
+                         "no_trade_frac": t.no_trade_frac} for t in self.traders],
+            "env_pop": self.env_pop,
+            "env_hof": self.env_hof.entries,
+            "trader_hof": self.trader_hof.entries,
+            "rng": self.rng.bit_generator.state,
+            "torch_rng": torch.get_rng_state(),
+            "np_rng": np.random.get_state(),
+            "py_rng": random.getstate(),
+        }
+        with open(os.path.join(new, "state.pkl"), "wb") as f:
+            pickle.dump(state, f)
+        # state.pkl is written last, so a checkpoint dir without it is junk
+        shutil.rmtree(final, ignore_errors=True)
+        os.rename(new, final)
+
+    def _restore_checkpoint(self):
+        d = self._checkpoint_dir()
+        with open(os.path.join(d, "state.pkl"), "rb") as f:
+            state = pickle.load(f)
+        for t, saved in zip(self.traders, state["traders"]):
+            assert t.trader_id == saved["trader_id"]
+            env = tp.make_env(self.pool.df, self.feature_columns, None, self.env_kwargs)
+            t.model = PPO.load(os.path.join(d, f"trader_{t.trader_id}"), env=env, device="cpu")
+            t.hyperparams = saved["hyperparams"]
+            t.apply_hyperparams()
+            t.origin = saved["origin"]
+            t.fitness = saved["fitness"]
+            t.no_trade_frac = saved["no_trade_frac"]
+        self.env_pop = state["env_pop"]
+        self.env_hof.entries = state["env_hof"]
+        self.trader_hof.entries = state["trader_hof"]
+        self.rng.bit_generator.state = state["rng"]
+        torch.set_rng_state(state["torch_rng"])
+        np.random.set_state(state["np_rng"])
+        random.setstate(state["py_rng"])
+        start_gen = int(state["next_gen"])
+        # a generation is logged BEFORE its checkpoint is written, so a death in
+        # between leaves rows for a generation that will now be re-run; drop them
+        for path in (self.log_path, self.trader_log_path, self.pbt_log_path,
+                     self.match_log_path, self.ext_log_path, self.env_log_path):
+            self._prune_ledger(path, start_gen)
+        print(f"[resume] {self.out_dir}: continuing from generation {start_gen} "
+              f"({os.path.basename(d)})", flush=True)
+        return start_gen
+
+    @staticmethod
+    def _prune_ledger(path, start_gen):
+        if not os.path.exists(path):
+            return
+        with open(path, newline="") as f:
+            reader = csv.DictReader(f)
+            fields = reader.fieldnames
+            rows = [r for r in reader if int(r["generation"]) < start_gen]
+        with open(path, "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            w.writeheader()
+            w.writerows(rows)
 
     # ------------------------------------------------------------------
     # parameter ledgers
@@ -577,7 +683,8 @@ class CoevolutionEngine:
 
     def run(self, on_generation=None):
         cfg = self.cfg
-        for gen in range(cfg.generations):
+        start_gen = self._restore_checkpoint() if self._resuming else 0
+        for gen in range(start_gen, cfg.generations):
             t_start = time.time()
             self._run_matches(gen)
 
@@ -672,6 +779,7 @@ class CoevolutionEngine:
                     tp.pbt_step(self.traders, self.rng, cfg.exploit_frac,
                                 bounds=self.bounds),
                 )
+            self.save_checkpoint(next_gen=gen + 1)
 
         best_trader = max(self.traders, key=lambda t: t.fitness)
         model_path = os.path.join(self.out_dir, "best_trader")

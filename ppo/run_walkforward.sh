@@ -3,7 +3,10 @@
 # Walk-forward ablation, sharded: one process per (fold, arm, seed), JOBS at a
 # time, then a single aggregation pass.
 #
-#   nohup bash ppo/run_walkforward.sh > ppo/runs/walkforward.log 2>&1 &
+#   nohup bash ppo/run_walkforward.sh >> ppo/runs/walkforward.log 2>&1 &
+#
+# Safe to relaunch after a shutdown: finished shards are skipped and partial
+# ones resume from their per-generation checkpoint (see ppo/run_all.sh).
 #
 # Uses the SAME engine flags as run_v5.sh (via engine_cli.py) so every fold's
 # config.json matches V5's except mode/seed. Default 20 generations (the V3/V4
@@ -57,7 +60,7 @@ CFG="--n-traders $NTRADERS --n-env $NENV --segments-per-match $SEGS \
 --matches-per-trader $MATCHES --timesteps-per-match $TIMESTEPS \
 --generations $GENERATIONS \
 --env-weight-sigma 0.7 --env-temp-sigma 0.35 --env-fresh-frac 0.25 \
---trade-penalty 0.003 --gamma 0.997 --ent-coef-max 0.02"
+--trade-penalty 0.003 --gamma 0.997 --ent-coef-max 0.02 --resume"
 
 arm_flags() {
   case "$1" in
@@ -79,7 +82,7 @@ run_one() {
   local flags; flags="$(arm_flags "$arm")" || return 1
   OMP_NUM_THREADS="$THREADS" MKL_NUM_THREADS="$THREADS" \
     "$VENV/bin/python" run_walkforward.py --folds "$fold" $flags --seeds "$seed" \
-      $GEOM $CFG > "$log" 2>&1
+      $GEOM $CFG >> "$log" 2>&1
   local rc=$?
   if [ $rc -eq 0 ]; then echo "[$(date +%H:%M:%S)]   done  fold $fold ${arm} seed ${seed}"
   else echo "[$(date +%H:%M:%S)]   FAIL  fold $fold ${arm} seed ${seed} (rc=$rc) -> $log"; fi

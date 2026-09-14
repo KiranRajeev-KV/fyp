@@ -2,7 +2,10 @@
 # ---------------------------------------------------------------------------
 # V5: the ablation re-run on the audited engine.
 #
-#   nohup bash ppo/run_v5.sh > ppo/runs/v5.log 2>&1 &
+#   nohup bash ppo/run_v5.sh >> ppo/runs/v5.log 2>&1 &
+#
+# Safe to relaunch after a shutdown: finished runs are skipped and partial
+# runs resume from their per-generation checkpoint (see ppo/run_all.sh).
 #
 # Same configuration as V4 (30 generations, 6 seeds, corrected adversary
 # scoring) plus the audit fixes:
@@ -45,17 +48,12 @@ mkdir -p "$LOGDIR"
 
 say() { echo "[$(date +%H:%M:%S)] $*"; }
 
-# --- 0. never clobber a finished run ---------------------------------------
+# --- 0. idempotent: finished runs are skipped, partial runs resume ----------
+# Every generation is checkpointed (out_dir/checkpoint/), so after a shutdown
+# just relaunch this script: complete runs (best_trader.zip present) are
+# skipped, partial ones continue from their last generation, and the engine
+# refuses to touch a populated run that has no checkpoint unless FORCE=1.
 cd "$SRC" || exit 1
-if [ "$FORCE" != "1" ]; then
-  for f in "$OUTDIR"/*_seed*/generations.csv; do
-    [ -e "$f" ] || continue
-    if [ "$(wc -l < "$f")" -gt 1 ]; then
-      say "FATAL: $f already holds a run. Choose another OUTDIR or FORCE=1 to overwrite."
-      exit 1
-    fi
-  done
-fi
 
 # --- 1. environment -------------------------------------------------------
 if ! "$VENV/bin/python" -c "import torch, stable_baselines3, pandas, gymnasium, pyarrow, joblib, sklearn" 2>/dev/null; then
@@ -72,6 +70,7 @@ CFG="--n-traders $NTRADERS --n-env $NENV --segments-per-match $SEGS \
 --generations $GENERATIONS \
 --env-weight-sigma 0.7 --env-temp-sigma 0.35 --env-fresh-frac 0.25 \
 --trade-penalty 0.003 --gamma 0.997 --ent-coef-max 0.02"
+CFG="$CFG --resume"
 [ "$FORCE" = "1" ] && CFG="$CFG --overwrite"
 
 arm_flags() {
@@ -87,10 +86,13 @@ arm_flags() {
 run_one() {
   local arm="$1" seed="$2"
   local log="$LOGDIR/${arm}_seed${seed}.log"
+  if [ -e "$OUTDIR/${arm}_seed${seed}/best_trader.zip" ] && [ "$FORCE" != "1" ]; then
+    echo "[$(date +%H:%M:%S)]   skip  ${arm} seed ${seed} (done)"; return 0
+  fi
   local flags; flags="$(arm_flags "$arm")" || return 1
   OMP_NUM_THREADS="$THREADS" MKL_NUM_THREADS="$THREADS" \
     "$VENV/bin/python" run_coevolution.py $flags --seeds "$seed" \
-      $CFG --out-root "$OUTDIR" > "$log" 2>&1
+      $CFG --out-root "$OUTDIR" >> "$log" 2>&1
   local rc=$?
   if [ $rc -eq 0 ]; then echo "[$(date +%H:%M:%S)]   done  ${arm} seed ${seed}"
   else echo "[$(date +%H:%M:%S)]   FAIL  ${arm} seed ${seed} (rc=$rc) -> $log"; fi
