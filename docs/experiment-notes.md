@@ -415,12 +415,55 @@ Full write-up: [`audit-2026-09.md`](audit-2026-09.md). The short version:
 - Baselines now pay slippage; every final trader is saved; `config.json` records the git hash;
   the engine refuses to overwrite a finished run.
 
+### 9c. V5 and walk-forward (2026-09-14/15) — the result that changes the framing
+
+**V5** (`runs/v5/`, V4 config on the fixed engine, four arms incl. `coevolution_regret`, 6 seeds × 30 gens):
+
+| 9-segment test window (rank-0 model) | Sharpe | bear | bull | sideways |
+|---|---|---|---|---|
+| coevolution | −0.16 ± 0.65 | −0.60 | +0.56 | −0.04 |
+| single | −0.80 ± 0.60 | −1.96 | +2.34 | −0.73 |
+| population | −1.43 ± 0.15 | −4.84 | +4.64 | −0.60 |
+| coevolution (regret adversary) | −1.69 ± 0.32 | −4.41 | +4.25 | −1.24 |
+| Buy & Hold / MA (MA now pays slippage) | −1.30 / −0.76 | | | |
+
+Coevolution > population on 6/6 seeds (P = 0.11 hierarchical), > B&H 6/6 (P = 0.14), > single 4/6 (P = 0.22).
+On the 11-segment window (adds the Jul–Aug 2026 rallies) coevolution −0.06 ≈ single −0.13 ≈ B&H −0.19.
+The **regret adversary keeps the arms race alive in all 6 seeds** (adversary fitness 0.85–1.53 in the last 5
+generations vs ≈0 under the original objective; zero identical policy pairs; value-head explained variance
++0.36..+0.56 vs V4's −0.44) **and produces the worst RL arm**: its traders behave like buy-and-hold. A sustained
+arms race is not what buys bear robustness; the early bear-heavy curriculum of the collapsing adversary is.
+Run-to-run noise is ≈0.5 Sharpe: the single arm's code did not change between V4 and V5 yet its mean moved
+−1.32 → −0.80 (the training env seeds from OS entropy).
+
+**Walk-forward** (`runs/walkforward/`, 6 rolling folds, test windows Mar 2022 → Apr 2026, 48 non-overlapping
+segments: 8 bear / 11 bull / 29 sideways by trailing label; 3 seeds for the population arms, 6 for single,
+20 generations, V5 engine flags). Per-seed final-population mean:
+
+| arm | Sharpe | bear | bull | sideways |
+|---|---|---|---|---|
+| Buy & Hold | **+0.97** | −2.67 | +3.28 | +1.09 |
+| population | +0.60 ± 0.09 | −2.71 | +2.59 | +0.75 |
+| single | +0.41 ± 0.44 | −2.29 | +2.00 | +0.55 |
+| coevolution | **+0.05 ± 0.07** | **−0.59** | +0.54 | +0.04 |
+| MA-crossover | −0.68 | −2.44 | +0.91 | −0.79 |
+
+Coevolution loses to population on 3/3 seeds (P = 0.89) and to single on 2/3 (P = 0.69); it beats only
+MA-crossover. It is the best arm in the two bear-heavy folds (2022, 2025–26) and the worst in the four
+bull/sideways folds.
+
+**Reading.** The hypothesis "coevolution generalises better out of regime" does **not** hold on average. What
+holds everywhere (V4, V5, 11 segments, all six folds) is narrower: coevolution yields a low-exposure trader that
+loses far less in bear markets and gives up most of the upside elsewhere. The 9-segment headline was a
+bear-and-sideways-only window that made that trade-off look like a general advantage. This is the rigorous
+mixed result the project brief allows for; the methodological contribution (diagnostics, the regret control,
+the walk-forward, the audit) is intact.
+
 ## 10. Next steps
 
-1. **Walk-forward across multiple test windows (including a bull one)** — now the single biggest
-   lever. With P(≤ B&H) at 0.131, the binding constraint is only **9 test segments**, not seed
-   count (V3 already has 6 seeds and a tight ±0.32 spread). `run_walkforward.sh` is sharded and
-   queued behind V5 (`runs/walkforward.log`).
+1. **Rewrite the deck around §9c**: the defensible claim is "coevolution trades upside for bear robustness;
+   the single-split headline was window-dependent". Regenerate figures with `make_figures.py` (defaults to V5)
+   and add the walk-forward per-fold chart.
 2. **Fix the arms race** — disengagement survived both tuned variation rates and fresh blood.
    Remaining options: bounded perturbations of real segments (anticipated in `context.md` as the
    sanctioned extension), stronger asymmetric pacing (fewer trader timesteps per generation), or
