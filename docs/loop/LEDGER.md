@@ -36,6 +36,5 @@ Section 4 of PROMPT.md, verbatim, frozen before the first arm run. Not edited.
 - **Launched 23:05** `runs/loop/iter01_taskB/` (log `ppo/runs/loop/iter01.log`, per-run `ppo/runs/iter01_taskB_logs/`), git 2dc22eb:
   arms coevolution_regret, coevolution, reweighted, population, single × seeds 42-47, GENERATIONS=20, JOBS=6 THREADS=2,
   V5 config otherwise. Relaunch command (resumes):
-  `cd ppo && D=../data/synth_v1 GENERATIONS=20 JOBS=6 THREADS=2 EVAL=0 ARMS="coevolution_regret coevolution reweighted population single" OUTDIR=../runs/loop/iter01_taskB TRAIN_DATA=$D/train.parquet VAL_DATA=$D/val.parquet FEATURES=$D/feature_columns.pkl nohup bash run_v5.sh >> runs/loop/iter01.log 2>&1 &`
-  (set D first: `D=../data/synth_v1; ...`).
+  `cd ppo && D=../data/synth_v1 && GENERATIONS=20 JOBS=6 THREADS=2 EVAL=0 ARMS="coevolution_regret coevolution reweighted population single" OUTDIR=../runs/loop/iter01_taskB TRAIN_DATA=$D/train.parquet VAL_DATA=$D/val.parquet FEATURES=$D/feature_columns.pkl nohup bash run_v5.sh >> runs/loop/iter01.log 2>&1 &`
 - Eval plan (after runs): `compare_arms.py --final-traders --jobs 12` on dev_shift and dev_control, arms in that order; criteria = §4.
