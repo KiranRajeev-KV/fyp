@@ -40,7 +40,7 @@ Section 4 of PROMPT.md, verbatim, frozen before the first arm run. Not edited.
   `cd ppo && D=../data/synth_v1 && GENERATIONS=20 JOBS=6 THREADS=2 EVAL=0 ARMS="coevolution_regret coevolution reweighted population single" OUTDIR=../runs/loop/iter01_taskB TRAIN_DATA=$D/train.parquet VAL_DATA=$D/val.parquet FEATURES=$D/feature_columns.pkl nohup bash run_v5.sh >> runs/loop/iter01.log 2>&1 &`
 - Eval plan (after runs): `compare_arms.py --final-traders --jobs 12` on dev_shift and dev_control, arms in that order; criteria = §4.
 
-### Task A (done 2026-10-08 ~00:00, while iter01 runs)
+### Task A (done 2026-10-08 23:40, while iter01 runs)
 - `ppo/src/signal_probe.py` (+ `ppo/data/funding/BTCUSDT_funding.parquet`, built from the earlier session's Binance zips, 2020-01..2026-09).
 - Acceptance (±0.01 vs PROMPT §1): PASS for AUC@24h 0.529, trend feats, funding (0.519 / adds nothing), B&H 0.927 & 0.968,
   long/flat timer +0.013 (no-entry-cost convention), trend filter −0.103 (= close > SMA720; momentum>0 gives +0.23), all arm
