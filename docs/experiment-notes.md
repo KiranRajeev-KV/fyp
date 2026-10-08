@@ -459,6 +459,42 @@ bear-and-sideways-only window that made that trade-off look like a general advan
 mixed result the project brief allows for; the methodological contribution (diagnostics, the regret control,
 the walk-forward, the audit) is intact.
 
+### 9d. V6 mixed curriculum (2026-10-08) — the abstention fix that did not fix it
+
+The walk-forward failure had one mechanism: the coevolution trader abstains (1% exposure in every regime), so
+its low drawdown is the drawdown of cash and its upside is zero. Two literature-motivated changes were run as a
+fifth arm, `coevolution_mixed` (`runs/v6/`, 6 seeds × 30 gens, otherwise the V5 config):
+
+* **Coverage mixing** (`--env-adversary-frac 0.5`, after Robust PLR): half of each match's segments come from
+  the adversary, half from a uniform draw over the pool, and the adversary is scored **only on its own half**
+  (`engine._match_segments`, `matches.csv:n_adversary_segments`). The trader therefore keeps seeing the whole
+  distribution while the adversary still gets a clean signal.
+* **Exploration floor + no churn tax** (`--ent-coef-min 0.005 --trade-penalty 0`): PBT can no longer evolve
+  `ent_coef` down to the point where the policy settles on "hold", and holding is no longer the cheapest action.
+
+**It moved the mechanism barely and the result the wrong way.**
+
+| per-seed final-population mean | 9-seg test | 11-seg test | test exposure | train no-trade (last gen) |
+|---|---|---|---|---|
+| coevolution (V5) | −0.39 | −0.22 | 0.18 | 0.60 |
+| coevolution_mixed (V6) | −0.73 | −0.52 | 0.21 | **0.24** |
+| single | −0.80 | −0.13 | 0.42 | 0.00 |
+| population | −1.44 | −0.34 | 0.96 | 0.00 |
+
+Training-time abstention more than halved (no-trade fraction 0.60 → 0.24) but **test exposure rose only 0.18 →
+0.21**, while trades per segment went 4.3 → 6.0 with no trade penalty to pay for them. Mixed loses to plain
+coevolution on both windows (P = 0.77 hierarchical, 3/6 seeds) and to `single` on the 11-segment window
+(P = 0.77, 2/6); on the 9-segment window it ties `single` (P = 0.48) and beats `population` (P = 0.18). The
+arms race still decays (top adversary fitness 3.39 → 1.17 over 30 generations). It was therefore **not promoted
+to the walk-forward**.
+
+**Reading.** Abstention is not caused by the trade penalty, by an entropy collapse, or by the adversary starving
+the trader of coverage — all three were removed and exposure did not return. It is caused by what Sharpe rewards
+on these windows: with a long-only env and no short side, flat is the optimal response to any window the trader
+cannot read, and the only lever that changes that is the action space or the objective — both of which are
+frozen by the project framing. This is the third named failure mode, after disengagement (9b) and the
+regret arm's buy-and-hold collapse (9c).
+
 ## 10. Next steps
 
 1. **Rewrite the deck around §9c**: the defensible claim is "coevolution trades upside for bear robustness;
