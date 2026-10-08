@@ -185,6 +185,22 @@ def main():
         assert engine._ref_by_start and min(engine._ref_by_start.values()) >= 0.0
         print("regret reference table ok")
 
+        # --- mixed curriculum: the adversary/uniform split is what was asked --
+        mixed = CoevolutionEngine(
+            EngineConfig(**{**config.__dict__, "mode": "coevolution",
+                            "env_adversary_frac": 0.5}),
+            pool, FEATURES, val_df, os.path.join(tmp, "mixed"))
+        segs, k = mixed._match_segments(mixed.env_pop[0], 4)
+        assert len(segs) == 4 and k == 2, (len(segs), k)
+        segs, k = mixed._match_segments(None, 4)                 # no adversary at all
+        assert len(segs) == 4 and k == 0
+        full = CoevolutionEngine(
+            EngineConfig(**{**config.__dict__, "mode": "coevolution"}),
+            pool, FEATURES, val_df, os.path.join(tmp, "full"))
+        segs, k = full._match_segments(full.env_pop[0], 4)       # default = old behaviour
+        assert len(segs) == 4 and k == 4
+        print("mixed curriculum split ok")
+
 
     print("\nSMOKE TEST PASSED")
 

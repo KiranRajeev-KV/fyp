@@ -75,6 +75,12 @@ class EngineConfig:
     trade_penalty: float = 0.0         # extra reward penalty per executed trade
     gamma: float = 0.99                # PPO discount; raise (0.995+) for longer horizon
     ent_coef_max: float = 0.1          # upper bound on evolved entropy coef
+    ent_coef_min: float = 0.0          # lower bound; 0 = leave at the default 1e-4
+    # Share of each match's segments chosen by the adversary; the rest are drawn
+    # uniformly from the pool. 1.0 (default) = the original behaviour, where the
+    # adversary picks everything the trader ever trains on and bull coverage can
+    # disappear entirely. Lower values keep the curriculum but restore coverage.
+    env_adversary_frac: float = 1.0
     # A match in which the trader never traded on ANY segment scores Sharpe 0
     # for every adversary that served it, so it measures the trader's collapse,
     # not the adversary's skill -- and it is common-mode noise across the whole
@@ -131,8 +137,7 @@ class CoevolutionEngine:
         }
         # entropy-capped hyperparameter bounds (anti-churn); None ent_coef_max
         # keeps the original 0.1 ceiling
-        self.bounds = tp.make_bounds(
-            config.ent_coef_max if config.ent_coef_max < 0.1 else None)
+        self.bounds = tp.make_bounds(config.ent_coef_max, config.ent_coef_min)
 
         n_traders = 1 if config.mode == "single" else config.n_traders
         self.traders = [
@@ -263,6 +268,9 @@ class CoevolutionEngine:
             "generation", "trader_id", "match_idx", "opponent_kind", "opponent_id",
             "score", "trades", "exposure", "return_pct", "max_drawdown_pct",
             "no_trade_segments", "n_segments", "counted_for_adversary",
+            # how many of n_segments the adversary chose; the rest are uniform
+            # draws (env_adversary_frac). Equals n_segments in the original setup.
+            "n_adversary_segments",
             "segment_starts", "segment_regimes",
         ]
         if not self._resuming:
@@ -432,7 +440,8 @@ class CoevolutionEngine:
             for row in rows:
                 writer.writerow(row)
 
-    def _match_row(self, gen, trader, idx, kind, opp_id, segs, score, per_seg, counted):
+    def _match_row(self, gen, trader, idx, kind, opp_id, segs, score, per_seg, counted,
+                   n_adversary_segments=None):
         starts = [st for st, _ in segs]
         return {
             "generation": gen, "trader_id": trader.trader_id, "match_idx": idx,
@@ -446,6 +455,8 @@ class CoevolutionEngine:
             "no_trade_segments": int(sum(m["no_trade"] for m in per_seg)),
             "n_segments": len(per_seg),
             "counted_for_adversary": counted,
+            "n_adversary_segments": (len(per_seg) if n_adversary_segments is None
+                                     else n_adversary_segments),
             "segment_starts": ";".join(str(x) for x in starts),
             "segment_regimes": ";".join(self._regime_by_start.get(x, "?") for x in starts),
         }
@@ -557,6 +568,22 @@ class CoevolutionEngine:
         idx = self.rng.choice(len(self.pool), size=min(n, len(self.pool)), replace=False)
         return [(self.pool.segments[i].start, self.pool.segments[i].end) for i in idx]
 
+    def _match_segments(self, opp, n):
+        """(segments, k) for one match: the FIRST k were picked by the adversary,
+        the rest drawn uniformly from the pool.
+
+        env_adversary_frac 1.0 reproduces the original behaviour exactly. Below
+        1.0 the trader still gets the adversary's curriculum but keeps seeing the
+        rest of the pool, so it cannot collapse onto whatever the adversary
+        happens to be serving (it stopped buying entirely under a bear
+        curriculum). The adversary is scored only on its own k segments.
+        """
+        if opp is None:
+            return self._uniform_segments(n), 0
+        k = min(n, round(n * self.cfg.env_adversary_frac))
+        adversary_segs = opp.select_segments(self.pool, k, self.rng) if k else []
+        return adversary_segs + self._uniform_segments(n - k), k
+
     # ------------------------------------------------------------------
     # one generation
     # ------------------------------------------------------------------
@@ -578,11 +605,7 @@ class CoevolutionEngine:
 
             for m_idx, oi in enumerate(opponent_idx):
                 opp = self.env_pop[oi] if oi is not None else None
-                segs = (
-                    opp.select_segments(self.pool, cfg.segments_per_match, self.rng)
-                    if opp is not None
-                    else self._uniform_segments(cfg.segments_per_match)
-                )
+                segs, k_adv = self._match_segments(opp, cfg.segments_per_match)
                 tp.train_on_segments(
                     trader, self.pool.df, self.feature_columns, segs,
                     self.env_kwargs, cfg.timesteps_per_match,
@@ -596,21 +619,27 @@ class CoevolutionEngine:
 
                 counted = True
                 if opp is not None:
+                    # only the segments this adversary actually chose say
+                    # anything about it; the uniform remainder is not its doing
+                    adv_segs, adv_metrics = segs[:k_adv], per_seg[:k_adv]
                     # all() -- a match is uninformative about the adversary only
                     # when the trader refused to trade on every segment it served
-                    if cfg.env_skip_no_trade_matches and all(no_trade):
+                    if not adv_metrics or (cfg.env_skip_no_trade_matches
+                                           and all(m["no_trade"] for m in adv_metrics)):
                         counted = False
                     else:
-                        opp.record(self._adversary_score(segs, per_seg, score))
+                        adv_score = float(np.mean(
+                            [m[cfg.fitness_metric] for m in adv_metrics]))
+                        opp.record(self._adversary_score(adv_segs, adv_metrics, adv_score))
                     if counted:
                         self._env_served[oi]["n"] += 1
                         self._env_served[oi]["regimes"] += [
-                            self._regime_by_start.get(st, "?") for st, _ in segs]
+                            self._regime_by_start.get(st, "?") for st, _ in adv_segs]
 
                 self._match_rows.append(self._match_row(
                     gen, trader, m_idx,
                     "adversary" if opp is not None else "uniform",
-                    oi, segs, score, per_seg, counted))
+                    oi, segs, score, per_seg, counted, n_adversary_segments=k_adv))
 
             # matches against archived adversaries: evaluation only, so the
             # trader cannot forget how to beat old opponents (anti-cycling)

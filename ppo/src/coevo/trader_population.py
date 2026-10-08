@@ -28,17 +28,18 @@ HYPERPARAM_BOUNDS = {
 }
 
 
-def make_bounds(ent_coef_max=None):
-    """Copy of HYPERPARAM_BOUNDS with the ent_coef upper bound optionally lowered.
+def make_bounds(ent_coef_max=None, ent_coef_min=None):
+    """Copy of HYPERPARAM_BOUNDS with the ent_coef range optionally narrowed.
 
     High ent_coef (up to 0.1) drives random action-flipping, which the diagnostic
-    tied to churn-driven losses. Capping it (e.g. 0.02) lets PBT prefer calmer
-    policies. None keeps the original 0.1 ceiling.
+    tied to churn-driven losses, so capping it (e.g. 0.02) lets PBT prefer calmer
+    policies. The opposite failure is the coevolution arm's: entropy decays, the
+    policy settles on "hold" and never re-enters the market, so a floor
+    (e.g. 0.005) keeps some exploration alive. 0/None leaves that end alone.
     """
-    if ent_coef_max is None:
-        return HYPERPARAM_BOUNDS
-    lo, _ = HYPERPARAM_BOUNDS["ent_coef"]
-    return {**HYPERPARAM_BOUNDS, "ent_coef": (lo, ent_coef_max)}
+    lo, hi = HYPERPARAM_BOUNDS["ent_coef"]
+    return {**HYPERPARAM_BOUNDS,
+            "ent_coef": (ent_coef_min or lo, ent_coef_max or hi)}
 
 
 def sample_hyperparams(rng, bounds=HYPERPARAM_BOUNDS):

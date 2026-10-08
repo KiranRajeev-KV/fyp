@@ -77,6 +77,11 @@ arm_flags() {
   case "$1" in
     coevolution)        echo "--mode coevolution --env-skip-no-trade-matches" ;;
     coevolution_regret) echo "--mode coevolution --env-fitness regret --run-name coevolution_regret" ;;
+    # the audit's two trader-side fixes together: half the segments drawn
+    # uniformly so bull coverage survives, no trade penalty and an entropy floor
+    # so the policy can re-enter the market after the bear phase
+    coevolution_mixed)  echo "--mode coevolution --env-skip-no-trade-matches \
+--env-adversary-frac 0.5 --trade-penalty 0 --ent-coef-min 0.005 --run-name coevolution_mixed" ;;
     population)         echo "--mode population" ;;
     single)             echo "--mode single" ;;
     *) echo "unknown arm $1" >&2; return 1 ;;
@@ -91,8 +96,8 @@ run_one() {
   fi
   local flags; flags="$(arm_flags "$arm")" || return 1
   OMP_NUM_THREADS="$THREADS" MKL_NUM_THREADS="$THREADS" \
-    "$VENV/bin/python" run_coevolution.py $flags --seeds "$seed" \
-      $CFG --out-root "$OUTDIR" >> "$log" 2>&1
+    "$VENV/bin/python" run_coevolution.py --seeds "$seed" \
+      $CFG $flags --out-root "$OUTDIR" >> "$log" 2>&1
   local rc=$?
   if [ $rc -eq 0 ]; then echo "[$(date +%H:%M:%S)]   done  ${arm} seed ${seed}"
   else echo "[$(date +%H:%M:%S)]   FAIL  ${arm} seed ${seed} (rc=$rc) -> $log"; fi

@@ -45,6 +45,12 @@ def add_engine_args(parser):
                    help="PPO discount; raise to 0.995-0.999 for a longer horizon")
     g.add_argument("--ent-coef-max", type=float, default=_DEFAULT.ent_coef_max,
                    help="cap on evolved entropy coef")
+    g.add_argument("--ent-coef-min", type=float, default=_DEFAULT.ent_coef_min,
+                   help="floor on evolved entropy coef (try 0.005 to stop the "
+                        "coevolution arm settling on hold-forever)")
+    g.add_argument("--env-adversary-frac", type=float, default=_DEFAULT.env_adversary_frac,
+                   help="share of each match's segments chosen by the adversary; "
+                        "the rest are uniform draws (1.0 = original behaviour)")
     g.add_argument("--env-skip-no-trade-matches", action="store_true",
                    default=_DEFAULT.env_skip_no_trade_matches,
                    help="drop matches where the trader never traded from adversary fitness")
@@ -67,6 +73,7 @@ ENGINE_FIELDS = [
     "env_fresh_frac", "tournament_k", "initial_balance", "trading_fee",
     "slippage", "trade_penalty", "gamma", "ent_coef_max",
     "env_skip_no_trade_matches", "env_fitness", "overwrite", "resume",
+    "ent_coef_min", "env_adversary_frac",
 ]
 
 
