@@ -138,17 +138,19 @@ def bootstrap_pair(A, B, rng, n_boot=20000):
 def timing_score(long, arm, kind):
     """Does the arm time the market, or just hold a constant exposure?
 
-    Per seed: mean exposure on segments where buy-and-hold made money minus
-    mean exposure where it lost, and corr(exposure, buy-and-hold return) over
-    segments. Both are ~0 for a constant-exposure policy whatever its level.
+    timing: mean exposure on segments where buy-and-hold made money minus mean
+    exposure where it lost (per seed, then averaged); corr: corr(exposure,
+    buy-and-hold return) pooled over all (seed, segment) cells. Both are ~0 for
+    a constant-exposure policy whatever its level.
     """
     E = seed_matrix(long, arm, kind, "exposure")
     move = long[long.arm == "buy_hold"].groupby("segment")["total_return_pct"].mean()
     move = move.reindex(E.columns).values
     up, down = move > 0, move < 0
     diff = [row[up].mean() - row[down].mean() for row in E.values]
-    corr = [np.corrcoef(row, move)[0, 1] if row.std() > 0 else 0.0 for row in E.values]
-    return {"timing": float(np.mean(diff)), "corr_exposure_move": float(np.mean(corr)),
+    flat, moves = E.values.ravel(), np.tile(move, len(E))
+    corr = np.corrcoef(flat, moves)[0, 1] if flat.std() > 0 else 0.0
+    return {"timing": float(np.mean(diff)), "corr_exposure_move": float(corr),
             "exposure": float(E.values.mean()),
             "exposure_up": float(E.values[:, up].mean()),
             "exposure_down": float(E.values[:, down].mean())}

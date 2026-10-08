@@ -495,6 +495,76 @@ cannot read, and the only lever that changes that is the action space or the obj
 frozen by the project framing. This is the third named failure mode, after disengagement (9b) and the
 regret arm's buy-and-hold collapse (9c).
 
+### 9e. No exploitable timing signal (2026-10-08) — why every method converges to a constant exposure
+
+**Claim.** On real BTC hourly data the features carry almost no information about direction, so no
+training method in this project can learn to time the market. Each arm instead settles on a **constant
+exposure** fixed by its training distribution, and coevolution's adversary sets that constant low. The
+curriculum changes in 9c-9d only move this exposure dial. Reproduce with
+`python ppo/src/signal_probe.py [--funding ../data/funding/BTCUSDT_funding.parquet]` (6 walk-forward folds,
+48 test segments of 720 bars, scaler and classifier fit on each fold's train span only, the last H train labels
+purged). Output: `ppo/runs/walkforward/signal_probe.json`.
+
+**1. The features barely predict direction.** Logistic regression (C = 0.1), label = sign of the forward
+H-bar log return, mean of the per-fold test AUCs:
+
+| features | AUC @ 24h | AUC @ 168h |
+|---|---|---|
+| the 19 engine features | **0.529** | 0.516 (pooled 0.48) |
+| + 30-day and 90-day trend | 0.525 | 0.499 |
+| + Binance funding rate | 0.526 | 0.512 |
+| funding rate alone | 0.519 | 0.554 (pooled 0.48: not stable across folds) |
+
+**2. Even ideal use of that signal does not beat buy-and-hold.** Ceilings on the same 48 segments, decisions
+rebalanced daily, 0.15% cost per unit of position change, mean per-segment Sharpe:
+
+| rule | Sharpe | wins vs B&H (of 48) | timing |
+|---|---|---|---|
+| buy-and-hold | **+0.93** (+0.97 with no entry cost) | — | 0 |
+| logistic long/flat timer | −0.02 (+0.01 with no entry cost) | 15 | −0.06 |
+| logistic long/short | −1.12 | 16 | −0.12 |
+| volatility targeting (train-median 7d vol / trailing 7d vol, cap 1) | +0.77 | 9 | +0.03 |
+| 30-day trend filter (close > 720-bar SMA) | −0.10 | 13 | +0.39 |
+
+The trend filter does move exposure with the segment's direction (timing +0.39), but only after the move has
+happened, and the whipsaw costs more than it saves.
+
+**3. The trained arms do not time either.** Timing score (R5) = exposure on segments where buy-and-hold
+gained minus exposure where it lost; corr pooled over every (seed, segment) cell. Walk-forward, `best_trader`:
+
+| arm | exposure up / down | timing | corr(exposure, segment move) |
+|---|---|---|---|
+| coevolution | 0.12 / 0.18 | −0.05 | −0.05 |
+| single | 0.57 / 0.61 | −0.05 | −0.10 |
+| population | 0.85 / 0.89 | −0.04 | −0.21 |
+
+All three timing scores are slightly negative, so exposure is a constant. Ranking the arms by exposure
+(population > single > coevolution) also ranks them by walk-forward Sharpe (+0.60 > +0.41 > +0.05; B&H +0.97) in a
+market that went up.
+
+**4. What this rules out.**
+* *A better reward.* An excess-over-buy-and-hold per-step reward has the same optimal policy as the log-return
+  reward, because the buy-and-hold term does not depend on the action. It can reduce variance, but it cannot
+  create a signal.
+* *A better selector.* Within a trader, the match-to-match sd of fitness (1.17) is larger than the between-trader
+  fitness sd (0.82), and internal rank vs held-out Sharpe has Spearman 0.02. PBT and the hall of fame are
+  selecting on noise (see also `hyperparam-search-is-drift`). Run-to-run noise is ~0.5 Sharpe.
+* *More curriculum tuning.* The adversary can only change which windows the trader sees, and therefore the
+  exposure level the trader converges to. That helps in bear-heavy folds and hurts in bull-heavy ones, which is
+  exactly the walk-forward pattern in 9c.
+
+**Reproduction status** (Task A acceptance, ±0.01 against the original ad-hoc numbers): AUC@24h, funding,
+trend features, buy-and-hold (both cost conventions), long/flat timer (+0.013 vs +0.01, no entry cost),
+trend filter (−0.103 vs −0.10) and all six arm exposures and correlations reproduce. The volatility-targeting
+Sharpe is +0.771 against +0.76 (just outside ±0.01; same 9/48 wins). Long/short (−1.12, or −1.08 with no entry
+cost, against −0.97) and AUC@168h (0.516 against ~0.53) do **not** reproduce, because the original ad-hoc code was
+not kept. Neither changes the conclusion. The trend filter turned out to be "close above its 30-day SMA"
+(30-day momentum > 0 gives +0.23).
+
+**What follows.** The test this project can still run is on a market where timing *is* possible. The
+controlled synthetic benchmark (Task B, `ppo/src/synth_market.py`, `docs/loop/LEDGER.md`) provides that, with a
+known regime and a deliberate train/test regime shift.
+
 ## 10. Next steps
 
 1. **Rewrite the deck around §9c**: the defensible claim is "coevolution trades upside for bear robustness;
