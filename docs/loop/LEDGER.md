@@ -23,6 +23,7 @@ Section 4 of PROMPT.md, verbatim, frozen before the first arm run. Not edited.
 |---|---|---|---|---|
 | 1 | synth (pre-freeze) | generator draft, train mix bear .12 | dev_shift/control, logistic probe | AUC 0.601 shift / 0.584 control; timer +0.76 vs B&H −3.57 (shift). Train series 19% bear: out of the 10-15% spec → retune train mix only |
 | 2 | SYNTH_V1 | generator, train mix bear .10 → **frozen** | same | AUC 0.601 / 0.587 (signal alone 0.604); shift: timer **+0.69 vs B&H −3.57**, wins 153/200, timing +0.57; control: timer +2.37 vs B&H +1.65. PASS |
+| 3 | SYNTH_V1 | plumbing: `single` seed 99, 2 generations (compare_arms code test only, not used for any choice) | dev_shift | Sharpe −2.18 vs B&H −3.55; timing +0.42 (exposure bear .26 / bull .74). Even a 2-gen PPO times the regime here |
 
 ## Iterations
 ### iter01 (2026-10-08 22:50 –) Task B main run
@@ -30,3 +31,11 @@ Section 4 of PROMPT.md, verbatim, frozen before the first arm run. Not edited.
   `--segment-sampling regime_balanced` (EngineConfig.segment_sampling) for the `reweighted` arm (= population + PBT, oracle
   regime-balanced draws); `run_coevolution.py --features`; `run_v5.sh` TRAIN_DATA / VAL_DATA / FEATURES / EVAL + arm `reweighted`;
   `compare_arms.py --jobs` + timing score (R5). Smoke test extended (true labels + balanced sampling + generator) — PASSED.
+- Plumbing (2 gens, seed 99, all 5 arms, `runs/loop/iter01_plumbing/`): all ran clean, ~6.5 min per 2 gens for coevolution.
+  Served regime mix (non-HOF matches): population bear 10%, **reweighted 34/33/33**, coevolution bear 25%, regret bear 23%.
+- **Launched 23:05** `runs/loop/iter01_taskB/` (log `ppo/runs/loop/iter01.log`, per-run `ppo/runs/iter01_taskB_logs/`), git 2dc22eb:
+  arms coevolution_regret, coevolution, reweighted, population, single × seeds 42-47, GENERATIONS=20, JOBS=6 THREADS=2,
+  V5 config otherwise. Relaunch command (resumes):
+  `cd ppo && D=../data/synth_v1 GENERATIONS=20 JOBS=6 THREADS=2 EVAL=0 ARMS="coevolution_regret coevolution reweighted population single" OUTDIR=../runs/loop/iter01_taskB TRAIN_DATA=$D/train.parquet VAL_DATA=$D/val.parquet FEATURES=$D/feature_columns.pkl nohup bash run_v5.sh >> runs/loop/iter01.log 2>&1 &`
+  (set D first: `D=../data/synth_v1; ...`).
+- Eval plan (after runs): `compare_arms.py --final-traders --jobs 12` on dev_shift and dev_control, arms in that order; criteria = §4.
