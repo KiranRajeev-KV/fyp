@@ -50,3 +50,6 @@ Section 4 of PROMPT.md, verbatim, frozen before the first arm run. Not edited.
 - `docs/experiment-notes.md` §9e written.
 - Real-data trial count so far: not reconstructed beyond this loop (V1-V6 + walk-forward + ad-hoc checks ≈ 10+ variants);
   no real-data claim is being made, so no DSR yet.
+- 02:45 interim (training logs only, no test data touched): coevolution_regret done 00:57, coevolution done 02:31, 0 errors.
+  Training exposure gen0→9→19: regret 0.62→0.77→0.75, coevolution 0.60→0.72→0.69 — **no collapse to cash** (fallback not triggered).
+  Adversary served bear share (pool 12.9%): coevolution 0.24→0.50 (g5)→0.56 (g10)→0.27 (g19); regret 0.24→0.33→0.26→0.26.
