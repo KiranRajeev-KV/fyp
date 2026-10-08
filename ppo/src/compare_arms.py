@@ -53,7 +53,7 @@ def seed_of(path):
 
 
 def evaluate_split(df, arms, env_kwargs, feature_columns, segment_length,
-                   segment_stride, final_traders, fold=0, seg_offset=0):
+                   segment_stride, final_traders, fold=0, seg_offset=0, jobs=1):
     """Long-format rows: one per (arm, seed, model_kind, trader, segment)."""
     pool = build_segment_pool(df, segment_length=segment_length, stride=segment_stride)
     rows = []
@@ -69,25 +69,30 @@ def evaluate_split(df, arms, env_kwargs, feature_columns, segment_length,
                          "start": s.start, **{k: b[name][k] for k in ev.METRIC_KEYS},
                          "trades": np.nan, "exposure": np.nan})
 
+    jobs_list = []
     for arm, paths in arms.items():
         for p in paths:
             seed = seed_of(p)
-            models = [("best", -1, p)]
+            jobs_list.append((arm, seed, "best", -1, p))
             if final_traders:
                 fdir = os.path.join(os.path.dirname(p), "final_traders")
                 for q in sorted(glob.glob(os.path.join(fdir, "trader_*.zip"))):
                     tid = int(re.search(r"trader_(\d+)\.zip", q).group(1))
-                    models.append(("final", tid, q))
-            for kind, tid, q in models:
-                print(f"  {arm:16s} seed {seed:3d} {kind:5s} {os.path.relpath(q)}", flush=True)
-                per_seg = ev.eval_model_per_segment(q, pool, env_kwargs, feature_columns)
-                for i, (r, s) in enumerate(zip(per_seg, pool.segments)):
-                    rows.append({"arm": arm, "seed": seed, "kind": kind, "trader": tid,
-                                 "fold": fold, "segment": seg_offset + i,
-                                 "regime": s.regime, "move_regime": s.move_regime,
-                                 "start": s.start,
-                                 **{k: r[k] for k in ev.METRIC_KEYS},
-                                 "trades": r["trades"], "exposure": r["exposure"]})
+                    jobs_list.append((arm, seed, "final", tid, q))
+    for arm, seed, kind, tid, q in jobs_list:
+        print(f"  {arm:16s} seed {seed:3d} {kind:5s} {os.path.relpath(q)}", flush=True)
+    from joblib import Parallel, delayed
+    results = Parallel(n_jobs=jobs)(
+        delayed(ev.eval_model_per_segment)(q, pool, env_kwargs, feature_columns)
+        for *_, q in jobs_list)
+    for (arm, seed, kind, tid, q), per_seg in zip(jobs_list, results):
+        for i, (r, s) in enumerate(zip(per_seg, pool.segments)):
+            rows.append({"arm": arm, "seed": seed, "kind": kind, "trader": tid,
+                         "fold": fold, "segment": seg_offset + i,
+                         "regime": s.regime, "move_regime": s.move_regime,
+                         "start": s.start,
+                         **{k: r[k] for k in ev.METRIC_KEYS},
+                         "trades": r["trades"], "exposure": r["exposure"]})
     return rows, len(pool)
 
 
@@ -130,6 +135,25 @@ def bootstrap_pair(A, B, rng, n_boot=20000):
     return out
 
 
+def timing_score(long, arm, kind):
+    """Does the arm time the market, or just hold a constant exposure?
+
+    Per seed: mean exposure on segments where buy-and-hold made money minus
+    mean exposure where it lost, and corr(exposure, buy-and-hold return) over
+    segments. Both are ~0 for a constant-exposure policy whatever its level.
+    """
+    E = seed_matrix(long, arm, kind, "exposure")
+    move = long[long.arm == "buy_hold"].groupby("segment")["total_return_pct"].mean()
+    move = move.reindex(E.columns).values
+    up, down = move > 0, move < 0
+    diff = [row[up].mean() - row[down].mean() for row in E.values]
+    corr = [np.corrcoef(row, move)[0, 1] if row.std() > 0 else 0.0 for row in E.values]
+    return {"timing": float(np.mean(diff)), "corr_exposure_move": float(np.mean(corr)),
+            "exposure": float(E.values.mean()),
+            "exposure_up": float(E.values[:, up].mean()),
+            "exposure_down": float(E.values[:, down].mean())}
+
+
 def summarize_arm(long, arm, kind, metric="sharpe"):
     M = seed_matrix(long, arm, kind, metric)
     per_seed = M.mean(axis=1)
@@ -138,6 +162,8 @@ def summarize_arm(long, arm, kind, metric="sharpe"):
     d = long[(long.arm == arm) & (long.kind == kind)]
     out["per_regime"] = {r: float(g[metric].mean()) for r, g in d.groupby("regime")}
     out["per_move_regime"] = {r: float(g[metric].mean()) for r, g in d.groupby("move_regime")}
+    out["per_regime_exposure"] = {r: float(g["exposure"].mean()) for r, g in d.groupby("regime")}
+    out.update(timing_score(long, arm, kind))
     return out
 
 
@@ -163,6 +189,7 @@ def main():
                     help="also evaluate final_traders/*.zip and use per-seed population mean")
     ap.add_argument("--metric", default="sharpe", choices=ev.METRIC_KEYS)
     ap.add_argument("--n-boot", type=int, default=20000)
+    ap.add_argument("--jobs", type=int, default=1, help="models evaluated in parallel")
     ap.add_argument("--out", default=None, help="JSON output")
     ap.add_argument("--csv", default=None, help="long-format per-segment CSV (default: <out>.csv)")
     args = ap.parse_args()
@@ -185,7 +212,8 @@ def main():
                 ap.error(f"arm {n}: no models match {arm_globs[n]}")
         df = pd.read_parquet(args.data)
         rows, n = evaluate_split(df, arms, env_kwargs, feature_columns,
-                                 args.segment_length, args.segment_stride, args.final_traders)
+                                 args.segment_length, args.segment_stride, args.final_traders,
+                                 jobs=args.jobs)
     else:
         offset = 0
         fold_dirs = [d for d in glob.glob(os.path.join(args.walkforward_root, "fold[0-9]*"))
@@ -202,7 +230,8 @@ def main():
             print(f"fold {k}: {', '.join(f'{n}({len(ps)})' for n, ps in arms.items())}")
             r, n = evaluate_split(pd.read_parquet(tp), arms, env_kwargs, feature_columns,
                                   args.segment_length, args.segment_stride,
-                                  args.final_traders, fold=k, seg_offset=offset)
+                                  args.final_traders, fold=k, seg_offset=offset,
+                                  jobs=args.jobs)
             rows += r
             offset += n
 
@@ -253,6 +282,13 @@ def main():
             s = results["baselines"][b]
             print(f"{b:16s}{s['mean']:+9.3f}{'':11s}{'':4s}   "
                   f"{fmt(s['per_regime'])} | {fmt(s['per_move_regime'])}")
+        print(f"\n{'timing (R5)':16s}{'timing':>9s}{'corr':>7s}{'expo':>7s}{'up':>7s}{'down':>7s}"
+              f"   exposure per regime")
+        for a in arm_names:
+            s = results["arms"][kind][a]
+            print(f"{a:16s}{s['timing']:+9.3f}{s['corr_exposure_move']:+7.3f}{s['exposure']:7.2f}"
+                  f"{s['exposure_up']:7.2f}{s['exposure_down']:7.2f}   "
+                  + "  ".join(f"{r} {v:.2f}" for r, v in sorted(s['per_regime_exposure'].items())))
         print(f"\n{'P(A <= B)':34s}{'segments':>10s}{'seeds':>8s}{'hier.':>8s}"
               f"{'diff':>8s}{'wins':>7s}{'n@t=2':>7s}")
         for pair, r in results["pairs"][kind].items():

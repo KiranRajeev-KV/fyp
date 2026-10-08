@@ -81,6 +81,13 @@ class EngineConfig:
     # adversary picks everything the trader ever trains on and bull coverage can
     # disappear entirely. Lower values keep the curriculum but restore coverage.
     env_adversary_frac: float = 1.0
+    # How the non-adversary ("uniform") segments are drawn:
+    #   uniform          -- every pool segment equally likely (original)
+    #   regime_balanced  -- weight 1 / (segments sharing its regime label), so
+    #                       each regime gets the same share. With synthetic data
+    #                       the labels are the TRUE regimes: an oracle
+    #                       re-weighting baseline for the adversary.
+    segment_sampling: str = "uniform"
     # A match in which the trader never traded on ANY segment scores Sharpe 0
     # for every adversary that served it, so it measures the trader's collapse,
     # not the adversary's skill -- and it is common-mode noise across the whole
@@ -175,6 +182,8 @@ class CoevolutionEngine:
             if config.mode == "coevolution" else None
         )
 
+        if config.segment_sampling not in ("uniform", "regime_balanced"):
+            raise ValueError(f"unknown segment_sampling {config.segment_sampling!r}")
         if config.env_fitness not in ("neg_sharpe", "regret"):
             raise ValueError(f"unknown env_fitness {config.env_fitness!r}")
         # regret reference per pool segment: the best trivial policy's score
@@ -565,7 +574,14 @@ class CoevolutionEngine:
     # ------------------------------------------------------------------
 
     def _uniform_segments(self, n):
-        idx = self.rng.choice(len(self.pool), size=min(n, len(self.pool)), replace=False)
+        if self.cfg.segment_sampling == "regime_balanced":
+            labels = [s.regime for s in self.pool.segments]
+            counts = {r: labels.count(r) for r in set(labels)}
+            w = np.array([1.0 / counts[r] for r in labels])
+            idx = self.rng.choice(len(self.pool), size=min(n, len(self.pool)),
+                                  replace=False, p=w / w.sum())
+        else:
+            idx = self.rng.choice(len(self.pool), size=min(n, len(self.pool)), replace=False)
         return [(self.pool.segments[i].start, self.pool.segments[i].end) for i in idx]
 
     def _match_segments(self, opp, n):

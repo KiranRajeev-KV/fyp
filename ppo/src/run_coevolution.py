@@ -37,6 +37,8 @@ def main():
     parser.add_argument("--run-name", default=None,
                         help="directory name under --out-root (default: <mode>_seed<seed>); "
                              "use to keep two variants of one mode apart, e.g. coevolution_regret")
+    parser.add_argument("--features", default="../models/feature_columns.pkl",
+                        help="joblib list of feature columns (synthetic data ships its own)")
     parser.add_argument("--segment-length", type=int, default=720)
     parser.add_argument("--segment-stride", type=int, default=168)
     add_engine_args(parser)
@@ -47,7 +49,7 @@ def main():
 
     try:
         import joblib
-        feature_columns = joblib.load("../models/feature_columns.pkl")
+        feature_columns = joblib.load(args.features)
     except FileNotFoundError:
         from train_ppo import FEATURE_COLUMNS as feature_columns
 

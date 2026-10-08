@@ -82,6 +82,7 @@ def build_segment_pool(
     """
     df = df.reset_index(drop=True)
     regimes = label_regimes(df, window=regime_window, threshold=regime_threshold)
+    true_regimes = df["true_regime"] if "true_regime" in df.columns else None
     close = df["close"].astype(float).values
     log_close = np.log(close)
 
@@ -101,6 +102,10 @@ def build_segment_pool(
         seg_regimes = regimes.iloc[start:end]
         transitions = int((seg_regimes != seg_regimes.shift()).sum() - 1)
         majority = seg_regimes.mode().iloc[0]
+        # synthetic data (synth_market.py) knows the regime that generated
+        # each bar: label the segment with its true majority instead
+        if true_regimes is not None:
+            majority = true_regimes.iloc[start:end].mode().iloc[0]
 
         dd = abs(max_drawdown(close[start:end]))
 

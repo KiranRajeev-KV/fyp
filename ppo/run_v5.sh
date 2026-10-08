@@ -42,6 +42,11 @@ THREADS="${THREADS:-3}"    # torch threads each; JOBS*THREADS should be <= cores
 # arms: engine mode, optionally suffixed with a variant name
 ARMS="${ARMS:-coevolution_regret coevolution population single}"
 FORCE="${FORCE:-0}"
+# data overrides (Task B synthetic benchmark); defaults = the real BTC splits
+TRAIN_DATA="${TRAIN_DATA:-../data/processed/train.parquet}"
+VAL_DATA="${VAL_DATA:-../data/processed/val.parquet}"
+FEATURES="${FEATURES:-../models/feature_columns.pkl}"
+EVAL="${EVAL:-1}"          # 0 = skip the real-data test evaluation at the end
 
 LOGDIR="$REPO/ppo/runs/$(basename "$OUTDIR")_logs"
 mkdir -p "$LOGDIR"
@@ -70,7 +75,7 @@ CFG="--n-traders $NTRADERS --n-env $NENV --segments-per-match $SEGS \
 --generations $GENERATIONS \
 --env-weight-sigma 0.7 --env-temp-sigma 0.35 --env-fresh-frac 0.25 \
 --trade-penalty 0.003 --gamma 0.997 --ent-coef-max 0.02"
-CFG="$CFG --resume"
+CFG="$CFG --resume --train-data $TRAIN_DATA --val-data $VAL_DATA --features $FEATURES"
 [ "$FORCE" = "1" ] && CFG="$CFG --overwrite"
 
 arm_flags() {
@@ -83,6 +88,9 @@ arm_flags() {
     coevolution_mixed)  echo "--mode coevolution --env-skip-no-trade-matches \
 --env-adversary-frac 0.5 --trade-penalty 0 --ent-coef-min 0.005 --run-name coevolution_mixed" ;;
     population)         echo "--mode population" ;;
+    # oracle baseline for the synthetic benchmark: population + PBT, segments
+    # drawn regime-balanced on the TRUE regime labels (no adversary)
+    reweighted)         echo "--mode population --segment-sampling regime_balanced --run-name reweighted" ;;
     single)             echo "--mode single" ;;
     *) echo "unknown arm $1" >&2; return 1 ;;
   esac
@@ -115,6 +123,7 @@ for a in $ARMS; do for s in $SEEDS; do echo "$a $s"; done; done \
   | xargs -P "$JOBS" -n 2 bash -c 'run_one "$0" "$1"'
 
 say "all runs finished"
+[ "$EVAL" = "1" ] || { say "EVAL=0: skipping test evaluation"; exit 0; }
 
 # --- 3. evaluation on the held-out test set -------------------------------
 ARMSPEC=""

@@ -201,6 +201,31 @@ def main():
         assert len(segs) == 4 and k == 4
         print("mixed curriculum split ok")
 
+        # --- Task B: true regime labels + regime-balanced (oracle) sampling --
+        tdf = train_df.assign(true_regime=np.where(np.arange(len(train_df)) < 1000,
+                                                   "bear", "bull"))
+        tpool = build_segment_pool(tdf, segment_length=240, stride=120,
+                                   regime_window=240, regime_threshold=0.05)
+        labels = [s.regime for s in tpool.segments]
+        assert set(labels) == {"bear", "bull"}, set(labels)
+        regime_of = {s.start: s.regime for s in tpool.segments}
+        for sampling, lo, hi in [("uniform", 0.0, 0.3), ("regime_balanced", 0.4, 0.6)]:
+            eng = CoevolutionEngine(
+                EngineConfig(**{**config.__dict__, "mode": "population",
+                                "segment_sampling": sampling}),
+                tpool, FEATURES, val_df, os.path.join(tmp, sampling))
+            draws = [regime_of[st] for _ in range(400) for st, _ in eng._uniform_segments(1)]
+            share = draws.count("bear") / len(draws)
+            assert lo <= share <= hi, (sampling, share, labels.count("bear") / len(labels))
+        print("true-regime labels + regime-balanced sampling ok")
+
+        # --- Task B generator produces the engine's feature set ----------
+        import synth_market as sm
+        s = sm.series(1500, sm.PARAMS["train_mix"], seed=0)
+        assert len(s) == 1500 and not s[sm.FEATURES].isna().any().any()
+        assert set(s.true_regime) <= set(sm.REGIMES)
+        print("synthetic generator ok")
+
 
     print("\nSMOKE TEST PASSED")
 

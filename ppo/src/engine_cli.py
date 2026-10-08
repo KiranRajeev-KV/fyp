@@ -58,6 +58,10 @@ def add_engine_args(parser):
                    choices=["neg_sharpe", "regret"],
                    help="adversary objective: -trader score (original) or regret "
                         "vs the best trivial policy on each served segment")
+    g.add_argument("--segment-sampling", default=_DEFAULT.segment_sampling,
+                   choices=["uniform", "regime_balanced"],
+                   help="how non-adversary segments are drawn; regime_balanced gives "
+                        "every regime label the same share (oracle re-weighting on synthetic data)")
     g.add_argument("--overwrite", action="store_true", default=False,
                    help="allow replacing an out_dir that already holds a finished run")
     g.add_argument("--resume", action="store_true", default=False,
@@ -73,7 +77,7 @@ ENGINE_FIELDS = [
     "env_fresh_frac", "tournament_k", "initial_balance", "trading_fee",
     "slippage", "trade_penalty", "gamma", "ent_coef_max",
     "env_skip_no_trade_matches", "env_fitness", "overwrite", "resume",
-    "ent_coef_min", "env_adversary_frac",
+    "ent_coef_min", "env_adversary_frac", "segment_sampling",
 ]
 
 
