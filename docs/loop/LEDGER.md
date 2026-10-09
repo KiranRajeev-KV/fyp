@@ -250,3 +250,10 @@ The P values are hierarchical P(coevo ≤ other). Timing is > 0 at every mix: co
   atomic rename, which is safe while iter02's bash holds the old inode. Relaunch:
   `cd ppo && D=../data/synth_v1 && GENERATIONS=20 JOBS=6 THREADS=1 EVAL=0 ARMS="coevolution_exam" OUTDIR=../runs/loop/iter03_exam TRAIN_DATA=$D/train.parquet VAL_DATA=$D/val.parquet FEATURES=$D/feature_columns.pkl nohup nice -n 19 bash run_v5.sh >> runs/loop/iter03.log 2>&1 &`
   If it is not finished by ~06:00, it is killed and reported as not completed. V2 is never cut for it.
+- 02:31: Task C is at gen 5-6/20 after 2 h, i.e. 2-3 generations per hour. V2 population is at 16/20, and Task C is slowing it.
+  Task C cannot reach 20 gens by 06:00, so by the rule above it should be stopped now. The kill was **refused by the session's permission
+  classifier**, so it is left running pending the user. It is niced; V2 still progresses at ~7 gens/h.
+  User command to stop it (checkpoints stay resumable with the relaunch line above):
+  `kill 1353257 1353388 1353395 1353398 1353399 1353402 1353404 1353406`.
+- V2 dev evals are queued to start automatically when `all runs finished` appears in iter02.log: dev_shift and dev_control in parallel, JOBS=6 each.
+  Logs: `ppo/runs/loop/iter02_compare_dev_{shift,control}.log`.
