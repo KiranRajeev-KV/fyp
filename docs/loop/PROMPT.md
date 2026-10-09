@@ -4,7 +4,7 @@ wake up, run ONE step of the protocol below, then schedule your next wake-up. Al
 docs/loop/LEDGER.md (create it on the first iteration). Read it before doing anything else. Your memory index
 (MEMORY.md) also has background notes: v6-mixed-curriculum, no-timing-signal, audit-sep-2026.
 
-HARD DEADLINE: final summary in LEDGER.md by 2026-10-09 18:00 (loop started ~2026-10-08 23:00).
+HARD DEADLINE (PHASE 1 ONLY, already met): final summary in LEDGER.md by 2026-10-09 18:00. Phase 2 deadline: 2026-10-10 08:30 (see PHASE 2).
 MAX_ITERATIONS: 2 (the main Task B experiment + at most one retry).
 
 TIME BUDGET (plan to it; the machine has 12 cores / 14 GB, JOBS=6 THREADS=2; a 20-generation coevolution
@@ -170,7 +170,7 @@ Then a single check on the sealed bars from 2026-09-01.
 5. STOP CONDITIONS (stop the loop, send a push notification, and write a summary into LEDGER.md)
 ==================================================================================================
 - A synthetic STRONG or MODERATE result is met and confirmed on the sealed seeds, OR
-- MAX_ITERATIONS is reached, OR it is 2026-10-09 18:00, OR
+- MAX_ITERATIONS is reached, OR the ACTIVE deadline has passed (Phase 2: 2026-10-10 08:30), OR
 - two consecutive iterations with no improvement and no research-backed idea left, OR
 - the best next idea needs a frozen real-data constraint changed (R6): stop and ask me, OR
 - the same failure (crash, OOM, data error) happens twice in a row.
@@ -184,8 +184,13 @@ PHASE 2 (added 2026-10-09 ~08:45, PRE-REGISTERED before any Phase 2 result; Phas
 ==================================================================================================
 Goal: test whether the Phase 1 MODERATE result is robust, so it survives the panel's first two questions
 ("is it only at that one shift level?" and "is it only for that one market?"). Same rules R1-R10 apply. Phase 2 has
-its own iteration budget: MAX 1 run + 1 crash-only retry. Deadline unchanged: final summary by 2026-10-09 18:00.
-Append a "## PHASE 2" section to LEDGER.md; keep the Phase 1 summary untouched.
+its own iteration budget: MAX 1 run + 1 crash-only retry.
+PHASE 2 DEADLINE (extended by me on 2026-10-09 ~18:00; this OVERRIDES every earlier 18:00 deadline in this file):
+final Phase 2 summary by 2026-10-10 08:30. Timeline: P2 generator built, cheap-checked and frozen, and the P2 run
+LAUNCHED by ~20:30 (finishes ~02:30); P1 runs alongside it; final evaluations + summary by ~05:00; the rest is buffer for one
+crash-only retry. The existing "## PHASE 2 SUMMARY" in LEDGER.md (which says Phase 2 was not run) is superseded:
+add a line under it saying "Deadline extended to 2026-10-10 08:30; Phase 2 resumed", then log the work below it.
+Keep the Phase 1 summary untouched.
 
 P1 Shift dose-response (evaluation only, NO training; do it first, ~1 h, can overlap P2's run).
    Using the FROZEN SYNTH_V1 generator (hash must stay 8070ed6ffe695667) and FRESH dev seeds (never 9000-9099),
@@ -204,7 +209,7 @@ P2 SYNTH_V2: weaker-signal robustness run (launch by 10:30 so it finishes by ~16
    Report whatever happens, with no result-driven retries: if the advantage holds, the claim generalises
    across signal strength; if it vanishes, the claim is scoped to strong-signal markets. Both are valid findings.
 
-P3 Task C (--shared-exam) only if time remains after the Phase 2 summary is written.
+P3 Task C (--shared-exam) only if it can be coded, run and summarised before the 08:30 deadline; otherwise skip it.
 
-Phase 2 stop: write "## PHASE 2 SUMMARY" in LEDGER.md (P1 table + figure path, P2 result + claim tier,
-what this does to the Phase 1 claim, files to cite) by 18:00, update the memory note synth-benchmark-moderate, then stop.
+Phase 2 stop: write "## PHASE 2 FINAL SUMMARY" in LEDGER.md (P1 table + figure path, P2 result + claim tier,
+what this does to the Phase 1 claim, files to cite) by 2026-10-10 08:30, update the memory note synth-benchmark-moderate, then stop.
