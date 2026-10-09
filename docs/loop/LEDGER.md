@@ -30,6 +30,7 @@ Section 4 of PROMPT.md, verbatim, frozen before the first arm run. Not edited.
 | 7 | SYNTH_V1 | arm `reweighted` (oracle regime-balanced) | same | +0.448 / **+2.523**; timing +0.55 / +0.25 |
 | 8 | SYNTH_V1 | arm `population` | same | −0.001 / +2.418; timing +0.53 / +0.25 |
 | 9 | SYNTH_V1 | arm `single` | same | +0.102 / +2.395; timing +0.53 / +0.25 |
+| 10 | SYNTH_V1 SEALED | the same 5 trained arms (no new variant), touched once | sealed_shift seeds 9000-9099, 200 segs | coevolution +0.902, regret +0.812, reweighted +0.783, population +0.409, single +0.363, B&H −2.13 |
 
 ## Iterations
 ### iter01 (2026-10-08 22:50 –) Task B main run
@@ -90,3 +91,58 @@ for entering the market. That pays on the 58%-bear test and costs −0.26 to −
 timing that all arms share, coevolution also turns the exposure dial towards the distribution the adversary served, and this
 happens to match the shifted test. The oracle reweighted arm reaches the same shifted score band (+0.45, tie) WITHOUT giving up
 the control (+2.52, best of all arms). Generation-19 training: coevolution no-trade fraction 0.42 (others ≤0.28); no collapse to cash.
+
+#### iter01 sealed holdout (2026-10-09 07:18-07:57, run ONCE) — `ppo/runs/loop/iter01_taskB/compare_sealed_shift.{json,csv}`
+Built with `synth_market.py --sealed` (code hash 8070ed6ffe695667, unchanged since the freeze). 200 segments, 54.5% bear by
+segment move (43.5% by majority label). Final-population mean (rank-0 in brackets):
+- coevolution +0.902 (+0.942) vs population +0.409: P=0.004, 5/6 (0.008, 6/6); vs single +0.363: P=0.001, 6/6 (0.002, 6/6)
+  → same direction, P ≤ 0.10 → **CONFIRMED**.
+- vs reweighted +0.783: P(coevo ≤ rw)=0.236, P(rw ≤ coevo)=0.761 (rank-0 0.280 / 0.720) → tie → **MODERATE confirmed**.
+- timing +0.44; exposure 0.32 (bear 0.08 / bull 0.73 / sideways 0.32) vs 0.53-0.57 for reweighted/population/single:
+  the same lower exposure level as on dev.
+- Also on sealed: coevolution_regret beats single (P=0.037) and population (0.010), but failed this on dev, so it is not claimed.
+
+## FINAL SUMMARY (2026-10-09 08:00; loop stopped on the §5 condition "MODERATE met and confirmed on sealed seeds")
+
+**Headline (synthetic benchmark SYNTH_V1 only, labelled separately from the real-data results).** When the market has a learnable
+regime signal and the test regime mix is shifted (bear 10-13% in training → 54-58% in test), coevolution (8 PPO traders + PBT
+vs 16 segment-selecting adversaries) beats single-agent PPO and population-only PBT on the shifted test. Dev: +0.60 vs +0.10 / −0.00,
+P = 0.003 / 0.001. Sealed: +0.90 vs +0.36 / +0.41, P = 0.001 / 0.004, with 5-6/6 seed wins everywhere. It **ties the oracle
+regime-reweighting baseline** (dev P = 0.11, sealed P = 0.24) without seeing regime labels. Claim tier reached: **MODERATE** —
+"coevolution recovers the oracle re-weighting without regime labels".
+
+**Caveats that must go with the claim:**
+1. *How it wins.* All arms learn the timing itself (exposure separates bull from bear at AUC ≈ 0.99). Coevolution differs by holding
+   a LOWER exposure level: ~0.23-0.32 vs 0.41-0.57, mostly staying out of sideways segments. The adversary's bear-heavy curriculum
+   (50-56% bear served at generations 5-10, against a 12.9% pool) sets the level, and it matches the shifted test. Timing score
+   is > 0 (pre-registered criterion met), but coevolution's absolute timing score is the lowest of the five arms.
+2. *The control is a reversal, not a null.* On the unshifted control coevolution is significantly WORSE than single (−0.26) and
+   population (−0.28). §4 only requires "no significant advantage", so the criterion passes, but the honest reading is a trade-off:
+   coevolution moves robustness toward the distribution the adversary serves, and gives up performance on the training-like mix.
+3. *The oracle does it without the cost.* `reweighted` ties coevolution on the shifted test and is the best arm on the control
+   (+2.52 vs coevolution +2.13). If regime labels were available, reweighting is preferable. Coevolution's value is that it gets
+   the shifted-test gain without labels.
+4. One benchmark, one generator (SYNTH_V1). The signal is strong by construction (bear Sharpe ≈ −8). Not tested: other
+   generators, weaker signals, more seeds.
+
+**Real data (secondary).** Not attempted with a new variant: Task A shows there is no exploitable timing signal (AUC 0.53; the best
+ceiling rule does not beat B&H), so no real-data claim is made and no DSR is needed. The real-data null result stands (notes §9e).
+
+**Trial count.** Synthetic: 2 generator settings (1 pre-freeze retune for the train-mix spec, then frozen), 1 plumbing evaluation,
+5 arms on dev, the same 5 on sealed once. No arm, seed, or generator was changed after any arm result. Real: 1 (probe re-run of
+existing checks). Iterations used: 1 of 2 (no retry needed).
+
+**What failed.** coevolution_regret: beats population but not single on dev (P=0.065), so it is not claimed, even though it passes
+on sealed. 3 of 11 Task A reproduction numbers missed ±0.01 (long/short, AUC@168h, vol-target by 0.011) because the original ad-hoc
+code was lost. One 25-min loss: zsh did not word-split the arm list (fixed with `ppo/runs/loop/iter01_compare.sh`).
+
+**Files to cite.**
+- Generator + cheap check: `ppo/src/synth_market.py`, `ppo/data/synth_v1/{params.json,cheap_check.json}` (data gitignored,
+  rebuildable; sealed via `--sealed`).
+- Runs: `ppo/runs/loop/iter01_taskB/<arm>_seed{42..47}/` (generations.csv, matches.csv, adversary_params.csv, final_traders/).
+- Results: `ppo/runs/loop/iter01_taskB/compare_{dev_shift,dev_control,sealed_shift}.{json,csv}`; logs `ppo/runs/loop/iter01*.log`.
+- Null result: `ppo/src/signal_probe.py`, `ppo/runs/walkforward/signal_probe.json`, `docs/experiment-notes.md` §9e.
+- Code commits on `loop/experiments`: 2dc22eb (benchmark + reweighted arm), 03cf0cc (Task A).
+
+**Not done.** Task C (`--shared-exam` selection) was not started: the stop condition was reached first. It is the next rigour fix
+(selection is a lottery: within-trader sd 1.17 > between-trader 0.82).
