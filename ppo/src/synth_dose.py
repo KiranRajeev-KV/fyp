@@ -54,9 +54,12 @@ def select(labels, share, n=N_SEG, train_mix=(0.47, 0.43)):
     return segs
 
 
-def analyse(csv, out, fig, n_boot=20000):
+def analyse(csv, out, fig, pool, n_boot=20000):
     long = pd.read_csv(csv)
     labels = long[long.arm == "buy_hold"].groupby("segment").regime.first()
+    starts = long[long.arm == "buy_hold"].groupby("segment").start.first()
+    bear = (pd.read_parquet(pool, columns=["true_regime"]).true_regime == "bear").values
+    bar_bear = pd.Series({g: bear[starts[g]:starts[g] + 720].mean() for g in labels.index})
     rng = np.random.default_rng(0)
     res = {}
     for share in SHARES:
@@ -64,6 +67,8 @@ def analyse(csv, out, fig, n_boot=20000):
         sub = long[long.segment.isin(segs)]
         M = {a: seed_matrix(sub, a, "final") for a in ARMS}
         r = {"bear_share": share, "n_segments": len(segs),
+             # majority-labelled bull/sideways segments still hold some bear bars
+             "bar_level_bear_share": float(bar_bear[segs].mean()),
              "sharpe": {a: float(M[a].mean(axis=1).mean()) for a in ARMS},
              "buy_hold": float(sub[sub.arm == "buy_hold"].sharpe.mean()),
              "timing": {a: timing_score(sub, a, "final")["timing"] for a in ARMS},
@@ -100,8 +105,11 @@ def analyse(csv, out, fig, n_boot=20000):
         ax.plot(SHARES, y, marker="o", lw=2.4 if a == "coevolution" else 1.4,
                 ls="--" if a == "buy_hold" else "-", label=a.replace("_", " "))
     ax.axvline(0.13, color="grey", lw=0.8, ls=":")
-    ax.text(0.135, ax.get_ylim()[0], " training mix", color="grey", va="bottom", fontsize=8)
-    ax.set_xlabel("bear share of test segments (true regime)")
+    ax.text(0.135, ax.get_ylim()[0], " train mix (segment labels)", color="grey", va="bottom", fontsize=8)
+    ax.set_xlabel("bear share of test segments (majority true regime)")
+    sec = ax.secondary_xaxis("top")
+    sec.set_xticks(SHARES, [f"{res[f'{s:.2f}']['bar_level_bear_share']:.0%}" for s in SHARES], fontsize=7)
+    sec.set_xlabel("bar-level bear share", fontsize=8)
     ax.set_ylabel("mean Sharpe (final population, 6 seeds)")
     ax.set_title("SYNTH_V1 shift dose-response, 200 segments per point")
     ax.legend(fontsize=8)
@@ -117,8 +125,9 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--csv")
     ap.add_argument("--fig", default="../figures/synth_dose_response.png")
+    ap.add_argument("--pool", default="../data/synth_v1_dose/pool.parquet")
     a = ap.parse_args()
-    build(a.out) if a.cmd == "build" else analyse(a.csv, a.out, a.fig)
+    build(a.out) if a.cmd == "build" else analyse(a.csv, a.out, a.fig, a.pool)
 
 
 if __name__ == "__main__":

@@ -197,3 +197,36 @@ Mixes 13/25/40/58/75% bear × 200 segments, selected by TRUE regime and nested (
   5 arms × seeds 42-47, GENERATIONS=20, JOBS=6 THREADS=2, EVAL=0. Relaunch (resumes):
   `cd ppo && D=../data/synth_v2 && GENERATIONS=20 JOBS=6 THREADS=2 EVAL=0 ARMS="coevolution_regret coevolution reweighted population single" OUTDIR=../runs/loop/iter02_v2 TRAIN_DATA=$D/train.parquet VAL_DATA=$D/val.parquet FEATURES=$D/feature_columns.pkl nohup bash run_v5.sh >> runs/loop/iter02.log 2>&1 &`
 - Eval plan (at the end, each once): `bash runs/loop/iter02_compare.sh dev_shift|dev_control`, then build V2 sealed (`synth_market_v2.py --sealed`) and `sealed_shift`.
+
+### P1 result: shift dose-response (SYNTH_V1, iter01 final traders, no retraining)
+P1 evaluation 18:08–22:23 (slow because it shared the CPU with the V2 run). Output: `ppo/runs/loop/iter02_dose/` (compare_pool.csv/json, dose_response.json),
+figure `ppo/figures/synth_dose_response.png`. Final-population mean Sharpe, 6 seeds, 200 segments per mix (nested selection):
+
+| bear share (segment label) | bar-level bear | coevolution | regret | reweighted | population | single | B&H | coevo − single (P, wins) | coevo − population | coevo − reweighted |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 13% | 23% | +2.351 | +2.365 | +2.463 | +2.245 | +2.231 | +0.70 | +0.12 (0.189, 5/6) | +0.11 (0.243, 5/6) | −0.11 (0.760, 3/6) |
+| 25% | 32% | +2.149 | +2.143 | +2.174 | +1.907 | +1.922 | −0.13 | +0.23 (0.063, 5/6) | +0.24 (0.071, 5/6) | −0.03 (0.566, 3/6) |
+| 40% | 42% | +1.846 | +1.781 | +1.817 | +1.474 | +1.508 | −1.44 | +0.34 (0.017, 4/6) | +0.37 (0.019, 5/6) | +0.03 (0.402, 4/6) |
+| 58% | 54% | +1.244 | +1.134 | +1.100 | +0.700 | +0.734 | −3.06 | +0.51 (0.004, 5/6) | +0.54 (0.004, 5/6) | +0.14 (0.119, 4/6) |
+| 75% | 67% | +0.809 | +0.609 | +0.556 | +0.075 | +0.097 | −4.69 | +0.71 (0.001, 6/6) | +0.73 (0.000, 6/6) | +0.25 (0.032, 5/6) |
+
+The P values are hierarchical P(coevo ≤ other). Timing is > 0 at every mix: coevolution +0.45…+0.54, single +0.32…+0.54. Coevolution's exposure is 0.47 → 0.18 against single's 0.72 → 0.34.
+
+- **Expected (pre-stated):** coevolution below the others at 13%, and above single/population from ~40% up.
+- **Observed:** coevolution is above single and population at every mix. The gap grows almost linearly with the bear share, +0.12 → +0.71. It becomes significant (P ≤ 0.05) from 40% up, and is P ≈ 0.06-0.07 at 25%.
+- **No sign change within the tested range.** The "13%" point is not the training mix:
+  - Its bar-level bear share is 23%, because the non-bear segments were drawn from shifted-mix series and still hold ~14% bear bars. In the train-mix dev_control, those segments hold 3.4%.
+  - The Phase 1 dev_control set (bar-level bear 11.2%, train-mix series) gave coevolution −0.26 vs single.
+  - Together these put the crossover between ~11% and ~23% bar-level bear share, i.e. just above the training mix. This is an inference from two different set constructions, not a tested point.
+- **Against reweighted:**
+  - Coevolution trails at low bear shares (−0.11, n.s.) and leads at high ones.
+  - At 75% it beats reweighted (P = 0.032, 5/6). That is a STRONG-tier gap, but only at an extreme shift that was not the pre-registered test. It is reported as dose-response only, not as a claim upgrade.
+  - At the pre-registered ~58% level it is +0.14, P = 0.119, consistent with Phase 1's tie.
+- **Mechanism:**
+  - Coevolution's advantage scales with the bear share while its timing stays the same as the others'.
+  - The advantage is the lower exposure level: it costs little when bear bars are rare and pays more as they become common.
+  - This is the exposure dial on top of real timing, as in Phase 1.
+
+| # | bench | what | data | outcome |
+|---|---|---|---|---|
+| 15 | SYNTH_V1 (eval only) | iter01 5 arms on 500 fresh segments, 5 nested mixes | pool seeds 3000-3249 | the table above |
