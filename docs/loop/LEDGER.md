@@ -244,3 +244,9 @@ The P values are hierarchical P(coevo ≤ other). Timing is > 0 at every mix: co
   - Evaluate on V1 dev_shift and dev_control only. V1's sealed set was already used once, so this is dev-only and exploratory; no claim tier.
   - Primary measure, selection quality: rank-0 best_trader minus final-population mean, coevolution_exam vs iter01 coevolution, on dev_shift. Shared exam "works" if its gap is larger.
   - Secondary: final-pop Sharpe vs iter01 coevolution, with hierarchical P, and timing.
+- **Task C launched 00:28** at `nice 19` so it only gets CPU that V2 leaves free, and V2 keeps priority. I launched it early instead of waiting for
+  the ~02:00 gate because, with V2 at priority, a niced run uses only spare CPU, so starting now can't push V2 back.
+  `ppo/runs/loop/iter03_exam/`, log `ppo/runs/loop/iter03.log`, git 90b91cd(+arm), JOBS=6 THREADS=1. The arm was added to `run_v5.sh` by
+  atomic rename, which is safe while iter02's bash holds the old inode. Relaunch:
+  `cd ppo && D=../data/synth_v1 && GENERATIONS=20 JOBS=6 THREADS=1 EVAL=0 ARMS="coevolution_exam" OUTDIR=../runs/loop/iter03_exam TRAIN_DATA=$D/train.parquet VAL_DATA=$D/val.parquet FEATURES=$D/feature_columns.pkl nohup nice -n 19 bash run_v5.sh >> runs/loop/iter03.log 2>&1 &`
+  If it is not finished by ~06:00, it is killed and reported as not completed. V2 is never cut for it.

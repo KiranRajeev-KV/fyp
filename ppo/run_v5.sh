@@ -91,6 +91,9 @@ arm_flags() {
     # oracle baseline for the synthetic benchmark: population + PBT, segments
     # drawn regime-balanced on the TRUE regime labels (no adversary)
     reweighted)         echo "--mode population --segment-sampling regime_balanced --run-name reweighted" ;;
+    # Task C: coevolution with shared-exam selection (all traders ranked on the
+    # same 16 uniform segments; adversaries credited over all traders)
+    coevolution_exam)   echo "--mode coevolution --env-skip-no-trade-matches --shared-exam 16 --run-name coevolution_exam" ;;
     single)             echo "--mode single" ;;
     *) echo "unknown arm $1" >&2; return 1 ;;
   esac
