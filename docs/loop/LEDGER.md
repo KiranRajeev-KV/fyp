@@ -25,6 +25,11 @@ Section 4 of PROMPT.md, verbatim, frozen before the first arm run. Not edited.
 | 2 | SYNTH_V1 | generator, train mix bear .10 → **frozen** | same | AUC 0.601 / 0.587 (signal alone 0.604); shift: timer **+0.69 vs B&H −3.57**, wins 153/200, timing +0.57; control: timer +2.37 vs B&H +1.65. PASS |
 | 3 | SYNTH_V1 | plumbing: `single` seed 99, 2 generations (compare_arms code test only, not used for any choice) | dev_shift | Sharpe −2.18 vs B&H −3.55; timing +0.42 (exposure bear .26 / bull .74). Even a 2-gen PPO times the regime here |
 | 4 | REAL (re-run, not new variants) | Task A `signal_probe.py`: logistic AUC (19 feats / +trend / +funding / funding only) at 24h, 168h; ceilings long/flat, long/short, vol-target, 30d SMA filter, B&H | 6 walk-forward folds, 48 segs | AUC@24h 0.529; timer −0.02 (+0.013 no entry cost) vs B&H +0.93 (+0.97); L/S −1.12; vol-target +0.77 (9/48); SMA filter −0.10; arm timing all ≤ 0. See notes §9e |
+| 5 | SYNTH_V1 | arm `coevolution` (V5 flags), 6 seeds × 20 gens | dev_shift / dev_control | final-pop mean **+0.597** / +2.133; timing +0.47 / +0.33 |
+| 6 | SYNTH_V1 | arm `coevolution_regret` | same | +0.499 / +2.263; timing +0.50 / +0.30 |
+| 7 | SYNTH_V1 | arm `reweighted` (oracle regime-balanced) | same | +0.448 / **+2.523**; timing +0.55 / +0.25 |
+| 8 | SYNTH_V1 | arm `population` | same | −0.001 / +2.418; timing +0.53 / +0.25 |
+| 9 | SYNTH_V1 | arm `single` | same | +0.102 / +2.395; timing +0.53 / +0.25 |
 
 ## Iterations
 ### iter01 (2026-10-08 22:50 –) Task B main run
@@ -53,3 +58,35 @@ Section 4 of PROMPT.md, verbatim, frozen before the first arm run. Not edited.
 - 02:45 interim (training logs only, no test data touched): coevolution_regret done 00:57, coevolution done 02:31, 0 errors.
   Training exposure gen0→9→19: regret 0.62→0.77→0.75, coevolution 0.60→0.72→0.69 — **no collapse to cash** (fallback not triggered).
   Adversary served bear share (pool 12.9%): coevolution 0.24→0.50 (g5)→0.56 (g10)→0.27 (g19); regret 0.24→0.33→0.26→0.26.
+
+#### iter01 Result (dev, 2026-10-09 07:20) — files `ppo/runs/loop/iter01_taskB/compare_dev_{shift,control}.{json,csv}`
+Headline convention, fixed BEFORE the sealed run: per-seed value = **final-population mean** (`--final-traders`; as in PROMPT §1),
+hierarchical bootstrap, 20k resamples; rank-0 `best_trader` reported alongside. B&H: shift −3.55, control +1.68.
+
+| arm | shift final (best) | control final (best) | shift exposure (bear / bull / sideways) |
+|---|---|---|---|
+| coevolution | **+0.597** (+0.576) | +2.133 (+2.030) | 0.23 (0.06 / 0.72 / 0.31) |
+| coevolution_regret | +0.499 (+0.291) | +2.263 (+2.394) | 0.31 (0.09 / 0.81 / 0.48) |
+| reweighted | +0.448 (+0.421) | **+2.523** (+2.573) | 0.41 (0.12 / 0.88 / 0.76) |
+| population | −0.001 (−0.251) | +2.418 (+2.322) | 0.46 (0.18 / 0.89 / 0.80) |
+| single | +0.102 (+0.102) | +2.395 (+2.395) | 0.43 (0.16 / 0.89 / 0.73) |
+
+§4 check for X = coevolution (final-pop; rank-0 in brackets):
+- shifted: vs population P=0.001, 6/6 (0.012, 6/6); vs single P=0.003, 5/6 (0.006, 5/6) → **PASS** (n@t=2: 18 and 31 segments).
+- control: coevolution is WORSE than single (−0.26, P(coevo≤single)=0.994) and population (−0.28, P=0.979) → advantage not
+  significant → **PASS by the letter**; note it is a reversal, not a null.
+- timing +0.473 > 0 → **PASS** (rank-0 +0.435).
+- vs reweighted (shift): P(coevo ≤ rw)=0.106, P(rw ≤ coevo)=0.892 (rank-0 0.244 / 0.752) → tie → **MODERATE** tier on dev
+  (STRONG missed by 0.006 on the final-pop convention).
+- X = coevolution_regret fails (vs single P=0.065, 4/6).
+→ Step 2(a): sealed holdout once (seeds 9000-9099, shifted mix), all 5 arms, same command.
+
+**Mechanism (diagnostic, not a criterion).** Every arm learns the timing: exposure on bull vs bear segments separates at
+AUC 0.98-0.997, and exposure→up-segment AUC on shift is 0.92 (coevolution), 0.92 (regret), 0.91 (reweighted), 0.92 (population),
+0.88 (single). What differs is the exposure LEVEL: coevolution sits in the market about half as much (0.23 vs 0.41-0.46),
+mostly by staying out of sideways segments (0.31 vs 0.73-0.80). Its absolute timing score is therefore the lowest (+0.47 vs +0.53).
+The adversary served 50-56% bear at generations 5-10 (pool 12.9%), so the trader saw a bear-heavy curriculum and kept a high bar
+for entering the market. That pays on the 58%-bear test and costs −0.26 to −0.28 Sharpe on the 10%-bear control. Reading: on top of
+timing that all arms share, coevolution also turns the exposure dial towards the distribution the adversary served, and this
+happens to match the shifted test. The oracle reweighted arm reaches the same shifted score band (+0.45, tie) WITHOUT giving up
+the control (+2.52, best of all arms). Generation-19 training: coevolution no-trade fraction 0.42 (others ≤0.28); no collapse to cash.
