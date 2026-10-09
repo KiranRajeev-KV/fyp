@@ -162,3 +162,33 @@ Phase 2 was started on 2026-10-09 at 17:56 IST, 4 minutes before the unchanged 1
   - P1 needs no training. It reuses the iter01 final traders and builds fresh dev seeds (not 9000-9099) with the frozen generator.
   - P2 needs a new frozen generator and a ~6 h run.
 - **Files to cite:** same as the Phase 1 FINAL SUMMARY above.
+
+Deadline extended to 2026-10-10 08:30; Phase 2 resumed.
+
+### Phase 2 benchmarks
+**SYNTH_V2** (P2): `ppo/src/synth_market_v2.py` (imports V1; V1 file untouched, hash still 8070ed6ffe695667). Combined
+sha256[:16] **bd5b061d7886a3ae** (also in `ppo/data/synth_v2/params.json`). Frozen 2026-10-09 ~18:03, before any V2 arm ran.
+- **Deviation from the pre-registered P2 (approved by the user on 2026-10-09 ~18:00):** "only the signal changes" cannot reach AUC 0.55. In SYNTH_V1 the
+  19 price features ALONE give probe AUC **0.590** on dev_shift (0.551 control). The regime_signal adds only +0.011 (all 0.601).
+  Price features carry the regime because bear drift and vol show up in trend and vol features. So V2 = V1 with signal_noise 2.0 → 12.0
+  AND all regime drifts × 0.6 (bull +0.00024 / bear −0.00048). Everything else is identical: vol, durations, mixes, seeds,
+  splits. The regime sequences are identical to V1 (same RNG draws), so the train pool is still 12.9% bear and dev_shift is 58% bear segments.
+  V2 is therefore a "weaker-predictability market", not "same market, weaker signal".
+- Cheap check (dev): probe AUC **0.549** shift / 0.529 control (signal alone 0.528). Shift: timer **−0.452 vs B&H −2.071**,
+  wins 115/200, timing +0.38. Control: timer +1.371 vs B&H +1.096. PASS (band 0.53-0.57, timer > B&H).
+
+**P1 pool** (SYNTH_V1, frozen hash checked in code): `ppo/src/synth_dose.py build` → `ppo/data/synth_v1_dose/pool.parquet`.
+Fresh seeds 3000-3249, shifted mix, V1 train scaler; 500 segments (true-regime majority: bear 247 / bull 131 / sideways 122).
+Mixes 13/25/40/58/75% bear × 200 segments, selected by TRUE regime and nested (first k bear segments; the rest bull:sideways 47:43).
+
+### Phase 2 trials (Phase 1 count was 10)
+| # | bench | what | data | outcome |
+|---|---|---|---|---|
+| 11 | V1 (analysis) | price-features-only / all-features probe AUC | V1 dev_shift / control | price 0.590 / 0.551; all 0.601 / 0.587 → P2 as written is infeasible |
+| 12 | V2 draft (pre-freeze) | signal_noise 12 only (noise scan 2-20 on scratch seeds 5000-5099 first) | dev | probe AUC 0.592 shift (signal alone 0.547): out of band. Draft moved to scratch |
+| 13 | V2 draft (pre-freeze, scratch) | noise 12 + drift × 0.5 / × 0.7 | dev | AUC 0.538 / 0.560; timer −0.51 vs B&H −1.70 / −0.23 vs −2.45 |
+| 14 | **SYNTH_V2** | noise 12 + drift × 0.6 → **frozen** | dev | AUC 0.549; timer −0.45 vs B&H −2.07. PASS |
+
+### iter02 (2026-10-09 18:03 –) Phase 2
+- Smoke test PASSED (no engine code changed). 2-gen plumbing on V2, 5 arms, seed 99 → `ppo/runs/loop/iter02_plumbing/`.
+- P1: compare_arms on the pool (iter01 final traders, all 5 arms, `--final-traders --jobs 4`) → `ppo/runs/loop/iter02_dose/`, log `ppo/runs/loop/iter02_dose.log`.
