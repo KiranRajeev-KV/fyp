@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# compare_arms for iter01 on one synth_v2 split: bash iter01_compare.sh dev_shift
+# compare_arms for iter02 on one synth_v2 split: bash iter02_compare.sh dev_shift
 O=../runs/loop/iter02_v2
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ../.venv/bin/python compare_arms.py \
   --data ../data/synth_v2/$1.parquet --features ../data/synth_v2/feature_columns.pkl \

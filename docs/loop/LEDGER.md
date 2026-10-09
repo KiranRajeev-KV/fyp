@@ -192,3 +192,8 @@ Mixes 13/25/40/58/75% bear × 200 segments, selected by TRUE regime and nested (
 ### iter02 (2026-10-09 18:03 –) Phase 2
 - Smoke test PASSED (no engine code changed). 2-gen plumbing on V2, 5 arms, seed 99 → `ppo/runs/loop/iter02_plumbing/`.
 - P1: compare_arms on the pool (iter01 final traders, all 5 arms, `--final-traders --jobs 4`) → `ppo/runs/loop/iter02_dose/`, log `ppo/runs/loop/iter02_dose.log`.
+- Plumbing on V2 (2 gens, seed 99, 5 arms): all finished cleanly 18:05-18:15, no tracebacks.
+- **Launched 18:16:58** `ppo/runs/loop/iter02_v2/` (log `ppo/runs/loop/iter02.log`), git c67746a (dirty = comment fix in iter02_compare.sh only).
+  5 arms × seeds 42-47, GENERATIONS=20, JOBS=6 THREADS=2, EVAL=0. Relaunch (resumes):
+  `cd ppo && D=../data/synth_v2 && GENERATIONS=20 JOBS=6 THREADS=2 EVAL=0 ARMS="coevolution_regret coevolution reweighted population single" OUTDIR=../runs/loop/iter02_v2 TRAIN_DATA=$D/train.parquet VAL_DATA=$D/val.parquet FEATURES=$D/feature_columns.pkl nohup bash run_v5.sh >> runs/loop/iter02.log 2>&1 &`
+- Eval plan (at the end, each once): `bash runs/loop/iter02_compare.sh dev_shift|dev_control`, then build V2 sealed (`synth_market_v2.py --sealed`) and `sealed_shift`.
