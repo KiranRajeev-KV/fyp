@@ -230,3 +230,17 @@ The P values are hierarchical P(coevo ≤ other). Timing is > 0 at every mix: co
 | # | bench | what | data | outcome |
 |---|---|---|---|---|
 | 15 | SYNTH_V1 (eval only) | iter01 5 arms on 500 fresh segments, 5 nested mixes | pool seeds 3000-3249 | the table above |
+
+### P3 / Task C: `--shared-exam K` (coded 23:40, during the V2 run)
+- `EngineConfig.shared_exam` (default 0 = original). K > 0 changes selection in two ways:
+  - Each generation, after training, every trader sits the SAME K uniform segments, and PBT, best_trader and the HOF use that score.
+  - Each adversary proposes `segments_per_match` segments and is credited with the mean `_adversary_score` over ALL traders, before fitness sharing.
+  - CLI `--shared-exam`. Smoke test extended: one exam shared by all, finite scores, every adversary evaluated, and a 1-generation run through the loop. PASSED.
+- **Code changed mid-run.** `engine.py` / `engine_cli.py` were edited while iter02 was running. The V2 jobs launched after 23:40 import the new file, but with shared_exam = 0 the code path and RNG stream are identical, so they are unaffected.
+  `run_v5.sh` was NOT edited mid-run, because bash reads it incrementally. The `coevolution_exam` arm is added only after V2 training ends.
+- **Plan (pre-registered now, before any Task C result):**
+  - Arm `coevolution_exam` = the `coevolution` flags + `--shared-exam 16`. SYNTH_V1, seeds 42-47, 20 generations → `ppo/runs/loop/iter03_exam/`.
+  - Launch only if V2 training is done by ~02:30, so that run + eval + summary fit before 08:30.
+  - Evaluate on V1 dev_shift and dev_control only. V1's sealed set was already used once, so this is dev-only and exploratory; no claim tier.
+  - Primary measure, selection quality: rank-0 best_trader minus final-population mean, coevolution_exam vs iter01 coevolution, on dev_shift. Shared exam "works" if its gap is larger.
+  - Secondary: final-pop Sharpe vs iter01 coevolution, with hierarchical P, and timing.

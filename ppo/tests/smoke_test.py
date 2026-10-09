@@ -226,6 +226,24 @@ def main():
         assert set(s.true_regime) <= set(sm.REGIMES)
         print("synthetic generator ok")
 
+        # --- Task C: shared-exam selection --------------------------------
+        ex = CoevolutionEngine(
+            EngineConfig(**{**config.__dict__, "mode": "coevolution",
+                            "generations": 1, "shared_exam": 3}),
+            pool, FEATURES, val_df, os.path.join(tmp, "shared_exam"))
+        exams = []
+        draw = ex._uniform_segments
+        ex._uniform_segments = lambda n: exams.append(draw(n)) or exams[-1]
+        for t in ex.traders:
+            t.fitness = float("nan")
+        ex._shared_exam()
+        assert len(exams) == 1 and len(exams[0]) == 3      # ONE exam, shared by all
+        assert all(np.isfinite(t.fitness) for t in ex.traders)
+        assert all(e.evaluated and np.isfinite(e.raw_fitness) for e in ex.env_pop)
+        ex._uniform_segments = draw
+        ex.run()                                            # wired into the loop
+        print("shared-exam selection ok")
+
 
     print("\nSMOKE TEST PASSED")
 

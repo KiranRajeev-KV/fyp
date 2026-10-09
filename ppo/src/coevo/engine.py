@@ -88,6 +88,13 @@ class EngineConfig:
     #                       the labels are the TRUE regimes: an oracle
     #                       re-weighting baseline for the adversary.
     segment_sampling: str = "uniform"
+    # Shared-exam selection (Task C). 0 (default) = the original: each trader's
+    # fitness is the mean over its own matches, i.e. over DIFFERENT segments, so
+    # PBT ranks mostly on which segments it drew (within-trader match sd 1.17 >
+    # between-trader sd 0.82). K > 0: after training, every trader sits the same
+    # K uniform segments and PBT ranks on that score; each adversary proposes
+    # segments_per_match segments and is credited with the mean over ALL traders.
+    shared_exam: int = 0
     # A match in which the trader never traded on ANY segment scores Sharpe 0
     # for every adversary that served it, so it measures the trader's collapse,
     # not the adversary's skill -- and it is common-mode noise across the whole
@@ -687,6 +694,24 @@ class CoevolutionEngine:
                     )
                     ind.record(self._adversary_score(segs, per_seg, score))
 
+    def _shared_exam(self):
+        """Overwrite match-based fitness with common-ground scores (see shared_exam)."""
+        cfg = self.cfg
+        exam = self._uniform_segments(cfg.shared_exam)
+        for t in self.traders:
+            t.fitness, _ = tp.evaluate_on_segments(
+                t, self.pool.df, self.feature_columns, exam,
+                self.env_kwargs, cfg.fitness_metric)
+        for ind in self.env_pop or []:
+            segs = ind.select_segments(self.pool, cfg.segments_per_match, self.rng)
+            scores = []
+            for t in self.traders:
+                score, per_seg = tp.evaluate_on_segments(
+                    t, self.pool.df, self.feature_columns, segs,
+                    self.env_kwargs, cfg.fitness_metric)
+                scores.append(self._adversary_score(segs, per_seg, score))
+            ind.raw_fitness, ind.evaluated = float(np.mean(scores)), True
+
     def _adversary_score(self, segs, per_seg, score):
         """What the adversary earns for a match it served (higher = harder)."""
         if self.cfg.env_fitness == "regret":
@@ -739,6 +764,9 @@ class CoevolutionEngine:
             if self.env_pop is not None:
                 for ind in self.env_pop:
                     ind.finalize_raw_fitness()
+            if cfg.shared_exam:
+                self._shared_exam()
+            if self.env_pop is not None:
                 ep.apply_fitness_sharing(
                     self.env_pop, self.pool.descriptor_matrix, cfg.sharing_strength)
 

@@ -62,6 +62,9 @@ def add_engine_args(parser):
                    choices=["uniform", "regime_balanced"],
                    help="how non-adversary segments are drawn; regime_balanced gives "
                         "every regime label the same share (oracle re-weighting on synthetic data)")
+    g.add_argument("--shared-exam", type=int, default=_DEFAULT.shared_exam,
+                   help="K > 0: rank traders on the same K uniform segments and credit each "
+                        "adversary with the mean over all traders (0 = original)")
     g.add_argument("--overwrite", action="store_true", default=False,
                    help="allow replacing an out_dir that already holds a finished run")
     g.add_argument("--resume", action="store_true", default=False,
@@ -77,7 +80,7 @@ ENGINE_FIELDS = [
     "env_fresh_frac", "tournament_k", "initial_balance", "trading_fee",
     "slippage", "trade_penalty", "gamma", "ent_coef_max",
     "env_skip_no_trade_matches", "env_fitness", "overwrite", "resume",
-    "ent_coef_min", "env_adversary_frac", "segment_sampling",
+    "ent_coef_min", "env_adversary_frac", "segment_sampling", "shared_exam",
 ]
 
 
