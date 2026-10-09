@@ -261,3 +261,36 @@ The P values are hierarchical P(coevo ≤ other). Timing is > 0 at every mix: co
 **03:32 status.** V2 training finished 03:25 (30/30 runs, no tracebacks); dev_shift + dev_control evals started 03:25:51. V2 sealed
 set built ONCE at 03:32 (`synth_market_v2.py --sealed`; sealed_shift 144000 bars, bear 42.2%) — built before any V2 result was seen,
 not yet evaluated. Train/dev files untouched (mtimes 18:03). Task C still running (8/20 gens), not stopped (see 02:31).
+
+### P2 result: SYNTH_V2 dev (evals 03:26-04:53, final-population mean per seed, as Phase 1)
+`ppo/runs/loop/iter02_v2/compare_dev_{shift,control}.{json,csv}`, logs `ppo/runs/loop/iter02_compare_dev_*.log`. No tracebacks.
+
+| dev_shift (58% bear segs) | Sharpe | expo (bull/bear) | timing |
+|---|---|---|---|
+| coevolution | **−0.200** | 0.27 (0.51 / 0.11) | +0.168 |
+| coevolution_regret | −0.632 | 0.48 | +0.283 |
+| reweighted | −0.529 | 0.56 | +0.255 |
+| population | −0.723 | 0.59 | +0.221 |
+| single | −0.914 | 0.61 | +0.227 |
+| B&H / MA | −2.045 / −1.969 | | |
+
+| §4 test (X = coevolution) | diff | hier. P | wins |
+|---|---|---|---|
+| shift vs single | +0.713 | 0.003 | 6/6 ✓ |
+| shift vs population | +0.523 | 0.008 | 5/6 ✓ |
+| shift vs reweighted | +0.329 | 0.035 | 4/6 (≤ 0.10 → STRONG on dev) |
+| control vs single | −0.391 | 0.917 | 1/6 (advantage not significant ✓, but it is a loss: reweighted − coevo +0.543, P 0.002) |
+| control vs population | −0.437 | 0.941 | 2/6 ✓ (same caveat) |
+| timing | +0.168 > 0 ✓ | | |
+
+- coevolution_regret fails §4 on dev (vs single +0.28, P 0.30). Not claimed.
+- No collapse: coevolution bull exposure 0.51 (fallback threshold 0.2). Same mechanism as V1: lowest exposure, timing > 0.
+- Control (12% bear segs): coevolution +0.91 vs single +1.30, reweighted +1.45, B&H +1.13 — the V1 control reversal reproduces (V1: −0.26 vs single).
+- Rank-0 best_trader view agrees in direction (vs single +0.81, P 0.002; vs population +0.35, P 0.18; vs reweighted +0.42, P 0.023).
+
+**Tier rule, fixed 04:58 BEFORE the sealed result is seen:** §4 needs sealed coevolution vs single AND population in the same
+direction with P ≤ 0.10. If that holds: STRONG only if sealed coevolution vs reweighted is also positive with P ≤ 0.10; if sealed vs
+reweighted is P > 0.10, the tier is MODERATE (dev-STRONG not confirmed). If sealed fails vs single or population, P2 = not confirmed.
+Sealed eval launched 04:54 (`iter02_compare.sh sealed_shift`, JOBS=10, log `ppo/runs/loop/iter02_compare_sealed_shift.log`), run ONCE.
+
+| 16 | SYNTH_V2 | 5 arms × 6 seeds × 20 gens (iter02_v2) | dev_shift / dev_control | coevo −0.20 vs single −0.91 (P 0.003), pop −0.72 (0.008), reweighted −0.53 (0.035); control coevo worst |
