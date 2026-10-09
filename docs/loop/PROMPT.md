@@ -178,3 +178,33 @@ The final summary covers: what was tried (trial count), what worked, what failed
 tier was reached (or the honest null-result headline if none), and the exact files and numbers to cite.
 
 Keep chat replies to me to 3-5 lines per iteration (what ran, the result, what's next). Detail goes in the ledger.
+
+==================================================================================================
+PHASE 2 (added 2026-10-09 ~08:45, PRE-REGISTERED before any Phase 2 result; Phase 1 is finished, see the ledger)
+==================================================================================================
+Goal: test whether the Phase 1 MODERATE result is robust, so it survives the panel's first two questions
+("is it only at that one shift level?" and "is it only for that one market?"). Same rules R1-R10 apply. Phase 2 has
+its own iteration budget: MAX 1 run + 1 crash-only retry. Deadline unchanged: final summary by 2026-10-09 18:00.
+Append a "## PHASE 2" section to LEDGER.md; keep the Phase 1 summary untouched.
+
+P1 Shift dose-response (evaluation only, NO training; do it first, ~1 h, can overlap P2's run).
+   Using the FROZEN SYNTH_V1 generator (hash must stay 8070ed6ffe695667) and FRESH dev seeds (never 9000-9099),
+   build test sets of 200 segments with bear share 13% (= training mix), 25%, 40%, 58%, 75%. Get the mix by
+   selecting segments by their TRUE regime, not by changing generator dynamics. Evaluate the existing iter01
+   final traders of all 5 arms (no retraining). Report, per mix: coevolution minus single / population / reweighted,
+   with hierarchical P and seed wins, plus the bear share at which coevolution vs single changes sign.
+   One figure: ppo/figures/synth_dose_response.png (x = test bear share, y = Sharpe per arm).
+   Expected (stated now): coevolution below the others at 13%, above single/population from ~40% up.
+
+P2 SYNTH_V2: weaker-signal robustness run (launch by 10:30 so it finishes by ~16:30).
+   Identical to SYNTH_V1 except the observable regime signal is weakened so that the logistic probe's AUC is
+   0.55 +/- 0.02 (V1: 0.60). It must still be winnable: the logistic timer beats B&H on the shifted dev test.
+   Freeze it (new hash in the ledger) BEFORE any arm runs. The same 5 arms x 6 seeds x 20 generations, same section-4
+   criteria. Evaluate dev shift, dev control, and the V2 sealed seeds (9000-9099) once each, all at the end.
+   Report whatever happens, with no result-driven retries: if the advantage holds, the claim generalises
+   across signal strength; if it vanishes, the claim is scoped to strong-signal markets. Both are valid findings.
+
+P3 Task C (--shared-exam) only if time remains after the Phase 2 summary is written.
+
+Phase 2 stop: write "## PHASE 2 SUMMARY" in LEDGER.md (P1 table + figure path, P2 result + claim tier,
+what this does to the Phase 1 claim, files to cite) by 18:00, update the memory note synth-benchmark-moderate, then stop.

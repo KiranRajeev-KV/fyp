@@ -146,3 +146,19 @@ code was lost. One 25-min loss: zsh did not word-split the arm list (fixed with 
 
 **Not done.** Task C (`--shared-exam` selection) was not started: the stop condition was reached first. It is the next rigour fix
 (selection is a lottery: within-trader sd 1.17 > between-trader 0.82).
+
+## PHASE 2
+
+Phase 2 was started on 2026-10-09 at 17:56 IST, 4 minutes before the unchanged 18:00 deadline. The P2 launch cutoff was 10:30.
+- P2 (SYNTH_V2, ~6 h of compute) cannot run before the deadline. Not started.
+- P1 (dose-response, ~1 h, evaluation only) cannot finish before the deadline either. Not started.
+- No Phase 2 data was generated or evaluated. The trial count is unchanged and the sealed seeds were not touched again.
+
+## PHASE 2 SUMMARY
+
+- **Outcome:** not run, because time ran out. This was not a result.
+- **Effect on the Phase 1 claim:** none. The claim stays MODERATE, confirmed on the sealed seeds, and scoped to one shift level and one strong-signal generator (SYNTH_V1, AUC 0.60). The panel's questions ("only at that shift level?" and "only for that market?") remain open.
+- **Next work, if the deadline is extended (unchanged, still pre-registered):**
+  - P1 needs no training. It reuses the iter01 final traders and builds fresh dev seeds (not 9000-9099) with the frozen generator.
+  - P2 needs a new frozen generator and a ~6 h run.
+- **Files to cite:** same as the Phase 1 FINAL SUMMARY above.
