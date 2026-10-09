@@ -257,3 +257,7 @@ The P values are hierarchical P(coevo ≤ other). Timing is > 0 at every mix: co
   `kill 1353257 1353388 1353395 1353398 1353399 1353402 1353404 1353406`.
 - V2 dev evals are queued to start automatically when `all runs finished` appears in iter02.log: dev_shift and dev_control in parallel, JOBS=6 each.
   Logs: `ppo/runs/loop/iter02_compare_dev_{shift,control}.log`.
+
+**03:32 status.** V2 training finished 03:25 (30/30 runs, no tracebacks); dev_shift + dev_control evals started 03:25:51. V2 sealed
+set built ONCE at 03:32 (`synth_market_v2.py --sealed`; sealed_shift 144000 bars, bear 42.2%) — built before any V2 result was seen,
+not yet evaluated. Train/dev files untouched (mtimes 18:03). Task C still running (8/20 gens), not stopped (see 02:31).
