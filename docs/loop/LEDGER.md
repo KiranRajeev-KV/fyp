@@ -386,3 +386,17 @@ Figure: `ppo/figures/synth_dose_response.png`.
   - Secondary: the shared exam is never worse than plain coevolution. It is numerically better on both sets, and its seed spread is about half as large.
   - The most interesting point: on control it closes most of coevolution's control loss (it now ties single and population), while keeping the shift advantage.
   - A confirmatory test would need a fresh, never-touched sealed set (new seeds from the frozen generator). Both existing sealed sets have already been used.
+
+### Post-deadline: fresh sealed confirmation of Task C (trial 19, pre-registered 2026-10-10 before building)
+- Requested by the user. Generator: SYNTH_V1, unchanged (hash 8070ed6ffe695667, checked before building). Never-used seeds:
+  - `sealed2_shift`: seeds 9500-9599, shifted mix.
+  - `sealed2_control`: seeds 9600-9699, train mix.
+  - Both are scaled with the V1 train scaler and written to `ppo/data/synth_v1_sealed2/`.
+- Same 6 arms and models as trial 18 (iter03_exam + iter01). Final-population mean per seed, hierarchical P. Each set is scored ONCE. No arm, model or set is changed after the result, and whatever happens is reported.
+- **Criteria (all P one-sided, hierarchical; "confirmed" = positive diff, P ≤ 0.10):**
+  1. Shift: coevolution_exam > single AND > population. Without this, Task C is not confirmed.
+  2. Shift: coevolution_exam > coevolution confirms that "the shared exam improves coevolution under shift".
+  3. Shift: coevolution_exam > reweighted confirms "beats the label oracle".
+  4. Control: coevolution_exam ≥ single and population, i.e. a tie (P(exam ≤ X) < 0.90). That confirms "closes the control gap".
+     Also report exam > coevolution on control.
+- Also reported, not a criterion: whether the iter01 Phase 1 claim (coevolution > single/pop on shift) holds on this third shifted set.
