@@ -400,3 +400,43 @@ Figure: `ppo/figures/synth_dose_response.png`.
   4. Control: coevolution_exam ≥ single and population, i.e. a tie (P(exam ≤ X) < 0.90). That confirms "closes the control gap".
      Also report exam > coevolution on control.
 - Also reported, not a criterion: whether the iter01 Phase 1 claim (coevolution > single/pop on shift) holds on this third shifted set.
+
+## STEP 1: real-BTC signal hunt (pre-registered 2026-10-10 ~15:45, before any new-data result was looked at)
+**Goal.** Find information in real BTC data that predicts direction well enough for a simple timer to beat B&H after costs.
+If nothing passes, the real-data null stands. No RL training happens in Step 1.
+
+**Already ruled out on the 6 walk-forward folds** (so not re-tested as new):
+- Price features at 24h and 168h (AUC 0.53 / 0.51-0.53).
+- 30/90-day trend features, funding rate, vol targeting, and the 30-day trend filter.
+
+**New data** in `ppo/data/external/`, downloaded 2026-10-10:
+- Yahoo daily ^GSPC, ^VIX, DX-Y.NYB, ^TNX.
+- CoinMetrics community daily BTC: CapMVRVCur, AdrActCnt, FlowInExNtv, FlowOutExNtv, SplyExNtv, TxCnt, HashRate.
+- Stooq and FRED were not reachable (bot check / timeout).
+
+**No lookahead.**
+- Yahoo day D is usable from D+1 00:00 UTC (the US close is ≤ 21:00 UTC).
+- CoinMetrics day D is usable from D+1 06:00 UTC (flash values land around 02:10).
+- Caveat: CoinMetrics history holds final values, whereas live trading sees flash values. A pass would be slightly optimistic for on-chain data.
+
+**Candidate feature sets** (logistic regression, C = 0.1, as in `signal_probe.py`; the scaler is fit on each fold's train span; labels purged):
+- `cross`: S&P 1/5/20-day return, VIX level and 5-day change, DXY 5/20-day return, 10y yield 5/20-day change.
+- `onchain`: MVRV level and 7-day log change, active addresses and tx count (7-day mean / 28-day mean), exchange netflow 7-day sum / exchange supply, exchange supply 30-day log change, hash rate 30-day mean / 60-day mean.
+- `momentum`: BTC log return over 1 week and 4 weeks.
+- `all`: the existing features + cross + onchain + momentum.
+- Rule timers, no fitting: `mom_1w` and `mom_4w`, long when the past return is > 0.
+
+**Horizons and rebalancing:** H = 24h with daily rebalance; H = 168h with weekly rebalance. Same cost model (0.15% per unit change, entry charged).
+
+**Trials:** 4 sets × 2 horizons + 2 rule timers × 2 rebalance frequencies = 12 (rows S1-S12). The baseline price-features row is a replication, not a trial.
+
+**Pass gate (dev = the 6 walk-forward folds, 48 segments):**
+- (a) Pooled AUC ≥ 0.55, AND per-fold AUC > 0.52 in ≥ 5/6 folds (rule timers skip this).
+- (b) The long/flat timer's mean segment Sharpe beats B&H, with paired-bootstrap P ≤ 0.10 over the 48 segments.
+
+**Confirmation (once, only for configs that pass):**
+- Fold 6: test 2026-05-01 → 2026-08-31 (bars 76000-78944, about 4 segments), trained on the preceding 40000 bars.
+- No probe has ever looked at that span. It is low power, so a pass there is "consistent", not proof.
+- The real bars from 2026-09-01 stay sealed.
+
+**If something passes:** propose Step 2 (add those inputs to the env, rerun the arms walk-forward) to the user. Don't start it without approval.
