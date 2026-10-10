@@ -465,3 +465,24 @@ On this control set plain coevolution ties the others (P 0.63-0.84) rather than 
 - It still uses lower exposure (0.28 / 0.58 vs ~0.48 / ~0.82), but it times better on control (+0.40 vs +0.28).
 - Not confirmed: that it beats plain coevolution on shift, or that it improves the rank-0 pick (gap −0.001 again).
 - Synthetic V1 only. Trial count: 19.
+
+### STEP 1 result (2026-10-10 17:05): NO candidate passes. Trials S1-S12 used; trial count 31.
+`ppo/runs/walkforward/signal_hunt.json` (script `ppo/src/signal_hunt.py`). 48 segments, B&H mean Sharpe +0.927.
+Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (earlier note said 0.51-0.53).
+
+| config | pooled AUC | timer Sharpe | P(timer ≤ B&H) | timing |
+|---|---|---|---|---|
+| cross @24h / @168h | 0.493 / 0.498 | +0.94 / +0.34 | 0.47 / 0.97 | ≈0 |
+| onchain @24h / @168h | 0.507 / 0.473 | +0.77 / +0.69 | 0.84 / 0.84 | ≈0 |
+| momentum (logistic) @24h / @168h | 0.502 / 0.515 | +0.84 / +0.83 | 0.92 / 0.86 | ≈0 |
+| all @24h / @168h | 0.520 / 0.498 | +0.01 / +0.22 | 0.99 / 0.96 | ≈0 |
+| mom_1w rule, daily / weekly | n/a | −0.08 / +0.02 | 1.00 / 1.00 | +0.27 / +0.17 |
+| mom_4w rule, daily / weekly | n/a | +0.20 / +0.50 | 0.97 / 0.89 | +0.34 / +0.26 |
+
+- No set reaches AUC 0.55. Per-fold AUCs scatter around 0.5 (0.42-0.61) with no stable fold pattern.
+  cross@168h is 0.61 on folds 4-5 only. Reading that as a recent effect would be post-hoc selection, so it is not claimed.
+- cross@24h nearly matches B&H, but only by being long 79% of the time (timing ≈ 0). It does not time the market.
+- The momentum rules DO time (exposure higher in up segments, +0.26-0.34), but the whipsaw costs and the bull-drift they miss leave them well below B&H.
+- Fold 6 confirmation not run: nothing passed.
+- **Conclusion:** none of the public cross-asset, on-chain or momentum data tested predicts BTC direction well enough to beat B&H at daily or weekly horizons in 2022-2026.
+  This strengthens the real-data null in `no-timing-signal`. Step 2 (RL on new inputs) is not proposed.
