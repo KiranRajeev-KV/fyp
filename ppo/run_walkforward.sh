@@ -66,6 +66,7 @@ arm_flags() {
   case "$1" in
     coevolution)        echo "--modes coevolution --env-skip-no-trade-matches" ;;
     coevolution_regret) echo "--modes coevolution:coevolution_regret --env-fitness regret" ;;
+    coevolution_exam)   echo "--modes coevolution:coevolution_exam --env-skip-no-trade-matches --shared-exam 16" ;;
     population)         echo "--modes population" ;;
     single)             echo "--modes single" ;;
     *) echo "unknown arm $1" >&2; return 1 ;;

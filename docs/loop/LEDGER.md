@@ -486,3 +486,12 @@ Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (ea
 - Fold 6 confirmation not run: nothing passed.
 - **Conclusion:** none of the public cross-asset, on-chain or momentum data tested predicts BTC direction well enough to beat B&H at daily or weekly horizons in 2022-2026.
   This strengthens the real-data null in `no-timing-signal`. Step 2 (RL on new inputs) is not proposed.
+
+### Trial 32: shared-exam arm on REAL BTC walk-forward (pre-registered 2026-10-11, before launch)
+- Requested by the user, to answer the panel question "did the best variant work on real BTC?".
+- Arm `coevolution_exam` = the walk-forward coevolution flags + `--shared-exam 16`. Same V5 engine flags, geometry, data and folds 0-5 as `runs/walkforward`, seeds 42-44.
+  Output `ppo/runs/walkforward_exam/`. Afterwards the existing arms are symlinked in, and compare_arms runs once over all 48 segments.
+- Reported (final population, hierarchical P): exam vs B&H, coevolution, population, single; exposure and timing.
+- **Expectation, stated now:**
+  - Step 1 found no usable signal, so exam is expected to act as an exposure dial. That means below B&H and a timing score near 0.
+  - The open question is only whether it beats the other arms. Whatever happens is reported.
