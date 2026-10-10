@@ -440,3 +440,28 @@ If nothing passes, the real-data null stands. No RL training happens in Step 1.
 - The real bars from 2026-09-01 stay sealed.
 
 **If something passes:** propose Step 2 (add those inputs to the env, rerun the arms walk-forward) to the user. Don't start it without approval.
+
+### Trial 19 result: fresh sealed sets (scored once, finished 2026-10-10 17:03, no tracebacks)
+`ppo/runs/loop/iter03_exam/compare_sealed2_{shift,control}.json`. Sets: `ppo/data/synth_v1_sealed2/`
+(shift 50.6% bear bars, control 12.7%). Final-population mean per seed, hierarchical P.
+
+| | exam | coevolution | reweighted | population | single | B&H |
+|---|---|---|---|---|---|---|
+| sealed2_shift | **+1.107** (sd 0.08) | +0.953 | +0.911 | +0.460 | +0.515 | −3.00 |
+| sealed2_control | **+2.709** (sd 0.08) | +2.452 | +2.601 | +2.506 | +2.511 | +1.74 |
+
+**Criteria (pre-registered):**
+1. Shift, exam > single (P 0.011) and > population (P 0.000): **PASS**.
+2. Shift, exam > coevolution: +0.153, P 0.158, 2/6. **NOT confirmed.**
+3. Shift, exam > reweighted: +0.196, P 0.048, 5/6. **CONFIRMED**: beats the label oracle.
+4. Control, exam ≥ single and population: it is above both (P 0.081 / 0.043), so **CONFIRMED and better than a tie**.
+   Exam > coevolution on control: +0.257, P 0.021.
+
+Also: the Phase 1 claim holds on this third shifted set. Coevolution beats single (P 0.010) and population (P 0.006), and ties reweighted (P 0.401).
+On this control set plain coevolution ties the others (P 0.63-0.84) rather than losing.
+
+**Reading:**
+- The shared exam removes coevolution's control cost and makes the shift advantage beat the oracle. Its seed sd is about 3× smaller.
+- It still uses lower exposure (0.28 / 0.58 vs ~0.48 / ~0.82), but it times better on control (+0.40 vs +0.28).
+- Not confirmed: that it beats plain coevolution on shift, or that it improves the rank-0 pick (gap −0.001 again).
+- Synthetic V1 only. Trial count: 19.
