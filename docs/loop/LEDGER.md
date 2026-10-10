@@ -357,3 +357,32 @@ Figure: `ppo/figures/synth_dose_response.png`.
 - P2: `ppo/runs/loop/iter02_v2/compare_{dev_shift,dev_control,sealed_shift}.json` (CSVs alongside, not committed: 7 MB each),
   logs `ppo/runs/loop/iter02.log` and `iter02_compare_{dev_shift,dev_control,sealed_shift}.log`, eval script `ppo/runs/loop/iter02_compare.sh`.
 - Task C code: `ppo/src/coevo/engine.py` (`_shared_exam`), `ppo/src/engine_cli.py`, `ppo/tests/smoke_test.py`, and the `run_v5.sh` arm `coevolution_exam`.
+
+### Post-deadline: Task C dev scoring (2026-10-10, user-requested, trial 18)
+- Requested by the user after the loop stopped. Task C finished all 20 generations on all 6 seeds at about 07:00 (the kill had been refused).
+- Scored exactly as the P3 plan pre-registered: SYNTH_V1 dev_shift + dev_control only, never sealed. Exploratory, no claim tier.
+- Script `ppo/runs/loop/iter03_compare.sh` (iter01 arms re-scored alongside, same segments). Output `ppo/runs/loop/iter03_exam/compare_dev_{shift,control}.json`.
+- **Result (scored 2026-10-10, finished 15:13; no tracebacks).** The iter01 arms re-scored to the same numbers as Phase 1, so the
+  segments match. Final-population mean per seed, hierarchical P.
+
+| dev_shift (V1) | Sharpe (sd seeds) | best − final gap | exposure | timing |
+|---|---|---|---|---|
+| coevolution_exam | **+0.704** (0.09) | −0.001 | 0.24 | +0.503 |
+| coevolution (iter01) | +0.597 (0.20) | −0.021 | 0.23 | +0.473 |
+| reweighted | +0.448 (0.13) | −0.027 | 0.41 | +0.550 |
+| population / single | −0.001 / +0.102 | −0.250 / 0 | 0.46 / 0.43 | +0.53 |
+
+  exam vs coevolution +0.107 (P 0.141, 3/6); vs reweighted +0.257 (P 0.012, 6/6); vs single +0.602 (P 0.001); vs population +0.705 (P 0.000).
+
+| dev_control (V1) | Sharpe (sd) | gap | exposure |
+|---|---|---|---|
+| coevolution_exam | **+2.382** (0.11) | +0.097 | 0.56 |
+| coevolution (iter01) | +2.133 (0.27) | −0.103 | 0.52 |
+| reweighted / population / single | +2.523 / +2.418 / +2.395 | | 0.82 / 0.85 / 0.81 |
+
+  exam vs coevolution +0.249 (P 0.054, 4/6); vs single −0.013 (P 0.534), vs population −0.035 (P 0.615): a tie, where plain coevolution lost; reweighted still best (P 0.919).
+- **Reading (exploratory, dev-only, V1-only; no claim tier).**
+  - Primary pre-registered measure, selection quality on dev_shift: the gap is −0.001 vs −0.021. That is no meaningful change, so "the shared exam makes the rank-0 pick better" is **not supported**.
+  - Secondary: the shared exam is never worse than plain coevolution. It is numerically better on both sets, and its seed spread is about half as large.
+  - The most interesting point: on control it closes most of coevolution's control loss (it now ties single and population), while keeping the shift advantage.
+  - A confirmatory test would need a fresh, never-touched sealed set (new seeds from the frozen generator). Both existing sealed sets have already been used.
