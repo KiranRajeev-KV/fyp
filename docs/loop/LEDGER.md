@@ -294,3 +294,66 @@ reweighted is P > 0.10, the tier is MODERATE (dev-STRONG not confirmed). If seal
 Sealed eval launched 04:54 (`iter02_compare.sh sealed_shift`, JOBS=10, log `ppo/runs/loop/iter02_compare_sealed_shift.log`), run ONCE.
 
 | 16 | SYNTH_V2 | 5 arms × 6 seeds × 20 gens (iter02_v2) | dev_shift / dev_control | coevo −0.20 vs single −0.91 (P 0.003), pop −0.72 (0.008), reweighted −0.53 (0.035); control coevo worst |
+
+#### P2 sealed holdout (2026-10-10 04:53-05:40, run ONCE) — `ppo/runs/loop/iter02_v2/compare_sealed_shift.{json,csv}`
+V2 seeds 9000-9099 (`synth_market_v2.py --sealed`, hash bd5b061d7886a3ae unchanged), 200 segments (bear 87 / sideways 60 / bull 53).
+Final-population mean: coevolution **+0.022**, reweighted −0.131, regret −0.329, population −0.350, single −0.481, B&H −1.250.
+- coevolution vs single **+0.503, P 0.010, 6/6**; vs population **+0.372, P 0.041, 4/6** → same direction, P ≤ 0.10 ✓ (confirmed).
+- coevolution vs reweighted +0.154, P **0.172**, 5/6 → P > 0.10, so by the rule fixed at 04:58: **MODERATE** (the dev STRONG gap, P 0.035, is not confirmed).
+- Timing +0.218; exposure 0.33 (bull 0.50 / bear 0.12) vs single 0.70.
+- Rank-0 view agrees in direction: vs single +0.46 (P 0.027), vs population +0.23 (0.224), vs reweighted +0.09 (0.315).
+- regret still fails (vs single P 0.34). Task C was not touched by this eval.
+
+| 17 | SYNTH_V2 SEALED | the same 5 V2 arms, touched once | sealed_shift seeds 9000-9099, 200 segs | coevo +0.02 vs single −0.48 (P 0.010), pop −0.35 (0.041), reweighted −0.13 (0.172) |
+
+## PHASE 2 FINAL SUMMARY (2026-10-10 05:45; Phase 2 stopped: P1 + P2 done, P3 not completed)
+
+**Trials:** 17 in total (Phase 1: 10; Phase 2: rows 11-17). Of those, 2 are sealed touches, one per benchmark (V1 row 10, V2 row 17).
+Task C (iter03_exam) is not counted as a trial result, because it was not completed or evaluated. No arm, seed, generator or criterion
+was changed after any arm result. The one P2 deviation (drift × 0.6 on top of the noise) was approved by the user before the freeze.
+
+**P1 — shift dose-response** (SYNTH_V1, iter01 final traders, fresh seeds 3000-3249). Table: "### P1 result" above.
+Figure: `ppo/figures/synth_dose_response.png`.
+- Coevolution minus single is +0.12 / +0.23 / +0.34 / +0.51 / +0.71 at 13 / 25 / 40 / 58 / 75% bear segments (bar-level 23-67%).
+  It is significant (P ≤ 0.05) from 40% up.
+- No sign change in the tested range. The pre-stated "below at 13%" was wrong for this set construction.
+  - Combined with the Phase 1 control (11% bar-level bear: −0.26), the crossover sits between ~11% and ~23% bar-level bear share, just above the training mix.
+  - That crossover is an inference across two set constructions, not a tested point.
+- vs reweighted: a tie at 13-58%; a win at 75% (+0.25, P 0.032). The 75% win is dose-response only, not a claim.
+
+**P2 — SYNTH_V2 weaker-predictability market** (probe AUC 0.549 vs V1 0.601; hash bd5b061d7886a3ae).
+
+| coevolution minus | dev_shift (final-pop) | sealed_shift | dev_control |
+|---|---|---|---|
+| single | +0.71, P 0.003, 6/6 | +0.50, P 0.010, 6/6 | −0.39 (P 0.92) |
+| population | +0.52, P 0.008, 5/6 | +0.37, P 0.041, 4/6 | −0.44 (P 0.94) |
+| reweighted | +0.33, P 0.035, 4/6 | +0.15, P 0.172, 5/6 | −0.54 (reweighted wins P 0.002) |
+
+- Timing > 0 on every set (+0.17 dev, +0.22 sealed).
+- **§4 met and sealed-confirmed → claim tier on V2: MODERATE.** It was STRONG on dev, but sealed vs reweighted is P 0.17.
+- coevolution_regret fails §4 on V2, as it did on V1.
+
+**What this does to the Phase 1 claim:**
+- **It survives both panel questions, with its trade-off intact.**
+  1. *"Only at one shift level?"* No. The advantage over single and population grows monotonically with the bear share, and is significant from ~40% bear segments up.
+  2. *"Only for one market?"* No. It reproduces, and is sealed-confirmed, on a market where the regime is much harder to predict (AUC 0.55).
+  - On both markets it at least ties oracle re-weighting without seeing regime labels.
+  - On V2 it is numerically ahead of reweighted on both dev and sealed.
+- **The caveats get stronger, not weaker.**
+  - The mechanism is the same exposure dial on both markets: coevolution exposure 0.27-0.33 vs 0.56-0.70, with timing similar to the other arms.
+  - The control reversal reproduces on V2 (−0.39 vs single; reweighted beats it, P 0.002).
+  - So the claim must be quoted as: "coevolution gains under bear-heavy distribution shift and pays for it when the test matches training".
+- **Scope:** the V2 change is noise + drift scaling (user-approved deviation), i.e. "weaker predictability", not "weaker signal only".
+  Synthetic markets only. The real-data null result (`no-timing-signal`) is unchanged.
+
+**P3 — Task C (`--shared-exam 16`):** coded, smoke-tested and launched (iter03_exam, nice 19).
+- It reached only 10/20 generations by 05:45, so it was **not completed and not evaluated**. No result is claimed.
+- Under the pre-registered 06:00 rule it should have been stopped. The kill was refused by the session's permission classifier, so it may still be running; stopping it is the user's call.
+- It is resumable with the relaunch line in "### P3 / Task C".
+
+**Files to cite:**
+- Generators: `ppo/src/synth_market.py` (V1, 8070ed6ffe695667) and `ppo/src/synth_market_v2.py` (V2, bd5b061d7886a3ae). Data: `ppo/data/synth_v2/{params,cheap_check}.json`.
+- P1: `ppo/src/synth_dose.py`, `ppo/runs/loop/iter02_dose/{compare_pool,dose_response}.json`, `ppo/figures/synth_dose_response.png`.
+- P2: `ppo/runs/loop/iter02_v2/compare_{dev_shift,dev_control,sealed_shift}.json` (CSVs alongside, not committed: 7 MB each),
+  logs `ppo/runs/loop/iter02.log` and `iter02_compare_{dev_shift,dev_control,sealed_shift}.log`, eval script `ppo/runs/loop/iter02_compare.sh`.
+- Task C code: `ppo/src/coevo/engine.py` (`_shared_exam`), `ppo/src/engine_cli.py`, `ppo/tests/smoke_test.py`, and the `run_v5.sh` arm `coevolution_exam`.
