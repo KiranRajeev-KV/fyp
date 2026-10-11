@@ -737,3 +737,19 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
 - **What it does add:**
   - The first real-BTC rule that is above B&H on dev at both 1× and 2× cost, built on the first features with AUC > 0.55 (order flow + positioning).
   - This matches the paper's own conclusion: the cost-aware filter restores profitability but does not significantly beat B&H.
+
+## MAKER-FEE QUESTION (user-requested 2026-10-12, pre-registered before any maker-fee number was computed)
+- **Clearly labelled:** this changes the cost assumption AFTER the taker-cost results were seen.
+  It is a new question, "is the short-horizon signal tradable with low-cost execution?", not a rescue of trials 38-61.
+- **Execution model M:**
+  - Long exposure is held via the BTCUSDT USDⓈ-M perpetual, entered and exited with limit (maker) orders.
+  - Binance regular-user maker fee is 0.02% (official example, support article 360033544231). An extra 0.01% per unit change is allowed for adverse selection / partial fills, so **c_M = 0.03% per unit change**. Robustness check: 2× = 0.06%.
+  - Longs PAY funding: −pos × rate at each 00/08/16 UTC payment (`carry_check.load()` alignment). Negative rates are received.
+  - Fill assumption: the limit order fills at the bar close. This is optimistic. Non-fills and queue position are not modelled, which is why the 2× check exists.
+- **Benchmark:** spot buy & hold at the original cost (+0.927 on dev), unchanged. Also reported, descriptive only: perp buy & hold (long perp held, funding paid, c_M).
+- **orx:** a NEW root node "Maker contract: B&H", with the same run command and a committed `orx_eval.py` that implements model M. Earlier nodes are not comparable with it, so it is a separate tree.
+- **Round M1:** ridge on engine + FLOW + POS (the R1b forecaster), cost-aware filter with hurdle λ·c_M, λ = 2, long/flat, start flat.
+  - **62 M1a** H = 1. **63 M1b** H = 4. **64 M1c** H = 8.
+- **Gate:** DEV PASS as in GOAL MODE (gap > 0, P ≤ 0.10, > spot B&H at 2× c_M).
+  - Goal met only if the best DEV PASS node also beats spot B&H on the sealed span, scored once. The sealed span is bars ≥ 76000, rebuilt with perp + funding data through 2026-08.
+- **Stop:** same rule (3 rounds without improvement).
