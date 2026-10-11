@@ -791,3 +791,16 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
 - **Conclusion:** the dev pass (P 0.053) did not survive out of sample. With 64 trials, it is consistent with selection luck plus the bear-fold exposure pattern.
   The maker-fee question is answered: no. Nothing beats B&H on real BTC out of sample.
 - **The sealed span is now spent.** Any further real-BTC test would need new bars from 2026-09-01 onward.
+
+## PROSPECTIVE SEPTEMBER 2026 (user-requested 2026-10-12, pre-registered before downloading)
+- **What:** score the frozen M1b (`orx/m1b-maker-filter-h-4` @ 766016d, no change) ONCE under maker model M.
+- **Span:** September 2026 = 720 bars (2026-09-01 00:00 → 09-30 23:00), i.e. **1 segment**.
+  Train = the preceding 40,000 bars. October is skipped: it has only ~11 days.
+- **Data, downloaded after this entry:**
+  - Binance Vision spot 1h klines for 2026-09 → `data/raw/`;
+  - UM metrics daily files for 2026-09;
+  - perp 2026-09 and funding are already on disk.
+  - Features are rebuilt with `build_features.py --suffix _ext2`, so the `_ext` files behind earlier results are untouched. Its built-in check verifies that the shared rows are identical.
+- **Reported:** M1b Sharpe vs spot B&H and perp B&H, plus exposure.
+- One segment cannot confirm anything statistically. It is reported as a single prospective data point, whichever way it goes.
+- Combined with the sealed span (4 segments), the out-of-sample total becomes 5 segments, also reported.
