@@ -639,9 +639,9 @@ known regime and a deliberate train/test regime shift.
   - Better than plain coevolution under shift (+0.15, P 0.16).
   - Better rank-0 selection, which was the primary pre-registered measure: the best-minus-final gap is unchanged at −0.001.
 
-### 9h. Last attempts on real BTC (2026-10-10..11) — nothing beats buy & hold
+### 9h. Last attempts on real BTC (2026-10-10..12) — nothing beats buy & hold
 
-Each attempt was pre-registered in the ledger and used the same 48 walk-forward segments (2022-03 → 2026-05). Each attempt's pass gate is in its ledger entry. The core requirement throughout: mean Sharpe above B&H (+0.93) with paired-bootstrap P ≤ 0.10. The carry and vol-target checks also had to stay above B&H at 2× costs.
+Each attempt was pre-registered in the ledger and used the same 48 walk-forward segments (2022-03 → 2026-05). Each attempt's pass gate is in its ledger entry. The core requirement throughout: mean Sharpe above B&H (+0.93) with paired-bootstrap P ≤ 0.10. The carry, vol-target and order-flow checks also had to stay above B&H at 2× costs.
 
 | attempt (trials) | best result | vs B&H +0.93 | why it fails |
 |---|---|---|---|
@@ -649,17 +649,92 @@ Each attempt was pre-registered in the ledger and used the same 48 walk-forward 
 | Shared-exam arm on the walk-forward, 3 seeds × 6 folds (32, `runs/walkforward_exam/`) | −0.03, exposure 0.23 | P 0.99 (vs +0.97, compare_arms convention: no entry cost) | another exposure setting, timing −0.12. Arms again rank by exposure: population +0.60 > single +0.41 > coevolution +0.05. |
 | Funding carry: long spot + short perp (33-35, `carry_check.py`) | always-carry **+2.04** | P 0.032 | **fails at 2× cost (+0.16)**. Earns +0.30% per month vs B&H +2.39%. Switching on the funding sign whipsaws (−8.6, +1.25). |
 | Volatility targeting: min(1, train-median σ / trailing σ), daily (36-37, `vol_target.py`) | +0.77 (7-day σ), +0.64 (1-day σ) | P 1.00 | fully invested about 95% of the time. Cuts after vol spikes miss the rebounds. |
+| Order flow (taker buy/sell imbalance, from the raw klines) and futures positioning (open interest, long/short ratios, Binance Vision `metrics` from 2021-12); logistic and rule timers at 1h and 4h (38-49, `order_flow.py`) | **all@1h AUC 0.554** (> 0.52 in 6/6 folds); best timer −0.93 | P 1.00 | the **first features to pass the AUC gate**, but hourly trading at 0.15% loses −8 to −11. At zero cost the same timers reach +3 to +4. The information is real but too weak to pay spot costs. |
 
 - The 7-day volatility-targeting rule had already appeared in §9e as a ceiling (+0.77).
 - Trials 36-37 re-ran it under a formal pass gate, added a 1-day window and the 2× cost check, and reproduced it exactly (+0.771).
-- **Trial count: 37 in total, 19 of them on real BTC** (4, S1-S12, 32-37).
+- Trial count after these attempts: 49. The goal-mode rounds in §9i bring the total to 64.
 - Loosening any gate after the fact, e.g. dropping carry's 2× cost check, would be post-hoc selection, so it was not done.
+
+### 9i. Goal mode with OpenResearch (2026-10-12) — one dev pass, which failed out of sample
+
+**Set-up.**
+- The user asked for an autonomous push towards a positive real-BTC result, using the OpenResearch harness (`orx` 0.2.18, github.com/alphaXiv/OpenResearch).
+- Ideas were sourced from its alphaXiv literature search. Above all: *ML-Based Bitcoin Trading Under Transaction Costs* (arXiv 2606.00060).
+  - That paper finds naive hourly ML strategies collapse under 10 bp costs.
+  - A cost-aware filter, "only switch when |forecast| > λ·cost·|Δposition|", restores profitability but does not significantly beat B&H.
+  - *Short-horizon mean reversion in crypto* (2608.21888) reports the same "detectable, but too small to clear costs" pattern.
+
+**Protocol.**
+- Fixed run contract `ppo/src/orx_eval.py`. It scores `orx_strategy.positions()` on the 48 dev segments and never reads bars ≥ 76000 (2026-05-01 07:00).
+- One orx node per idea, on its own git branch (worktree `../fyp-orx`). Each round was pre-registered in the ledger.
+- DEV PASS = gap > 0, P ≤ 0.10, and still ahead at 2× cost.
+- The goal counts as met only if the best DEV PASS node also beats B&H on the sealed span (scored once), AND its deflated Sharpe ratio on dev is > 0.5.
+- The run stops after 3 rounds with no improvement.
+
+**Taker costs, spot (0.15%), trials 50-61.**
+- Forecaster: ridge on the 19 engine features + order flow + positioning.
+
+| round (decision) | nodes | best |
+|---|---|---|
+| R1 execution rule | H=1 filter, **H=4 filter**, long-by-default exit | **R1b +1.18 vs B&H +0.93**, P 0.22, 2× +0.90 |
+| R2 forecaster (on R1b) | gradient boosting, no positioning, flow+positioning only | none beats R1b (+0.49 … +0.63) |
+| R3 horizon (on R1b) | H = 8 / 12 / 24 | +0.94 / +1.08 / +0.61 |
+| R4 (on R1b) | 4/8/12h ensemble, λ = 3, λ = 1 | +1.01 / +0.91 / +0.84 |
+
+- Stopped by the rule: no DEV PASS.
+- R1b looks like a peak in noise. Its neighbours sit between −0.44 and +0.15 gap, and its gain comes from the two bear folds.
+
+**Maker question, trials 62-64.**
+- This changes the cost assumption after the taker results were seen. It was pre-registered as a separate question and run under a new orx root.
+- Execution model M:
+  - long exposure via the BTCUSDT USDⓈ-M perpetual;
+  - maker fee 0.02% + 0.01% adverse-selection allowance = 0.03% per unit change;
+  - longs pay funding;
+  - benchmark: spot B&H, unchanged.
+  - Funding alone costs perp B&H 0.12 Sharpe (+0.81).
+
+| node | Sharpe | gap | P | wins | 2× cost |
+|---|---|---|---|---|---|
+| M1a H=1 | +1.37 | +0.45 | 0.14 | 26/48 | +0.94 |
+| **M1b H=4** | **+1.54** | **+0.62** | **0.053** | **30/48** | **+1.31** |
+| M1c H=8 | +1.06 | +0.13 | 0.36 | 24/48 | +0.89 |
+
+- **M1b is the project's only real-BTC DEV PASS.**
+  - Its gap is positive in 5/6 folds (+0.40 without the bear folds).
+  - It survives up to ≈ 0.11% per unit change, so the perp taker fee (0.05%) would also do.
+- **But the deflated Sharpe with N = 64 trials is 0.24** (pre-registered threshold 0.5).
+
+**Out of sample, scored once each.**
+
+| month (2026) | BTC | M1b | spot B&H | M1b exposure |
+|---|---|---|---|---|
+| May (sealed) | −4% | −1.41 | −1.51 | 0.92 |
+| Jun (sealed) | −22% | −4.56 | −4.67 | 0.56 |
+| Jul (sealed) | +7% | +0.08 | +2.72 | 0.53 |
+| Aug (sealed) | +19% | +1.32 | +6.33 | 0.41 |
+| Sep (prospective, downloaded 2026-10-12) | +6% | **+3.55** | +2.26 | 0.43 |
+| **mean of 5** | | **−0.20** | **+1.03** | |
+
+- **The dev pass did not survive.**
+  - It barely beat B&H in the two down months; it stayed mostly invested, so it did not really exit.
+  - It sat half out of both rallies.
+  - September went its way, but it is one segment.
+- This is what selection after 64 trials plus the bear-fold exposure pattern predicts.
+- The sealed span and September are now **spent**. Any further real-BTC test needs bars from 2026-10 onward.
+- Files:
+  - `ppo/src/orx_eval.py`, `orx_sealed.py`, `order_flow.py`;
+  - `ppo/runs/walkforward/orx_sealed.json`, `orx_prospective_sep2026.json`;
+  - the orx project `fyp` (dashboard `orx up`).
 
 ## 10. Conclusions and what remains
 
 **What the project shows.**
 1. **Real BTC, 2022-2026: no method in this project and no simple rule beats buy & hold robustly.**
-   - The features, plus cross-asset, on-chain, momentum and funding data, do not predict direction (AUC ≤ 0.53).
+   - The features, plus cross-asset, on-chain, momentum and funding data, do not predict direction at 1-7 days (AUC ≤ 0.53).
+   - Order flow and futures positioning do carry weak 1-4h information (AUC 0.554), but not enough to pay spot costs (§9h).
+   - With cheap perp execution, one rule (M1b) passed on dev, then lost to B&H on 5 unseen months (§9i).
+   - That makes 64 logged trials, with the deflated Sharpe reported.
    - Every RL arm converges to a constant exposure, and arms rank by that exposure in a rising market.
    - Coevolution's adversary sets a low exposure. That makes it the best arm in bear folds and the worst overall (§9c, §9e, §9h).
 2. **Where a learnable regime signal exists, coevolution generalises better under a bear-heavy shift.**
@@ -674,7 +749,7 @@ Each attempt was pre-registered in the ledger and used the same 48 walk-forward 
    - the pre-registered ledger with a trial count.
 
 **Panel-safe one-liner.**
-- "On real Bitcoin nothing we tried, RL or rule, reliably beats buy-and-hold; we show why (no direction signal).
+- "On real Bitcoin nothing we tried, RL or rule, reliably beats buy-and-hold out of sample: 64 pre-registered trials, one dev pass that failed on unseen months. We show why: there is no usable direction signal after costs.
 - On a controlled market where a signal exists, coevolution beats standard PPO and population training under regime shift, and its shared-exam variant beats a label-using oracle."
 
 **Remaining work.**
@@ -687,7 +762,7 @@ Each attempt was pre-registered in the ledger and used the same 48 walk-forward 
   - a short side or a different action space;
   - a non-Sharpe objective;
   - other synthetic generators.
-- Prospective check: the real bars from 2026-09-01 are still sealed and untouched. They could be scored once on the frozen models as a final out-of-sample look.
+- Prospective data: May-Sep 2026 has now been used (§9i). The only untouched real-BTC data is October 2026 onward.
 
 ---
-*Notes generated 2026-07-22; updated 2026-07-27 (V3), 2026-09/10 (§9b-9e), 2026-10-12 (§9f-9h, §10 rewritten).*
+*Notes generated 2026-07-22; updated 2026-07-27 (V3), 2026-09/10 (§9b-9e), 2026-10-12 (§9f-9i, §10 rewritten and updated with goal mode).*
