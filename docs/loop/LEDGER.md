@@ -588,3 +588,34 @@ Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (ea
   - It cuts only after volatility spikes, and on BTC those cuts tend to miss the rebound, so they cost more than they save.
 - Retuning the target or window now would be post-hoc, so it is not done. Fold 6 is not scored, and Step 2 is not proposed.
 - **Conclusion:** risk sizing from past volatility does not beat B&H either. Count 37; nothing beats B&H robustly on real BTC.
+
+## ORDER-FLOW TEST: do order flow or futures positioning predict BTC at 1-4h? (pre-registered 2026-10-12, before any order-flow number was computed)
+- **Why:** every earlier probe used price, cross-asset, on-chain, momentum and funding data at 24h/168h, and found no signal.
+  Two untried data families remain. Order flow is aggressive buy vs sell volume. Futures positioning is open interest and long/short ratios.
+  The crypto order-flow literature locates any effect at short horizons.
+- **If this fails too, the user has decided the next route is the OpenResearch harness (github.com/alphaXiv/OpenResearch).**
+- **Data:**
+  - Flow: `taker_buy_base_volume` and `volume` from the raw 1h klines (`data/raw/`, 2017+). These were never used by any feature.
+  - Positioning: Binance Vision UM `metrics` daily files, 5-min snapshots 2021-12-01 → 2026-08-31, in `data/external/metrics/` (1735/1735 days downloaded).
+    The training span for positioning features is therefore short: fold 0 has about 2,700 train rows.
+- **No lookahead:** a bar's features use data up to its close (open_time + 1h). For metrics, the last snapshot with create_time ≤ close, tolerance 30 min, otherwise NaN.
+- **Features:**
+  - FLOW, with ofi = 2·taker_buy/volume − 1:
+    - `ofi_1h`;
+    - `ofi_4h` and `ofi_24h`, the volume-weighted ofi over 4 and 24 bars;
+    - `ofi_z` = (ofi_1h − 168-bar mean) / 168-bar sd.
+  - POS:
+    - `oi_d1` and `oi_d24`, the log change of sum_open_interest over 1 and 24 bars;
+    - `ls_top` = log sum_toptrader_long_short_ratio;
+    - `ls_all` = log count_long_short_ratio;
+    - `taker_ls` = log sum_taker_long_short_vol_ratio.
+- **Method:** `signal_probe.fit_predict` (logistic C = 0.1, scaler fit on train rows with no NaN, labels purged) via `signal_hunt.run`. Horizons H = 1h and 4h, rebalanced every H bars.
+- **Trials 38-49:**
+  - logistic sets flow / pos / flow+pos / all (19 engine features + flow + pos) × H ∈ {1, 4} = 8;
+  - rule timers `ofi_1h > 0` and `ofi_4h > 0`, long/flat, × rebalance {1, 4} = 4.
+- **Pass gate (48 segments, folds 0-5):**
+  - (a) pooled AUC ≥ 0.55 and per-fold AUC > 0.52 in ≥ 5/6 folds (rules skip this);
+  - (b) mean segment Sharpe > B&H with paired-bootstrap P ≤ 0.10;
+  - (c) still > B&H at 2× cost.
+  - Also reported, descriptive only: the zero-cost Sharpe, which says whether a signal exists but costs kill it.
+- **If something passes:** confirm once on fold 6 (2026-05 → 2026-08), then propose Step 2 (add the inputs to the env, rerun the coevolution walk-forward) to the user.
