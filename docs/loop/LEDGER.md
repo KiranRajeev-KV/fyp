@@ -571,3 +571,20 @@ Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (ea
   - score it ONCE on the held-out fold 6 (2026-05 → 2026-08, train = previous 40,000 bars), descriptive only;
   - then propose Step 2 to the user. Note the RL trader ALREADY sees `volatility_24h` and `volatility_168h`, so Step 2 would be a reward/action question, not a feature one.
   - Don't start it without approval.
+
+### VOL TARGET CHECK result (2026-10-11): NO rule passes. Trials 36-37; count 37.
+`ppo/runs/walkforward/vol_target.json` (script `ppo/src/vol_target.py`). 48 segments. Spot read from `btcusdt_features_ext.parquet`, which is identical to `btcusdt_features.parquet` over the full test range.
+
+| rule | Sharpe (1×) | Sharpe (2×) | mean return / segment | mean max DD | exposure | wins/48 | P(≤ B&H) |
+|---|---|---|---|---|---|---|---|
+| buy & hold | **+0.927** | +0.887 | **+2.39%** | −14.4% | 1.00 | n/a | n/a |
+| V1 vt_168h | +0.771 | +0.718 | +2.14% | −13.9% | 0.96 | 9 | 1.000 |
+| V2 vt_24h | +0.644 | +0.507 | +1.64% | −13.2% | 0.93 | 15 | 1.000 |
+
+- Both rules are WORSE than B&H on Sharpe, in 5 of 6 folds. Fold 2 (V2) is the only exception.
+- The drawdown saving is under 1.2 points.
+- **Why:**
+  - Test-period volatility is mostly below the train-window median (training covers 2017-21), so the rule is fully invested about 95% of the time.
+  - It cuts only after volatility spikes, and on BTC those cuts tend to miss the rebound, so they cost more than they save.
+- Retuning the target or window now would be post-hoc, so it is not done. Fold 6 is not scored, and Step 2 is not proposed.
+- **Conclusion:** risk sizing from past volatility does not beat B&H either. Count 37; nothing beats B&H robustly on real BTC.
