@@ -565,23 +565,129 @@ not kept. Neither changes the conclusion. The trend filter turned out to be "clo
 controlled synthetic benchmark (Task B, `ppo/src/synth_market.py`, `docs/loop/LEDGER.md`) provides that, with a
 known regime and a deliberate train/test regime shift.
 
-## 10. Next steps
+### 9f. Synthetic regime benchmark (2026-10-08..10) — where timing is possible, coevolution wins under shift
 
-1. **Rewrite the deck around §9c**: the defensible claim is "coevolution trades upside for bear robustness;
-   the single-split headline was window-dependent". Regenerate figures with `make_figures.py` (defaults to V5)
-   and add the walk-forward per-fold chart.
-2. **Fix the arms race** — disengagement survived both tuned variation rates and fresh blood.
-   Remaining options: bounded perturbations of real segments (anticipated in `context.md` as the
-   sanctioned extension), stronger asymmetric pacing (fewer trader timesteps per generation), or
-   adaptive variation that scales up when adversary fitness drops.
-3. **Decide on shorting.** The test window is bear/sideways and the env is long-only, so no agent
-   can be *profitable* there — only less bad. Adding a short position raises the ceiling but changes
-   the problem definition, so run it as a separate, clearly-labeled experiment.
-4. **Tune the churn/participation balance** — V3's agent sits ≈85% in market (near buy-and-hold).
-   Lowering `--trade-penalty` toward 0.001 should recover some selectivity (exit downtrends) without
-   returning to the V2 churn.
-5. Optional: **fitness-metric mini-ablation** (Sharpe vs Sortino) as an extra experiment.
-6. Prospective/paper-trading validation on data frozen now, evaluated in a few weeks.
+**Why a synthetic market.** §9e shows that real BTC has no usable direction signal. On real BTC every arm therefore reduces to an exposure dial, and the question the project asks cannot be tested there: does coevolution generalise better under a regime shift when there *is* something to learn? A generated market isolates that question. In it the regime is known, it is partly observable, and its mix is deliberately shifted between train and test. This is a controlled test of the training method, not evidence about BTC. The two benchmarks are never compared with each other.
+
+**How.**
+- SYNTH_V1 (`ppo/src/synth_market.py`, sha256[:16] `8070ed6ffe695667`, frozen before any arm ran):
+  - semi-Markov bull / sideways / bear regimes, mean duration 480 bars;
+  - hourly drift +0.0004 / 0 / −0.0008, vol 0.006 / 0.006 / 0.009;
+  - a noisy observed `regime_signal`, plus the 19 engine features from `build_features.add_features`.
+- Mixes: train and control sets are 10% bear; the shifted test sets are 50% bear.
+- Logistic probe AUC 0.60, against 0.53 on real BTC.
+- SYNTH_V2 (`ppo/src/synth_market_v2.py`, `bd5b061d7886a3ae`) is the weaker-predictability market, AUC 0.55.
+  - It raises signal noise 2 → 12 and multiplies all drifts by 0.6.
+  - This deviates from the pre-registered "change only the signal". Noise alone cannot lower the AUC, because the price features carry the regime. The user approved the change before the freeze.
+
+**Protocol.**
+- Criteria were frozen in `docs/loop/PROMPT.md` §4. Every trial was written into `docs/loop/LEDGER.md` before it ran.
+- Five arms: single, population, coevolution, coevolution_regret, and the oracle `reweighted`. The oracle is population + PBT trained on regime-balanced segments, so it uses the true labels that coevolution never sees.
+- 6 seeds × 20 generations, V5 config.
+- Score: final-population mean Sharpe per seed. Significance: hierarchical bootstrap P(coevolution ≤ X).
+- Dev sets were used during development. Each sealed set (new generator seeds) was scored once.
+
+| shifted test (≈50-58% bear) | V1 dev | V1 sealed | V2 dev | V2 sealed |
+|---|---|---|---|---|
+| coevolution | **+0.60** | **+0.90** | **−0.20** | **+0.02** |
+| reweighted (oracle, uses labels) | +0.45 | +0.78 | −0.53 | −0.13 |
+| population | −0.00 | +0.41 | −0.72 | −0.35 |
+| single | +0.10 | +0.36 | −0.91 | −0.48 |
+| buy & hold | −3.6 | −2.13 | −2.05 | −1.25 |
+| P(coevo ≤ single / population) | 0.003 / 0.001 | 0.001 / 0.004 | 0.003 / 0.008 | 0.010 / 0.041 |
+| P(coevo ≤ reweighted) | 0.11 | 0.24 | 0.035 | 0.17 |
+
+- **Claim tier MODERATE on both markets, sealed-confirmed.**
+  - Under a bear-heavy shift, coevolution beats single and population.
+  - It at least ties the oracle without seeing regime labels.
+  - `coevolution_regret` fails the criteria on both markets.
+- **Dose-response** (V1, the trained models, 500 fresh segments, `ppo/figures/synth_dose_response.png`):
+  - Coevolution minus single grows +0.12 → +0.23 → +0.34 → +0.51 → +0.71 as the bear share goes 13 → 25 → 40 → 58 → 75% of segments.
+  - It is significant from 40% up. The sign never changes in the tested range.
+- **The trade-off.** On the unshifted control set coevolution is significantly *worse*: −0.26 (V1) and −0.39 (V2) vs single. The oracle is the best arm there.
+- **Mechanism.**
+  - All arms learn the timing; exposure separates bull from bear.
+  - Coevolution differs by holding a lower exposure level: 0.23-0.33, against 0.41-0.70 for the others.
+  - That level is set by the adversary's bear-heavy curriculum (50-56% bear served at generations 5-10, from a 12.9%-bear pool).
+  - It pays off when the test is bear-heavy and costs when it is not. This is the same exposure dial as on real BTC, but here it sits on top of real timing.
+
+### 9g. Shared exam (`--shared-exam 16`) — the best variant, synthetic only
+
+**Why.** Selection is a lottery (§9e, B2 in the audit). One trader's match-to-match sd (1.17) is larger than the spread between traders (0.82).
+
+**Change** (`EngineConfig.shared_exam`, `engine._shared_exam`):
+- Each generation, every trader sits the *same* 16 uniform segments, and PBT, `best_trader` and the hall of fame rank on that score.
+- Each adversary is credited with the mean over *all* traders on the segments it proposed.
+
+**Results.**
+- Dev (trial 18): scored on V1 dev only.
+- Fresh sealed (trial 19): new seeds 9500-9699 (`ppo/data/synth_v1_sealed2/`), pre-registered, scored once (`ppo/runs/loop/iter03_exam/`).
+
+| final-population mean | exam | coevolution | reweighted | population | single | B&H |
+|---|---|---|---|---|---|---|
+| dev shift | **+0.70** | +0.60 | +0.45 | −0.00 | +0.10 | −3.6 |
+| dev control | +2.38 | +2.13 | **+2.52** | +2.42 | +2.40 | |
+| sealed2 shift (50.6% bear) | **+1.11** (sd 0.08) | +0.95 | +0.91 | +0.46 | +0.52 | −3.00 |
+| sealed2 control (12.7% bear) | **+2.71** (sd 0.08) | +2.45 | +2.60 | +2.51 | +2.51 | +1.74 |
+
+- **Confirmed on the fresh sealed sets:**
+  - It beats single and population under shift (P 0.011 / 0.000).
+  - It beats the label oracle under shift (+0.20, P 0.048, 5/6 seeds).
+  - It is the best arm on control (P 0.08 / 0.04 vs single / population), so the control cost of plain coevolution is gone.
+  - Its seed sd is about 3× smaller.
+- **Not confirmed:**
+  - Better than plain coevolution under shift (+0.15, P 0.16).
+  - Better rank-0 selection, which was the primary pre-registered measure: the best-minus-final gap is unchanged at −0.001.
+
+### 9h. Last attempts on real BTC (2026-10-10..11) — nothing beats buy & hold
+
+Each attempt was pre-registered in the ledger and used the same 48 walk-forward segments (2022-03 → 2026-05). Each attempt's pass gate is in its ledger entry. The core requirement throughout: mean Sharpe above B&H (+0.93) with paired-bootstrap P ≤ 0.10. The carry and vol-target checks also had to stay above B&H at 2× costs.
+
+| attempt (trials) | best result | vs B&H +0.93 | why it fails |
+|---|---|---|---|
+| Signal hunt: S&P / VIX / DXY / 10y, on-chain (CoinMetrics), weekly momentum; logistic and rule timers, 24h and 168h (S1-S12, `signal_hunt.py`) | best AUC 0.52; best timer +0.94 | P 0.47 | no set reaches AUC 0.55. The near-tie is 79% always-long (timing ≈ 0). Momentum rules time (+0.26-0.34) but whipsaw. |
+| Shared-exam arm on the walk-forward, 3 seeds × 6 folds (32, `runs/walkforward_exam/`) | −0.03, exposure 0.23 | P 0.99 (vs +0.97, compare_arms convention: no entry cost) | another exposure setting, timing −0.12. Arms again rank by exposure: population +0.60 > single +0.41 > coevolution +0.05. |
+| Funding carry: long spot + short perp (33-35, `carry_check.py`) | always-carry **+2.04** | P 0.032 | **fails at 2× cost (+0.16)**. Earns +0.30% per month vs B&H +2.39%. Switching on the funding sign whipsaws (−8.6, +1.25). |
+| Volatility targeting: min(1, train-median σ / trailing σ), daily (36-37, `vol_target.py`) | +0.77 (7-day σ), +0.64 (1-day σ) | P 1.00 | fully invested about 95% of the time. Cuts after vol spikes miss the rebounds. |
+
+- The 7-day volatility-targeting rule had already appeared in §9e as a ceiling (+0.77).
+- Trials 36-37 re-ran it under a formal pass gate, added a 1-day window and the 2× cost check, and reproduced it exactly (+0.771).
+- **Trial count: 37 in total, 19 of them on real BTC** (4, S1-S12, 32-37).
+- Loosening any gate after the fact, e.g. dropping carry's 2× cost check, would be post-hoc selection, so it was not done.
+
+## 10. Conclusions and what remains
+
+**What the project shows.**
+1. **Real BTC, 2022-2026: no method in this project and no simple rule beats buy & hold robustly.**
+   - The features, plus cross-asset, on-chain, momentum and funding data, do not predict direction (AUC ≤ 0.53).
+   - Every RL arm converges to a constant exposure, and arms rank by that exposure in a rising market.
+   - Coevolution's adversary sets a low exposure. That makes it the best arm in bear folds and the worst overall (§9c, §9e, §9h).
+2. **Where a learnable regime signal exists, coevolution generalises better under a bear-heavy shift.**
+   - Shown on two synthetic markets, sealed-confirmed, with a monotone dose-response (§9f).
+   - The shared-exam variant beats the label oracle and removes the cost on unshifted data (§9g).
+   - The mechanism is an exposure level matched to the shift. That is why it cannot help where there is no signal.
+3. **Methodological contributions:**
+   - the audit (hall-of-fame aliasing bug, lost V4 ledgers, §9b);
+   - hierarchical arm-vs-arm tests;
+   - the walk-forward;
+   - the regret-adversary control, which shows that a sustained arms race is not what helps (§9c);
+   - the pre-registered ledger with a trial count.
+
+**Panel-safe one-liner.**
+- "On real Bitcoin nothing we tried, RL or rule, reliably beats buy-and-hold; we show why (no direction signal).
+- On a controlled market where a signal exists, coevolution beats standard PPO and population training under regime shift, and its shared-exam variant beats a label-using oracle."
+
+**Remaining work.**
+- Writing:
+  - a one-page panel Q&A;
+  - the report chapters (results and discussion from §9c-§10);
+  - slides 8-13 last;
+  - merging `loop/experiments` into `main`.
+- Not done, and outside the current framing (flag before starting):
+  - a short side or a different action space;
+  - a non-Sharpe objective;
+  - other synthetic generators.
+- Prospective check: the real bars from 2026-09-01 are still sealed and untouched. They could be scored once on the frozen models as a final out-of-sample look.
 
 ---
-*Notes generated 2026-07-22; updated 2026-07-27 with the V3 run and the behavioral diagnosis.*
+*Notes generated 2026-07-22; updated 2026-07-27 (V3), 2026-09/10 (§9b-9e), 2026-10-12 (§9f-9h, §10 rewritten).*
