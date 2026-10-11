@@ -675,3 +675,20 @@ Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (ea
   - **51 R1b**: same as R1a but H = 4.
   - **52 R1c**, long by default, H = 4: start long. Go flat when r̂ < −2c, go long when r̂ > 0, otherwise hold.
 - Winner: the best gap vs B&H. It is promoted only if its gap > 0. Otherwise round 2 tries a different decision from the baseline.
+
+#### GOAL round 1 results (orx runs f9b19735 / 353abf3f / 4ba90b77)
+| node | Sharpe | gap vs B&H | P | wins | 2× (B&H +0.887) | 0× | exposure | turnover/seg |
+|---|---|---|---|---|---|---|---|---|
+| 50 R1a H=1 | −0.360 | −1.288 | 0.998 | 14 | −0.628 | −0.086 | 0.25 | 7.2 |
+| **51 R1b H=4** | **+1.180** | **+0.253** | 0.220 | 21 | **+0.901** | +1.463 | 0.56 | 5.1 |
+| 52 R1c long-default H=4 | +0.610 | −0.317 | 0.910 | 14 | +0.225 | +1.000 | 0.83 | 8.4 |
+
+- No DEV PASS (P > 0.10). **R1b is promoted:** its gap is > 0, and it is the first real-BTC rule in the project above B&H on dev at both 1× and 2× cost.
+- Diagnostic:
+  - The forecast magnitude is large in folds 0-1. Their ridge was fit only on post-2021-12 rows (POS starts then), about 2.7k rows.
+  - In folds 2-5 it is about 1e-3, below the 3e-3 hurdle, so those folds trade little.
+
+### GOAL round 2 (pre-registered before running): forecaster, building on R1b (H = 4, λ = 2, long/flat, start flat)
+- **53 R2a**: HistGradientBoostingRegressor (max_iter 200, lr 0.05, max_leaf_nodes 15, min_samples_leaf 200), same features. The paper's best model family was gradient boosting.
+- **54 R2b**: ridge on the 19 engine features + FLOW only (no POS), so it trains on the full 40k-row train span.
+- **55 R2c**: ridge on FLOW + POS only (no engine features). This set had the best zero-cost result in the order-flow test.
