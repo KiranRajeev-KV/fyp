@@ -773,3 +773,21 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - The sealed span is still scored once below, as pre-registered for a DEV PASS node, because it is the only independent evidence left.
   - Caveat: N = 64 counts the synthetic trials and treats correlated trials as independent, so 0.24 is conservative. It is NOT recomputed with a smaller N after the fact.
 - Sealed scoring: `ppo/src/orx_sealed.py --strategy-dir <worktree on orx/m1b-maker-filter-h-4>`, run ONCE, output `ppo/runs/walkforward/orx_sealed.json`.
+
+#### SEALED result, M1b (scored ONCE 2026-10-12): FAIL. Maker question closed, goal NOT met
+`ppo/runs/walkforward/orx_sealed.json`. Sealed span 2026-05-01 → 2026-08-30, 4 segments, trained on the preceding 40,000 bars.
+
+| segment | BTC move | M1b | spot B&H | perp B&H | exposure |
+|---|---|---|---|---|---|
+| 2026-05 | −4.1% | −1.41 | −1.51 | −1.55 | 0.92 |
+| 2026-06 | −21.5% | −4.56 | −4.67 | −4.68 | 0.56 |
+| 2026-07 | +7.3% | +0.08 | +2.72 | +2.57 | 0.53 |
+| 2026-08 | +19.1% | +1.32 | +6.33 | +6.20 | 0.41 |
+| **mean** | | **−1.14** (2× −1.50) | **+0.72** | +0.64 | 0.61 |
+
+- **It loses to B&H** (P 0.938). It only matched B&H in the two down months; exposure 0.92 / 0.56 shows no real exit.
+- It was half out of the market during both rallies.
+- 4 segments is low power, but the direction is clearly negative, and the DSR had already failed (0.24).
+- **Conclusion:** the dev pass (P 0.053) did not survive out of sample. With 64 trials, it is consistent with selection luck plus the bear-fold exposure pattern.
+  The maker-fee question is answered: no. Nothing beats B&H on real BTC out of sample.
+- **The sealed span is now spent.** Any further real-BTC test would need new bars from 2026-09-01 onward.
