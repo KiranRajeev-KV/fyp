@@ -511,3 +511,25 @@ Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (ea
 - The ordering is again "closest to always-long wins". The exam arm is another exposure setting, with slightly negative timing.
 - This matches the pre-stated expectation. The synthetic advantage (trial 19) does not transfer to real BTC, because there is no signal to exploit (Step 1).
 - **Trial count: 32.**
+
+## CARRY CHECK: can a funding carry trade beat B&H on real BTC? (pre-registered 2026-10-11, before any carry number was computed)
+- **Why:** price direction is unpredictable (Steps 1 and 32), but the perpetual funding rate is persistent.
+  "Carry" means long spot + short USDT-M perp at equal notional. It earns funding when the rate is > 0, and price exposure is about 0 apart from basis noise.
+- **Data:**
+  - Spot 1h closes: `data/features/btcusdt_features.parquet`.
+  - Perp 1h closes: Binance Vision `futures/um/monthly/klines/BTCUSDT/1h`, downloaded to `data/external/perp/`.
+  - Funding: `data/funding/BTCUSDT_funding.parquet`. It is paid at 00/08/16 UTC; a short receives the rate × notional.
+- **Segments:** the same 48 walk-forward test segments (folds 0-5, 720 bars each). Sharpe is computed per segment as in `signal_probe.py`.
+- **Costs:**
+  - Spot leg 0.15% per unit change, as in the env.
+  - Perp leg 0.05% taker + 0.05% slippage = 0.10% per unit change.
+  - Sensitivity check at 2× all costs.
+- **Rules (no fitting). Decisions are made at funding times and use only the last PAID rate:**
+  - C1 `carry_always`: carry for the whole segment.
+  - C2 `carry_if_pos`: carry if the last funding > 0, else cash.
+  - C3 `carry_if_pos_else_bh`: carry if the last funding > 0, else long spot only.
+- **Trials 33-35. Pass:**
+  - mean segment Sharpe > B&H, with paired-bootstrap P(rule ≤ B&H) ≤ 0.10 over the 48 segments;
+  - AND still > B&H at 2× costs.
+  - Also reported: mean segment return (carry can win on Sharpe while earning less than B&H in bulls) and wins/48.
+- **If a rule passes:** propose Step 2 to the user (a 3-action env: cash / long / carry; RL arms vs the rule). Don't start it without approval.
