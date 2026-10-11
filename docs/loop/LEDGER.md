@@ -705,3 +705,15 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
 
 ### GOAL round 3 (pre-registered): forecast horizon, building on R1b (ridge 19+FLOW+POS, λ = 2, long/flat, start flat)
 - **56 R3a** H = 8. **57 R3b** H = 12. **58 R3c** H = 24. Decide every H bars.
+
+#### GOAL round 3 results (orx runs e2df649d / 333b41cb / b63caac1): no improvement over R1b (gap +0.253)
+| node | Sharpe | gap | P | 2× | 0× | exposure | timing |
+|---|---|---|---|---|---|---|---|
+| 56 R3a H=8 | +0.939 | +0.012 | 0.489 | +0.619 | +1.262 | 0.55 | +0.15 |
+| 57 R3b H=12 | +1.082 | +0.154 | 0.360 | +0.761 | +1.404 | 0.52 | +0.12 |
+| 58 R3c H=24 | +0.605 | −0.322 | 0.781 | +0.355 | +0.856 | 0.57 | +0.17 |
+
+### GOAL round 4 (pre-registered; the last round before the stop rule if nothing improves): building on R1b
+- **59 R4a**, multi-horizon ensemble: r̂ = 4 × mean(r̂₄/4, r̂₈/8, r̂₁₂/12), i.e. the average per-hour forecast scaled to 4h. Decide every 4 bars, λ = 2.
+- **60 R4b**, stricter hurdle: λ = 3.
+- **61 R4c**, looser hurdle: λ = 1.
