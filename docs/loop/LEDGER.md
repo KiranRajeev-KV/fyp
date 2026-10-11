@@ -551,3 +551,23 @@ Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (ea
   - Carry is a near-miss on Sharpe only. It is not robust to costs, and it makes far less money than holding BTC.
   - Nothing in this project beats B&H on real BTC robustly: 35 trials.
   - Changing the gate now (e.g. dropping the 2× check) would be post-hoc selection, so it is not done. Step 2 (3-action env) is not proposed.
+
+## VOL TARGET CHECK: does volatility targeting beat B&H Sharpe on real BTC? (pre-registered 2026-10-11, before any vol-target number was computed)
+- **Why:** direction is unpredictable (Steps 1, 32, carry), but volatility clusters, so it is forecastable.
+  Sizing a long-only BTC position inversely to recent volatility can raise Sharpe without any direction call.
+- **Data / segments / costs:** spot 1h closes (`data/features/btcusdt_features.parquet`); the same 48 walk-forward test segments (folds 0-5, 720 bars); `signal_probe.run_position` at 0.15% per unit change, entry charged (same as B&H); sensitivity at 2× cost.
+- **Rule (no fitting on test):**
+  - exposure = min(1, target / σ), where σ is the std of hourly log returns over the trailing window, using closes up to the decision bar only.
+  - target = median of that trailing σ over the fold's TRAIN window (so it is set before the test).
+  - Rebalance every 24 bars from segment start, holding in between.
+- **Trials 36-37:**
+  - V1 `vt_168h`: 168-bar σ window.
+  - V2 `vt_24h`: 24-bar σ window.
+- **Pass (same gate as the carry check):**
+  - mean segment Sharpe > B&H, with paired-bootstrap P(rule ≤ B&H) ≤ 0.10 over the 48 segments;
+  - AND still > B&H at 2× cost.
+  - Also reported: mean segment return, mean exposure, wins/48, mean max drawdown.
+- **If a rule passes:**
+  - score it ONCE on the held-out fold 6 (2026-05 → 2026-08, train = previous 40,000 bars), descriptive only;
+  - then propose Step 2 to the user. Note the RL trader ALREADY sees `volatility_24h` and `volatility_168h`, so Step 2 would be a reward/action question, not a feature one.
+  - Don't start it without approval.
