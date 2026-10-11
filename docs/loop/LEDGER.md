@@ -533,3 +533,21 @@ Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (ea
   - AND still > B&H at 2× costs.
   - Also reported: mean segment return (carry can win on Sharpe while earning less than B&H in bulls) and wins/48.
 - **If a rule passes:** propose Step 2 to the user (a 3-action env: cash / long / carry; RL arms vs the rule). Don't start it without approval.
+
+### CARRY CHECK result (2026-10-11): NO rule passes the pre-registered gate. Trials 33-35; count 35.
+`ppo/runs/walkforward/carry_check.json` (script `ppo/src/carry_check.py`). 48 segments. Data checks: perp has no missing test bars; the basis averages −0.03% (sd 0.04%).
+
+| rule | Sharpe (1× cost) | Sharpe (2× cost) | mean return / 30-day segment | wins/48 | P(≤ B&H) |
+|---|---|---|---|---|---|
+| buy & hold | +0.927 | +0.887 | **+2.39%** | n/a | n/a |
+| C1 carry_always | **+2.044** | +0.157 | +0.30% | 30 | 0.032 |
+| C2 carry_if_pos | −8.571 | −10.197 | −3.00% | 7 | 1.000 |
+| C3 carry_if_pos_else_bh | +1.248 | −0.358 | +0.49% | 27 | 0.298 |
+
+- **C1** beats B&H on Sharpe at base costs (P 0.032, every fold ≥ B&H except fold 5), but **fails the 2× cost robustness check**.
+  Its return is tiny and its volatility tiny, so the one entry per segment (0.25%) moves its Sharpe a lot. It also earns about 1/8 of B&H's raw return.
+- **C2 and C3:** switching on the funding sign every 8h whipsaws, and costs destroy them.
+- **Conclusion:**
+  - Carry is a near-miss on Sharpe only. It is not robust to costs, and it makes far less money than holding BTC.
+  - Nothing in this project beats B&H on real BTC robustly: 35 trials.
+  - Changing the gate now (e.g. dropping the 2× check) would be post-hoc selection, so it is not done. Step 2 (3-action env) is not proposed.
