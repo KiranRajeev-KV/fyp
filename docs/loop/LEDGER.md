@@ -692,3 +692,16 @@ Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (ea
 - **53 R2a**: HistGradientBoostingRegressor (max_iter 200, lr 0.05, max_leaf_nodes 15, min_samples_leaf 200), same features. The paper's best model family was gradient boosting.
 - **54 R2b**: ridge on the 19 engine features + FLOW only (no POS), so it trains on the full 40k-row train span.
 - **55 R2c**: ridge on FLOW + POS only (no engine features). This set had the best zero-cost result in the order-flow test.
+
+#### GOAL round 2 results (orx runs 2d7e9e1d / cc7ae6e7 / e1eec298): no improvement, R1b stays the focal node
+| node | Sharpe | gap | P | 2× | 0× | exposure | turnover | timing |
+|---|---|---|---|---|---|---|---|---|
+| 53 R2a gradient boosting | +0.631 | −0.297 | 0.775 | +0.154 | +1.108 | 0.50 | 8.1 | +0.04 |
+| 54 R2b no POS | +0.489 | −0.438 | 0.868 | +0.428 | +0.552 | 0.47 | 1.1 | +0.01 |
+| 55 R2c flow+pos only | +0.596 | −0.331 | 0.767 | +0.538 | +0.654 | 0.29 | 1.1 | **+0.24** |
+
+R1b per fold (analysis, not a trial): the gap is +0.68 in fold 0 (2022 bear), −0.29, −0.34, −0.12, +0.34, and +1.25 in fold 5 (2025-26 bear, exposure 0.38).
+Its edge is concentrated in the two bear folds. This is the same exposure pattern as the RL arms, so it is not yet a robust timing edge.
+
+### GOAL round 3 (pre-registered): forecast horizon, building on R1b (ridge 19+FLOW+POS, λ = 2, long/flat, start flat)
+- **56 R3a** H = 8. **57 R3b** H = 12. **58 R3c** H = 24. Decide every H bars.
