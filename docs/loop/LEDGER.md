@@ -753,3 +753,23 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
 - **Gate:** DEV PASS as in GOAL MODE (gap > 0, P ≤ 0.10, > spot B&H at 2× c_M).
   - Goal met only if the best DEV PASS node also beats spot B&H on the sealed span, scored once. The sealed span is bars ≥ 76000, rebuilt with perp + funding data through 2026-08.
 - **Stop:** same rule (3 rounds without improvement).
+
+#### Maker round M1 results (orx runs e00f282f root / 3fb453f7 / 037f9799 / d6e7fccd)
+| node | Sharpe | gap vs spot B&H +0.927 | P | wins | 2× c_M | 0× | exposure | turnover/seg |
+|---|---|---|---|---|---|---|---|---|
+| root: perp B&H | +0.806 | −0.122 | 1.000 | 7 | +0.798 | +0.814 | 1.00 | 1 |
+| 62 M1a H=1 | +1.373 | +0.446 | 0.140 | 26 | +0.936 | +1.810 | 0.56 | 43.5 |
+| **63 M1b H=4** | **+1.544** | **+0.617** | **0.053** | **30** | **+1.314** | +1.774 | 0.55 | 20.7 |
+| 64 M1c H=8 | +1.060 | +0.133 | 0.358 | 24 | +0.885 | +1.236 | 0.55 | 15.0 |
+
+- **M1b = DEV PASS**: the first in the project on real BTC.
+- Pre-sealed analysis (same node; not new trials):
+  - Per-fold gap: +0.44 / +0.10 / −0.10 / +0.48 / +1.10 / +1.67. Positive in 5/6 folds, +0.40 excluding the bear folds 0 and 5.
+  - Gap vs eval cost (positions fixed): +0.62 @0.03%, +0.46 @0.05% (perp taker), +0.23 @0.08%, +0.08 @0.10%, −0.30 @0.15%. Breakeven is about 0.11% per unit change.
+- **Deflated Sharpe (Bailey & López de Prado), pre-registered criterion:**
+  - Computed on the 48 per-segment gaps, with N = 64 trials and null SR variance 1/(T−1).
+  - Gap SR 0.233 vs the expected max under the null 0.346 gives **DSR 0.24 < 0.5 → FAILS**.
+  - So by the pre-registered rule the goal cannot be "met", whatever the sealed result.
+  - The sealed span is still scored once below, as pre-registered for a DEV PASS node, because it is the only independent evidence left.
+  - Caveat: N = 64 counts the synthetic trials and treats correlated trials as independent, so 0.24 is conservative. It is NOT recomputed with a smaller N after the fact.
+- Sealed scoring: `ppo/src/orx_sealed.py --strategy-dir <worktree on orx/m1b-maker-filter-h-4>`, run ONCE, output `ppo/runs/walkforward/orx_sealed.json`.

@@ -21,8 +21,8 @@ COLS = ["open_time", "open", "high", "low", "close", "volume", "close_time", "qu
         "count", "taker_buy_volume", "taker_buy_quote_volume", "ignore"]
 
 
-def load():
-    spot = pd.read_parquet("../data/features/btcusdt_features.parquet", columns=["open_time", "close"])
+def load(features_path="../data/features/btcusdt_features.parquet"):
+    spot = pd.read_parquet(features_path, columns=["open_time", "close"])
     perp = pd.concat([pd.read_csv(f, header=None, names=COLS, dtype=str)
                       for f in sorted(glob.glob("../data/external/perp/BTCUSDT-1h-*.csv"))])
     perp = perp[perp.open_time != "open_time"]
