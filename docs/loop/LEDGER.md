@@ -619,3 +619,25 @@ Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (ea
   - (c) still > B&H at 2× cost.
   - Also reported, descriptive only: the zero-cost Sharpe, which says whether a signal exists but costs kill it.
 - **If something passes:** confirm once on fold 6 (2026-05 → 2026-08), then propose Step 2 (add the inputs to the env, rerun the coevolution walk-forward) to the user.
+
+### ORDER-FLOW TEST result (2026-10-12): NO candidate passes. Trials 38-49; count 49.
+`ppo/runs/walkforward/order_flow.json` (script `ppo/src/order_flow.py`; `signal_hunt.run/timers` gained a `cost` argument whose default is unchanged).
+- Data fix before any result was seen: some metrics snapshots report open interest = 0, which gives log(0) = −inf. These are treated as missing.
+- Test-span missing share: ls_top 16%, taker_ls 3%, others < 0.3%.
+
+| config | pooled AUC (folds > 0.52) | Sharpe 1× | 2× | **0× (no cost)** | B&H 1× / 0× | timing |
+|---|---|---|---|---|---|---|
+| flow @1h / @4h | 0.536 (5/6) / 0.532 (5/6) | −10.98 / −2.51 | −21.9 / −5.8 | +1.27 / +0.90 | +0.93 / +0.97 | −0.03 / −0.07 |
+| pos @1h / @4h | 0.533 / 0.521 | −8.14 / −1.20 | −18.0 / −3.9 | **+3.76** / +1.57 | | +0.18 / +0.08 |
+| flow+pos @1h / @4h | 0.545 / 0.529 | −10.74 / −2.13 | −23.1 / −5.6 | **+3.99** / +1.56 | | +0.10 / +0.05 |
+| all @1h / @4h | **0.554 (6/6)** / 0.536 (6/6) | −8.56 / −0.93 | −18.6 / −3.4 | +2.80 / +1.65 | | +0.07 / +0.02 |
+| ofi rules (1h/4h × rebalance 1/4) | n/a | −19.4 … −4.6 | | −0.22 … +0.36 | | ≈0 |
+
+- **all@1h is the first config in the project to pass the AUC gate (a)**: 0.554 pooled, > 0.52 in 6/6 folds. It fails (b) badly: −8.56, P 1.000.
+- **A signal exists at 1h but is not tradable at these costs.**
+  - At zero cost, the positioning-based timers reach +3.8 to +4.0 vs B&H +0.97.
+  - At 0.15% per unit change with hourly rebalancing they lose −8 to −11.
+  - The 4h versions trade less, but their signal is weaker, and they still lose.
+- The zero-cost row is descriptive only. It is not a pass, and the cost model is not changed after the fact (e.g. to maker fees).
+- **Conclusion:** order flow and futures positioning carry weak short-horizon information (AUC ~0.53-0.55), but not enough to pay trading costs. 49 trials; nothing beats B&H on real BTC.
+- Per the pre-registration, the next route is the OpenResearch harness (the user's decision).

@@ -18,7 +18,7 @@ import pandas as pd
 from build_features import FEATURE_COLUMNS
 from evaluate import paired_bootstrap
 from metrics import sharpe_ratio
-from signal_probe import SEG, auc_table, fit_predict, run_position
+from signal_probe import COST, SEG, auc_table, fit_predict, run_position
 
 EXT = "../data/external"
 CROSS = ["spx_r1", "spx_r5", "spx_r20", "vix", "vix_d5", "dxy_r5", "dxy_r20", "tnx_d5", "tnx_d20"]
@@ -82,7 +82,7 @@ def hold(signal, k):
     return signal[(np.arange(len(signal)) // k) * k]
 
 
-def timers(df, folds, sets, rules):
+def timers(df, folds, sets, rules, cost=COST):
     """Per-segment Sharpe of B&H and every timer (logistic sets x horizons, rule timers x rebalances)."""
     rows = []
     for fold in folds:
@@ -94,18 +94,18 @@ def timers(df, folds, sets, rules):
         for s in range(0, len(close) - SEG + 1, SEG):
             c, sl = close[s:s + SEG], slice(s, s + SEG)
             row = {"fold": fold["fold"], "segment_start": s, "bh_move": float(np.log(c[-1] / c[0])),
-                   "buy_hold": sharpe_ratio(run_position(c, np.ones(SEG)))}
+                   "buy_hold": sharpe_ratio(run_position(c, np.ones(SEG), cost))}
             for name, (x, k) in sig.items():
                 w = hold(x[sl].astype(float), k)
-                row[name] = sharpe_ratio(run_position(c, w))
+                row[name] = sharpe_ratio(run_position(c, w, cost))
                 row[f"{name}_exposure"] = float(w.mean())
             rows.append(row)
     return pd.DataFrame(rows)
 
 
-def run(df, folds, sets, rules):
+def run(df, folds, sets, rules, cost=COST):
     auc = auc_table(df, folds, sets, list(HORIZONS)) if sets else {}
-    seg = timers(df, folds, sets, rules)
+    seg = timers(df, folds, sets, rules, cost)
     res = {}
     for name in [c for c in seg.columns if "@" in c and not c.endswith("_exposure")]:
         a = auc.get(name)
