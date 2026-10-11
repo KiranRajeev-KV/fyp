@@ -664,3 +664,14 @@ Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (ea
   - when the goal is met;
   - or after 3 consecutive rounds with no DEV PASS and no improvement in the best dev Sharpe gap;
   - or when the user stops it.
+
+### GOAL round 1 (pre-registered before running): execution rule for the weak short-horizon signal. Parent: baseline (B&H +0.927)
+- **Forecaster, shared by all three nodes:**
+  - Ridge (alpha 1) on standardized features: the 19 engine features + FLOW + POS (`order_flow.py`).
+  - Target: the forward H-bar log return. Fit on the fold's train rows with no NaN, labels purged.
+  - Test NaN is filled with the train mean.
+- **Decisions every H bars, cost c = 0.15%:**
+  - **50 R1a**, H = 1, the paper's main spec: target = long if r̂ > 0 else flat. Switch only if |r̂| > 2c·|Δpos|. Start flat.
+  - **51 R1b**: same as R1a but H = 4.
+  - **52 R1c**, long by default, H = 4: start long. Go flat when r̂ < −2c, go long when r̂ > 0, otherwise hold.
+- Winner: the best gap vs B&H. It is promoted only if its gap > 0. Otherwise round 2 tries a different decision from the baseline.
