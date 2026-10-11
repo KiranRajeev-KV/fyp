@@ -641,3 +641,26 @@ Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (ea
 - The zero-cost row is descriptive only. It is not a pass, and the cost model is not changed after the fact (e.g. to maker fees).
 - **Conclusion:** order flow and futures positioning carry weak short-horizon information (AUC ~0.53-0.55), but not enough to pay trading costs. 49 trials; nothing beats B&H on real BTC.
 - Per the pre-registration, the next route is the OpenResearch harness (the user's decision).
+
+## GOAL MODE (OpenResearch, started 2026-10-12): a positive real-BTC result (pre-registered before any node ran)
+- **Requested by the user:** drive OpenResearch's auto-research loop until a positive result on real BTC.
+  Harness: `orx` 0.2.18, project `fyp` (426c6a4f), local backend, telemetry off.
+  Node results are recorded here with trial numbers continuing from 49, and in the orx experiment tree.
+- **Framing kept** (standing constraints): single objective = mean per-segment Sharpe vs buy & hold. Long-only exposure in [0, 1]. Historical data only.
+- **Fixed run contract:**
+  - Every node runs the same command, `orx_eval.py`. It scores `orx_strategy.positions()` on the 48 dev segments (walk-forward folds 0-5, 2022-03 → 2026-05).
+  - Costs 0.15% per unit change, entry charged, also reported at 2× and 0× cost.
+  - Each strategy only sees data up to its fold's test end. Models are fit on the fold's train span, with labels purged.
+  - The harness never reads bars at or after 2026-05-01 (asserted in code).
+- **DEV PASS (per node):**
+  - mean Sharpe > B&H with paired-bootstrap P(strategy ≤ B&H) ≤ 0.10;
+  - AND > B&H at 2× cost.
+- **GOAL MET only if a DEV PASS node also passes SEALED, scored ONCE on the single best node:**
+  - Sealed data: real bars 2026-05-01 → latest available (≈ 6-7 segments of 720 bars). It has never been used by any rule or probe in this project.
+    The RL arms' 11-segment window did include Jul-Aug 2026; that only affects the RL models, not new rules.
+  - Sealed pass: mean Sharpe > B&H on the sealed segments, and the deflated Sharpe ratio on dev (trial count = all trials up to that point) > 0.5 probability.
+  - Otherwise the result is reported as dev-only and NOT as positive.
+- **Stop:**
+  - when the goal is met;
+  - or after 3 consecutive rounds with no DEV PASS and no improvement in the best dev Sharpe gap;
+  - or when the user stops it.
