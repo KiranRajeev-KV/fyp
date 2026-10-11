@@ -804,3 +804,17 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
 - **Reported:** M1b Sharpe vs spot B&H and perp B&H, plus exposure.
 - One segment cannot confirm anything statistically. It is reported as a single prospective data point, whichever way it goes.
 - Combined with the sealed span (4 segments), the out-of-sample total becomes 5 segments, also reported.
+
+### PROSPECTIVE SEPTEMBER 2026 result (scored ONCE 2026-10-12): M1b beats B&H in this one month; the out-of-sample total is still negative
+`ppo/runs/walkforward/orx_prospective_sep2026.json`.
+- Data: features `btcusdt_features_ext2.parquet` (build check: shared rows identical, worst diff 0). Sept is 720 bars, and index 78945 = 2026-09-01 00:00.
+  `order_flow.load` and `orx_sealed.py` gained path/start arguments; their defaults are unchanged.
+
+| segment | BTC move | M1b | spot B&H | perp B&H | exposure |
+|---|---|---|---|---|---|
+| 2026-09 | +6.1% | **+3.55** (2× +2.92) | +2.26 | +2.14 | 0.43 |
+
+- **All 5 out-of-sample segments (May-Sep 2026):** M1b mean −0.20 vs spot B&H +1.03. Wins 3/5 (two of them by ≈ 0.1). Mean gap −1.23.
+- **Reading:** September is consistent with the dev pattern. It earned more per unit of risk in a calm up month at 43% exposure.
+  But 1 segment is one data point, and the combined out-of-sample record still loses to B&H, driven by the missed Jul-Aug rallies.
+  **No claim changes:** M1b is a dev pass that failed out of sample.

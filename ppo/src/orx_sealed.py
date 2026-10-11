@@ -33,20 +33,23 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--strategy-dir", required=True)
     ap.add_argument("--out", default="../runs/walkforward/orx_sealed.json")
+    ap.add_argument("--features", default=EXT)
+    ap.add_argument("--start", type=int, default=SEALED_START, help="first scored bar")
     args = ap.parse_args()
     spec = importlib.util.spec_from_file_location("orx_strategy", f"{args.strategy_dir}/orx_strategy.py")
     st = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(st)
 
-    df, pf = load(), load_perp(EXT)
+    df, pf = load(args.features), load_perp(args.features)
+    start = args.start
     n = len(df)
     assert np.allclose(pf["spot"].values, df["close"].values), "perp frame misaligned"
-    fold = {"fold": "sealed", "train_start": SEALED_START - 40000, "train_end": SEALED_START,
-            "test_start": SEALED_START, "test_end": n}
+    fold = {"fold": "sealed", "train_start": start - 40000, "train_end": start,
+            "test_start": start, "test_end": n}
     pos = np.clip(np.asarray(st.positions(df, fold), dtype=float), 0, 1)
     rows = []
-    for s in range(0, n - SEALED_START - SEG + 1, SEG):
-        sl = slice(SEALED_START + s, SEALED_START + s + SEG)
+    for s in range(0, n - start - SEG + 1, SEG):
+        sl = slice(start + s, start + s + SEG)
         w, p, fd, c = pos[s:s + SEG], pf.perp.values[sl], pf.paid.values[sl], df.close.values[sl]
         assert np.isfinite(p).all()
         rows.append({"start": str(df.open_time.iloc[sl.start]), "move": float(np.log(c[-1] / c[0])),

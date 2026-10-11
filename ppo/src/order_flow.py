@@ -40,8 +40,8 @@ def positioning():
     return m.drop_duplicates("t").sort_values("t")
 
 
-def load():
-    df = pd.read_parquet("../data/features/btcusdt_features_ext.parquet")
+def load(path="../data/features/btcusdt_features_ext.parquet"):
+    df = pd.read_parquet(path)
     t = df.open_time.astype("datetime64[ns]")
     raw = taker_flow().reindex(t.values)
     assert raw.volume.notna().all(), "raw klines missing bars"
