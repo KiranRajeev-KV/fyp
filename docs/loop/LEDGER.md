@@ -495,3 +495,19 @@ Replication, price features only: AUC 0.525 @24h (matches 0.53), 0.482 @168h (ea
 - **Expectation, stated now:**
   - Step 1 found no usable signal, so exam is expected to act as an exposure dial. That means below B&H and a timing score near 0.
   - The open question is only whether it beats the other arms. Whatever happens is reported.
+
+### Trial 32 result (2026-10-11 08:53): the shared exam does NOT help on real BTC, as expected
+18/18 shards finished, no FAIL. `ppo/runs/walkforward_exam/compare_all.json` (48 segments, 2022-03 → 2026-05). Final-population mean:
+
+| arm | Sharpe | exposure | timing |
+|---|---|---|---|
+| buy & hold | **+0.968** | 1.00 | n/a |
+| population | +0.596 | 0.83 | −0.04 |
+| single | +0.410 | 0.59 | −0.05 |
+| coevolution | +0.046 | 0.09 | −0.03 |
+| coevolution_exam | −0.028 | 0.23 | −0.12 |
+
+- exam vs B&H: P 0.990, 0/3 seeds. vs coevolution: P 0.616. vs single: 0.765. vs population: 0.956. It only beats MA crossover (P 0.095).
+- The ordering is again "closest to always-long wins". The exam arm is another exposure setting, with slightly negative timing.
+- This matches the pre-stated expectation. The synthetic advantage (trial 19) does not transfer to real BTC, because there is no signal to exploit (Step 1).
+- **Trial count: 32.**
