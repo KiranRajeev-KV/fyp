@@ -717,3 +717,23 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
 - **59 R4a**, multi-horizon ensemble: r̂ = 4 × mean(r̂₄/4, r̂₈/8, r̂₁₂/12), i.e. the average per-hour forecast scaled to 4h. Decide every 4 bars, λ = 2.
 - **60 R4b**, stricter hurdle: λ = 3.
 - **61 R4c**, looser hurdle: λ = 1.
+
+#### GOAL round 4 results (orx runs 3f51313a / c6ade2a1 / a5ff19c5): no improvement → STOP rule met
+| node | Sharpe | gap | P | 2× | 0× | exposure | turnover |
+|---|---|---|---|---|---|---|---|
+| 59 R4a 4/8/12h ensemble | +1.013 | +0.086 | 0.405 | +0.804 | +1.223 | 0.59 | 4.0 |
+| 60 R4b λ=3 | +0.911 | −0.016 | 0.508 | +0.778 | +1.044 | 0.62 | 2.9 |
+| 61 R4c λ=1 | +0.844 | −0.083 | 0.579 | +0.268 | +1.430 | 0.55 | 10.8 |
+
+## GOAL MODE summary (2026-10-12): goal NOT met. Stopped by the pre-registered rule (rounds 2-4 brought no DEV PASS and no improvement)
+- 12 nodes in 4 rounds (trials 50-61) on the orx tree (project 426c6a4f). **No node reached DEV PASS.**
+- **Best: R1b, trial 51.** Ridge 4h forecast (engine + order flow + positioning) with the cost-aware filter (arXiv 2606.00060).
+  - Sharpe +1.180 vs B&H +0.927, gap +0.253, P 0.220, 21/48 wins. 2× cost +0.901 vs +0.887.
+- **R1b is a local peak in noise, not a robust edge:**
+  - Its neighbours are all at or below B&H: horizon 8/12/24, λ 1/3, ensemble, other features or model. Gaps run from −0.44 to +0.15.
+  - Its gain sits in the two bear folds, so it is the same exposure pattern as before.
+- **The sealed holdout was NOT scored.** The pre-registered rule scores it only for a DEV PASS node, so it stays unused.
+- Trial count: **61**. With this many trials, a P ≈ 0.2 best result is what chance alone produces.
+- **What it does add:**
+  - The first real-BTC rule that is above B&H on dev at both 1× and 2× cost, built on the first features with AUC > 0.55 (order flow + positioning).
+  - This matches the paper's own conclusion: the cost-aware filter restores profitability but does not significantly beat B&H.
