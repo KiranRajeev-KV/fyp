@@ -995,3 +995,10 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - One draw per match (shared by training and scoring).
   - One draw per adversary in the exam (the same for all traders, so pop_regret compares like with like).
   - Unit check: sign balance over 400 draws, and the clip is kept. One-fold smoke test passed.
+- **Trial 78, R13a sign-randomized drift adversary (orx run bb1de42b, about 75 min):**
+  - **Sharpe:** coevolution +1.196 (best 3-seed coevolution), single +1.075, population +1.247, B&H +0.968. At 2× cost, coevolution +1.062. FAIL.
+  - **Gap / P:** vs single +0.121/0.29, vs population −0.051/0.59, vs B&H +0.228/0.20, vs MA +1.051/0.003.
+  - **Reading:** the bias is gone (exposure: coevolution 0.59, population 0.62). Coevolution wins folds 0 and 3 against population and loses folds 2 and 4.
+- **R14a (child of R13a):** env_adversary_frac 1.0, so all of each coevolution match's segments are adversary-chosen; before, half were uniform.
+  - The 0.5 mix was added in R4a to stop a bearish adversary from starving exposure. The zero-mean drift adversary removes that reason.
+  - Launched 04:31. Its result cannot be confirmed on ETH+SOL before the 07:00 deadline.
