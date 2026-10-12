@@ -132,6 +132,7 @@ class EngineConfig:
     # inputs the adversary may shift/rescale in the matches it serves
     # (adversarial domain randomisation against input drift); () = off
     obs_adversary: tuple = ()
+    obs_bound: tuple = ()              # (max |shift|, max |log_scale|) applied; () = genome bounds
 
 
 class CoevolutionEngine:
@@ -722,8 +723,10 @@ class CoevolutionEngine:
         """env kwargs for a match served by adversary `ind` (None = uniform)."""
         if ind is None or not self._obs_idx:
             return self.env_kwargs
+        b = self.cfg.obs_bound or (np.inf, np.inf)
         return {**self.env_kwargs,
-                "obs_affine": (self._obs_idx, ind.shift, float(np.exp(ind.log_scale)))}
+                "obs_affine": (self._obs_idx, float(np.clip(ind.shift, -b[0], b[0])),
+                               float(np.exp(np.clip(ind.log_scale, -b[1], b[1]))))}
 
     def _shared_exam(self):
         """Overwrite match-based fitness with common-ground scores (see shared_exam)."""
