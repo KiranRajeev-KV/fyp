@@ -870,3 +870,12 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
     - rhat72 at q 0.1: +1.44 (gap +0.48, P 0.02).
   - Twelve rules were tried, so these are optimistic. Still, the longer-horizon forecasts carry more timing value than rhat4.
 - **R2a (child of R1b):** R1b + rhat at 4h, 24h and 72h as features, for all arms. The prepare() edit is in the node branch.
+- **Diagnosis after trials 65-66 (why both failed):**
+  - **Training dynamics** (matches.csv, adversary_params.csv; averaged over 18 runs per arm):
+    - Root coevolution: training exposure fell 0.51 → 0.25 by the last 3 generations, with a bear share of 0.33. It had the lowest validation Sharpe of the three arms (0.31, vs population 0.78).
+    - R1b (regret): bear share 0.29 → 0.23, bull share 0.32, exposure 0.47, and the best validation Sharpe of the three arms (0.68), but the worst on test.
+    - No arm reaches validation B&H (1.34).
+  - **Validation does not predict test:** Spearman ρ(final val Sharpe, test Sharpe) = −0.08 over 36 (arm, fold) points, −0.10 within folds. A teacher adversary rewarded on validation gain (patch prepared: `val_gain` + recency descriptor) would learn noise, so it is shelved.
+  - **No timing at all:** exposure in up vs down segments is single 0.56/0.53, population 0.55/0.49, coevolution 0.20/0.18 (root), and the same pattern in R1b. All 48 segments are evaluated deterministically. The policies' best action flips on input noise, so every arm loses heavily in the 28 up segments (gap −0.9 to −2.5) and wins in the 20 down segments.
+  - **Literature:** arXiv 2610.03369 finds that deep-RL trading gains across architectures usually fail to beat seed variance, consistent with the ±0.5 rerun noise seen here.
+  - **Implication:** the arms differ by noise; none learns the signal that simple gates on rhat24/72 show exists. Next lever: a **lean observation** (rhat 4/24/72, volatility_168h, ema50_ema200_ratio, funding_paid) so PPO can learn the gate instead of fitting 31 noisy inputs.
