@@ -818,3 +818,30 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
 - **Reading:** September is consistent with the dev pattern. It earned more per unit of risk in a calm up month at 43% exposure.
   But 1 segment is one data point, and the combined out-of-sample record still loses to B&H, driven by the missed Jul-Aug rallies.
   **No claim changes:** M1b is a dev pass that failed out of sample.
+
+## COEVO V7 GOAL (user-requested 2026-10-12 11:30 IST; runs until 2026-10-13 07:00 IST). Pre-registered before any V7 run
+**User's goal, their words:** keep researching with OpenResearch "until I get confirmed positive findings for coevolution on btc"; do not stop on consecutive fails.
+**User decisions (AskUserQuestion, 2026-10-12):**
+- "Positive" = the coevolution arm beats **single, population, buy & hold AND MA crossover**.
+- Confirmation = **other coins as the test**, since no unseen BTC is left.
+- **The two locked design choices may change:** single-objective Sharpe, and historical-segments-only. Every change is still logged here.
+
+**Contract (`ppo/src/coevo_eval.py`, fixed; nodes vary only `ppo/src/coevo_node.py`):**
+- **Data:** BTC dev = the 6 walk-forward folds, 48 test segments of 720 bars, bars < 2026-05-01 07:00. Per fold: train = the 40,000 bars before the test window, minus a 4,000-bar validation tail; pool stride 168.
+- **Inputs available to a node:** the 19 engine features; order flow (FLOW) and positioning (POS) from `coin_data.py`; a ridge forecast feature `rhat`, cross-fitted on train and purged.
+- **Costs (fixed, the maker model M):**
+  - agent: 0.02% fee + 0.01% slippage per side, plus funding while long;
+  - B&H: **spot**, 0.1% + 0.05%;
+  - MA crossover 20/50: the agent's fee and slippage, no funding.
+- **Scored model:** each arm's `best_trader` per seed, with per-segment Sharpe averaged over seeds.
+- **DEV PASS** = coevolution mean Sharpe > each of single, population, B&H and MA, with paired-bootstrap P ≤ 0.10 vs each of the four, and coevolution > B&H at 2× costs.
+- **CONFIRMED** = a frozen DEV-PASS node, re-trained from scratch with no change on **ETHUSDT and SOLUSDT**. Same calendar folds; SOL folds 0-4 have shorter train windows because of its 2020-08 listing.
+  - Scored **ONCE**, with the 96 segments pooled. It must meet the same rule: > all four, P ≤ 0.10 each, and > B&H at 2×.
+  - If a confirmation fails, the coins are spent. The next confirmation uses **fresh** coins, never re-used: BNBUSDT + XRPUSDT, then ADAUSDT + DOGEUSDT.
+- **ETH/SOL data was downloaded 2026-10-12.** Only load/NaN checks were run on it. No ETH/SOL return, B&H or strategy number has been looked at.
+- **Trial count continues from 64.** Each V7 node = 1 trial, and each confirmation = 1 trial. DSR is reported for any pass.
+- **Smoke test** (1 fold, 1 generation, `smoke` node): plumbing only, not a trial.
+- **Code changes, defaults unchanged:**
+  - `TradingEnv`: `decision_every`, `start_long`, `funding_col`;
+  - `EngineConfig` fields of the same names;
+  - `evaluate_on_segments`: records the per-bar values, so Sharpe stays hourly.

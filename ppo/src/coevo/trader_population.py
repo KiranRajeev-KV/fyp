@@ -172,10 +172,11 @@ def evaluate_on_segments(trader, df, feature_columns, segments, env_kwargs,
         while not done:
             action, _ = trader.model.predict(obs, deterministic=True)
             obs, _, done, _, info = env.step(action)
-            values.append(info["portfolio_value"])
+            bars = info["bar_values"]
+            values.extend(bars)
             trades = info["trade_count"]
-            in_market += 1 if info["btc_held"] > 0 else 0
-            steps += 1
+            in_market += len(bars) if info["btc_held"] > 0 else 0
+            steps += len(bars)
         metrics = summarize(values)
         metrics["exposure"] = float(in_market / steps) if steps else 0.0
         # A trader that never trades holds a flat portfolio, so the return std

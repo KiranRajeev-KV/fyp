@@ -119,6 +119,10 @@ class EngineConfig:
     # one exists; otherwise start fresh. Two overnight shutdowns have killed
     # multi-hour runs; with this, a shutdown costs one generation.
     resume: bool = False
+    # V7 env options (TradingEnv); defaults reproduce the original env
+    decision_every: int = 1            # hold each action for k bars
+    start_long: bool = False           # episodes open fully invested
+    funding_col: str = ""              # df column of perp funding paid per bar ("" = none)
 
 
 class CoevolutionEngine:
@@ -149,6 +153,10 @@ class CoevolutionEngine:
             "slippage": config.slippage,
             "trade_penalty": config.trade_penalty,
         }
+        if config.decision_every != 1 or config.start_long or config.funding_col:
+            self.env_kwargs.update(decision_every=config.decision_every,
+                                   start_long=config.start_long,
+                                   funding_col=config.funding_col or None)
         # entropy-capped hyperparameter bounds (anti-churn); None ent_coef_max
         # keeps the original 0.1 ceiling
         self.bounds = tp.make_bounds(config.ent_coef_max, config.ent_coef_min)
