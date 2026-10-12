@@ -888,3 +888,14 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - Action space: 2 actions, target position (0 = cash, 1 = long). New options `TradingEnv(target_position)` and `EngineConfig.target_position`; eval passes it.
   - Regret adversary kept.
   - funding_paid was left out of the inputs: standardizing it in place would corrupt the funding cost column.
+- **Trial 68, R3a lean obs + target position (orx run 09be3fda, about 54 min):**
+  - **Sharpe:** coevolution +0.612, single +0.743, **population +1.173**, B&H +0.968, MA +0.146. At 2× cost, coevolution +0.435. FAIL.
+  - **Gap / P:** vs single −0.131/0.69, vs population −0.561/1.00, vs B&H −0.356/0.87, vs MA +0.466/0.095.
+  - **Timing appears for the first time** (exposure in up vs down segments): population 0.75/0.57, single 0.68/0.61, coevolution 0.57/0.40. Population beats B&H on dev (by 0.21).
+  - **Why coevolution lags:**
+    - The regret adversary drifted towards bear windows (bear share 0.29 → 0.37).
+    - Coevolution ranks its traders on those served windows: last-3-generation training score 0.32, vs about 1.1 for single and population. So best_trader is the most defensive trader; test exposure is 0.50, vs 0.65-0.67 for single and population.
+- **R4a (child of R3a), coevolution only:**
+  - shared_exam 8: traders are ranked on 8 common uniform windows, and adversaries are credited over all traders.
+  - env_adversary_frac 0.5: half the training windows are uniform.
+  - Both target the selection bias towards defensive traders and the bear-heavy curriculum.
