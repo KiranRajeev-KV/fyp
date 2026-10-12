@@ -908,3 +908,13 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **Noise again:** single, with config identical to R3a, went +0.743 → +1.028.
   - **Lean-setup population so far:** +1.17 (R3a), +1.34 (R4a).
 - **R5a (child of R4a):** env_fitness `regret_bh`, i.e. ref = B&H Sharpe on the window. Cash on a falling window beats the ref, so the adversary is paid only where the trader trails buy-and-hold (missed rallies). Shared exam + frac 0.5 kept.
+- **Trial 70, R5a regret-vs-B&H adversary (orx run 7ee1f53b, about 72 min):**
+  - **Sharpe:** coevolution +1.019, single +0.779, population +1.164, B&H +0.968, MA +0.146. At 2× cost, coevolution +0.930 (B&H +0.968). FAIL.
+  - **Gap / P:** vs single +0.240/0.12, vs population −0.145/0.80, vs B&H +0.051/0.41, vs MA +0.873/0.012.
+  - **What changed:** the curriculum flipped to bull (bull share 0.40, bear 0.22 → 0.14). Coevolution test exposure is 0.70, with the best timing of any arm so far (up/down exposure 0.79/0.58, vs population 0.74/0.64).
+  - **Why it still fails:** coevolution lost the 2022 bear fold, −1.34 vs population −0.77. Both regret references build a direction bias into the curriculum: R4a drifted to bear, R5a to bull.
+  - Population in the lean setup has now scored +1.17, +1.34 and +1.16.
+- **R6a (child of R5a):** PAIRED-style population regret (Dennis et al. 2020), scored in the shared exam.
+  - Adversary fitness = mean over its windows of (best trader's Sharpe − population mean Sharpe).
+  - This rewards windows the traders disagree on, i.e. learnable ones, with no built-in direction bias.
+  - Shared exam 8 + frac 0.5 kept. One-fold smoke test passed.
