@@ -118,6 +118,20 @@ def train_job(job):
     return job, time.time() - t0
 
 
+class SoftVote:
+    """An arm's final population as one policy: argmax of the mean action probabilities."""
+
+    def __init__(self, models):
+        self.models = models
+
+    def predict(self, obs, deterministic=True):
+        import torch
+        with torch.no_grad():
+            p = [m.policy.get_distribution(m.policy.obs_to_tensor(obs)[0]).distribution.probs.numpy()[0]
+                 for m in self.models]
+        return int(np.mean(p, axis=0).argmax()), None
+
+
 def eval_job(job):
     fold, path, mult = job
     import torch
@@ -132,7 +146,12 @@ def eval_job(job):
           "decision_every": CFG.get("engine", {}).get("decision_every", 1),
           "start_long": CFG.get("engine", {}).get("start_long", False),
           "target_position": CFG.get("engine", {}).get("target_position", False)}
-    _, rows = evaluate_on_segments(SimpleNamespace(model=PPO.load(path, device="cpu")), test, FEATS, segs, kw)
+    if CFG.get("score") == "vote":       # the seed's final population votes (single: 1 trader)
+        d = os.path.join(os.path.dirname(path), "final_traders")
+        model = SoftVote([PPO.load(os.path.join(d, f), device="cpu") for f in sorted(os.listdir(d)) if f.endswith(".zip")])
+    else:
+        model = PPO.load(path, device="cpu")
+    _, rows = evaluate_on_segments(SimpleNamespace(model=model), test, FEATS, segs, kw)
     return job, [(r["sharpe"], r["exposure"]) for r in rows]
 
 

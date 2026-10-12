@@ -1,7 +1,7 @@
 """The ONE file an orx node varies (COEVO V7 GOAL). coevo_eval.py is fixed."""
 
 CONFIG = {
-    "name": "r8a-adversarial-forecast-shift",
+    "name": "r10a-population-soft-vote", "score": "vote",
     "seeds": [42, 43, 44],
     "flow_pos": True,          # add order-flow + positioning features
     "features": ["volatility_168h", "ema50_ema200_ratio"],   # explicit inputs (overrides the above)
