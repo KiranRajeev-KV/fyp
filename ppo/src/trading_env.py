@@ -35,6 +35,7 @@ class TradingEnv(gym.Env):
         decision_every=1,
         start_long=False,
         funding_col=None,
+        target_position=False,
     ):
 
         super().__init__()
@@ -55,6 +56,7 @@ class TradingEnv(gym.Env):
         #   start_long     -- each episode opens fully invested (entry cost charged)
         #   funding_col    -- per-bar perp funding paid while long (df column),
         #                     deducted from the position every bar held
+        #   target_position -- 2 actions: 0 = be in cash, 1 = be long
         self.decision_every = decision_every
         self.start_long = start_long
         self._funding = (self.df[funding_col].astype(float).values
@@ -63,7 +65,8 @@ class TradingEnv(gym.Env):
         self._close = self.df["close"].astype(float).values
         self._features = self.df[feature_columns].values.astype(np.float32)
 
-        self.action_space = spaces.Discrete(3)
+        self.target_position = target_position
+        self.action_space = spaces.Discrete(2 if target_position else 3)
 
         obs_size = len(feature_columns) + 3
         self.observation_space = spaces.Box(
@@ -127,6 +130,9 @@ class TradingEnv(gym.Env):
         return obs
 
     def step(self, action):
+
+        if self.target_position:
+            action = 1 if action == 1 else 2      # long -> buy, cash -> sell (no-ops if already there)
 
         current_price = self._close[self.current_step]
 

@@ -69,7 +69,7 @@ def prepare(sym, cfg):
     from build_features import FEATURE_COLUMNS
     df = load_coin(sym)
     wins = fold_windows(df)
-    cols = list(FEATURE_COLUMNS) + (FLOW + POS if cfg.get("flow_pos", True) else [])
+    cols = cfg.get("features") or list(FEATURE_COLUMNS) + (FLOW + POS if cfg.get("flow_pos", True) else [])
     # rhat: one horizon (feature "rhat") or a list of horizons (features "rhat<h>")
     hs = cfg.get("rhat") or []
     names = {hs: "rhat"} if isinstance(hs, int) else {h: f"rhat{h}" for h in hs}
@@ -130,7 +130,8 @@ def eval_job(job):
     kw = {"initial_balance": 10000.0, "trading_fee": AGENT_FEE * mult, "slippage": AGENT_SLIP * mult,
           "trade_penalty": 0.0, "funding_col": "funding_paid",
           "decision_every": CFG.get("engine", {}).get("decision_every", 1),
-          "start_long": CFG.get("engine", {}).get("start_long", False)}
+          "start_long": CFG.get("engine", {}).get("start_long", False),
+          "target_position": CFG.get("engine", {}).get("target_position", False)}
     _, rows = evaluate_on_segments(SimpleNamespace(model=PPO.load(path, device="cpu")), test, FEATS, segs, kw)
     return job, [(r["sharpe"], r["exposure"]) for r in rows]
 

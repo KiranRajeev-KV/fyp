@@ -123,6 +123,7 @@ class EngineConfig:
     decision_every: int = 1            # hold each action for k bars
     start_long: bool = False           # episodes open fully invested
     funding_col: str = ""              # df column of perp funding paid per bar ("" = none)
+    target_position: bool = False      # 2 actions: cash / long
 
 
 class CoevolutionEngine:
@@ -153,6 +154,8 @@ class CoevolutionEngine:
             "slippage": config.slippage,
             "trade_penalty": config.trade_penalty,
         }
+        if config.target_position:
+            self.env_kwargs["target_position"] = True
         if config.decision_every != 1 or config.start_long or config.funding_col:
             self.env_kwargs.update(decision_every=config.decision_every,
                                    start_long=config.start_long,
