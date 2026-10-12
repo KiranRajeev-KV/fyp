@@ -111,6 +111,8 @@ class EngineConfig:
     #                 trader's score: "where does the trader do worse than a
     #                 trivial policy?". Unbounded, and it moves as the trader
     #                 learns instead of terminating.
+    #   regret_bh  -- regret against buy & hold alone: cash on a falling window
+    #                 beats the reference, so only missed rallies pay.
     env_fitness: str = "neg_sharpe"
     # Refuse to start in an out_dir that already holds a populated
     # generations.csv (a relaunch destroyed the V4 ledgers). True = overwrite.
@@ -202,20 +204,21 @@ class CoevolutionEngine:
 
         if config.segment_sampling not in ("uniform", "regime_balanced"):
             raise ValueError(f"unknown segment_sampling {config.segment_sampling!r}")
-        if config.env_fitness not in ("neg_sharpe", "regret"):
+        if config.env_fitness not in ("neg_sharpe", "regret", "regret_bh"):
             raise ValueError(f"unknown env_fitness {config.env_fitness!r}")
         # regret reference per pool segment: the best trivial policy's score
         # (cash = 0, buy & hold, MA-crossover) under the same fee model
         self._ref_by_start = {}
-        if config.env_fitness == "regret" and self.env_pop is not None:
+        if config.env_fitness in ("regret", "regret_bh") and self.env_pop is not None:
             for sg in pool.segments:
                 seg_df = pool.slice(sg)
                 bh = summarize(buy_and_hold(
                     seg_df, config.initial_balance, config.trading_fee, config.slippage))
                 ma = summarize(ma_crossover(
                     seg_df, config.initial_balance, config.trading_fee, slippage=config.slippage))
-                self._ref_by_start[sg.start] = max(
-                    0.0, bh[config.fitness_metric], ma[config.fitness_metric])
+                self._ref_by_start[sg.start] = (
+                    bh[config.fitness_metric] if config.env_fitness == "regret_bh"
+                    else max(0.0, bh[config.fitness_metric], ma[config.fitness_metric]))
 
         # which regime each segment belongs to, so the curriculum the adversary
         # actually served can be logged (not just the genome that chose it)
@@ -725,7 +728,7 @@ class CoevolutionEngine:
 
     def _adversary_score(self, segs, per_seg, score):
         """What the adversary earns for a match it served (higher = harder)."""
-        if self.cfg.env_fitness == "regret":
+        if self.cfg.env_fitness in ("regret", "regret_bh"):
             return float(np.mean([
                 self._ref_by_start[st] - m[self.cfg.fitness_metric]
                 for (st, _), m in zip(segs, per_seg)
