@@ -899,3 +899,12 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - shared_exam 8: traders are ranked on 8 common uniform windows, and adversaries are credited over all traders.
   - env_adversary_frac 0.5: half the training windows are uniform.
   - Both target the selection bias towards defensive traders and the bear-heavy curriculum.
+- **Trial 69, R4a coevolution shared exam + mixed curriculum (orx run f5cbeb3f, about 73 min):**
+  - **Sharpe:** coevolution +1.064, single +1.028, population +1.337, B&H +0.968, MA +0.146. At 2× cost, coevolution +0.878 (B&H +0.968). FAIL.
+  - **Gap / P:** vs single +0.036/0.43, vs population −0.273/0.89, vs B&H +0.096/0.38, vs MA +0.918/0.015.
+  - **Why coevolution still trails population:**
+    - Test exposure 0.46 vs 0.61; up/down exposure: coevolution 0.52/0.37, population 0.67/0.53.
+    - The adversary still drifts to bear (bear share 0.27 → 0.34). With ref = max(0, B&H, MA), a falling window has ref ≥ 0, so any exposure there counts as regret.
+  - **Noise again:** single, with config identical to R3a, went +0.743 → +1.028.
+  - **Lean-setup population so far:** +1.17 (R3a), +1.34 (R4a).
+- **R5a (child of R4a):** env_fitness `regret_bh`, i.e. ref = B&H Sharpe on the window. Cash on a falling window beats the ref, so the adversary is paid only where the trader trails buy-and-hold (missed rallies). Shared exam + frac 0.5 kept.
