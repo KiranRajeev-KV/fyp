@@ -967,3 +967,19 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
     - Timing: coevolution 0.23, population 0.12.
 - **Diagnosis:** in R8a/R10a, traders train half the time under adversarial input shifts. But PBT exploitation and best_trader selection rank them on an unperturbed exam, so selection throws away the robustness that training built.
 - **R11a (child of R10a):** competitive-coevolution trader fitness = 0.5 × unperturbed exam + 0.5 × the trader's mean score against the adversary population. That score uses the adversaries' windows and perturbations, is already computed in the exam, and costs nothing extra. Coevolution only; vote scoring kept. Smoke test on 1 fold passed.
+- **Trial 76, R11a traders scored against adversaries (orx run 774042bf, about 83 min):**
+  - **Sharpe:** coevolution +0.913, single +1.040, population +0.886, B&H +0.968. FAIL.
+  - **Gap / P:** vs population +0.027/0.43, vs single −0.127/0.71, vs B&H −0.055/0.64.
+  - **Timing:** coevolution timing fell from 0.23 to 0.01. Selecting traders partly on their scores under the adversaries' perturbations rewards coping with off-distribution inputs, not timing.
+- **Diagnosis, do adversaries fall off?** (R6a and R8a, 18 coevolution runs each). No.
+  - **They keep improving:**
+    - Evolved adversaries beat the fresh random ones each generation, and the gap widens. R8a elite score goes 2.4 → 3.9 while fresh adversaries go 2.5 → 1.4.
+    - Elites rank in the 73rd percentile late (fresh: 29th).
+    - Elite repeat-score Spearman ρ = 0.55 (R6a 0.44).
+    - Genome diversity holds steady (weight std 0.54 → 0.87).
+  - **R6a fades mildly:** its pop_regret drops 2.7 → 2.0 as the traders converge.
+  - **But in R8a they win by going off-distribution:**
+    - The top adversary's shift reaches −1.25 sd, with log-scale −0.47. Late |shift| is 1.37 for the top adversary vs 0.51 for fresh ones.
+    - Traders disagree there because they extrapolate differently. This is PAIRED's unrealistic-environment failure.
+  - **They do not shape the traders:** policy disagreement falls 0.48 → 0.19 in coevolution and 0.50 → 0.22 in population. The convergence comes from PBT, not from the adversary.
+- **R12a (child of R10a):** R8a config with vote scoring. The applied perturbation is clipped to the observed train→test drift range: |shift| ≤ 0.75 sd, |log_scale| ≤ 0.4. Unit check of the clip passed. This is the last node that can still be confirmed on ETH+SOL before 07:00.
