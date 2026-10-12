@@ -132,6 +132,7 @@ class EngineConfig:
     # inputs the adversary may shift/rescale in the matches it serves
     # (adversarial domain randomisation against input drift); () = off
     obs_adversary: tuple = ()
+    obs_sign_random: bool = False      # random sign per served match / exam eval (zero-mean drift)
     obs_bound: tuple = ()              # (max |shift|, max |log_scale|) applied; () = genome bounds
 
 
@@ -654,13 +655,14 @@ class CoevolutionEngine:
             for m_idx, oi in enumerate(opponent_idx):
                 opp = self.env_pop[oi] if oi is not None else None
                 segs, k_adv = self._match_segments(opp, cfg.segments_per_match)
+                kw = self._kw(opp)                   # one perturbation draw per match
                 tp.train_on_segments(
                     trader, self.pool.df, self.feature_columns, segs,
-                    self._kw(opp), cfg.timesteps_per_match,
+                    kw, cfg.timesteps_per_match,
                 )
                 score, per_seg = tp.evaluate_on_segments(
                     trader, self.pool.df, self.feature_columns, segs,
-                    self._kw(opp), cfg.fitness_metric,
+                    kw, cfg.fitness_metric,
                 )
                 no_trade = [m["no_trade"] for m in per_seg]
                 trader.record(score, float(np.mean(no_trade)))
@@ -724,8 +726,11 @@ class CoevolutionEngine:
         if ind is None or not self._obs_idx:
             return self.env_kwargs
         b = self.cfg.obs_bound or (np.inf, np.inf)
+        shift = float(np.clip(ind.shift, -b[0], b[0]))
+        if self.cfg.obs_sign_random:                 # adversary sets the size, the sign is a coin flip
+            shift = abs(shift) * self.rng.choice([-1.0, 1.0])
         return {**self.env_kwargs,
-                "obs_affine": (self._obs_idx, float(np.clip(ind.shift, -b[0], b[0])),
+                "obs_affine": (self._obs_idx, shift,
                                float(np.exp(np.clip(ind.log_scale, -b[1], b[1]))))}
 
     def _shared_exam(self):
@@ -739,10 +744,11 @@ class CoevolutionEngine:
         for ind in self.env_pop or []:
             segs = ind.select_segments(self.pool, cfg.segments_per_match, self.rng)
             scores, per_trader = [], []
+            kw = self._kw(ind)                       # same perturbation for every trader
             for t in self.traders:
                 score, per_seg = tp.evaluate_on_segments(
                     t, self.pool.df, self.feature_columns, segs,
-                    self._kw(ind), cfg.fitness_metric)
+                    kw, cfg.fitness_metric)
                 per_trader.append([m[cfg.fitness_metric] for m in per_seg])
                 if cfg.env_fitness != "pop_regret":
                     scores.append(self._adversary_score(segs, per_seg, score))

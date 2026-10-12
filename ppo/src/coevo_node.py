@@ -1,7 +1,7 @@
 """The ONE file an orx node varies (COEVO V7 GOAL). coevo_eval.py is fixed."""
 
 CONFIG = {
-    "name": "r12a-realistic-range-adversary", "score": "vote",
+    "name": "r13a-sign-randomised-drift", "score": "vote",
     "seeds": [42, 43, 44],
     "flow_pos": True,          # add order-flow + positioning features
     "features": ["volatility_168h", "ema50_ema200_ratio"],   # explicit inputs (overrides the above)
@@ -14,5 +14,5 @@ CONFIG = {
         "trade_penalty": 0.0, "decision_every": 4, "start_long": True, "target_position": True,
     },
     "arm_overrides": {"coevolution": {"env_fitness": "pop_regret", "shared_exam": 8, "env_adversary_frac": 0.5,
-                                      "obs_bound": (0.75, 0.4), "obs_adversary": ["rhat4", "rhat24", "rhat72"]}},
+                                      "obs_bound": (0.75, 0.4), "obs_sign_random": True, "obs_adversary": ["rhat4", "rhat24", "rhat72"]}},
 }
