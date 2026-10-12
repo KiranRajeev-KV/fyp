@@ -953,3 +953,17 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
     - PPO BTC policy gains come mainly from lower turnover (2609.12536).
     - The simple rhat24/72 gates that reach 1.44-1.50 act on regime-scale signal.
 - **R9a (child of R8a):** R8a with decision_every 24 for all arms. That gives 30 decisions per episode and about 136 episodes per match at the same step budget.
+- **Trial 74, R9a daily decisions (orx run 1fd7d013, about 57 min):**
+  - **Sharpe:** coevolution +0.483, single +0.823, population +0.763, B&H +0.968, MA +0.146. FAIL.
+  - **Why:** every arm lost the bull folds 1 and 2 (coevolution 0.81 and 1.87, against B&H 2.02 and 3.23). A wrong daily "flat" gives up a whole day of a rally. Reverted to 4h decisions.
+- **Trial 75, R10a population soft vote (orx run 54f68243, eval only):**
+  - **Setup:** R8a's trained models (symlinked, identical config), scored by the soft vote (mean action probabilities) of each seed's 6 final traders. Same rule for all arms; single has 1 trader. Unit check: a one-model vote equals PPO.predict on 500 observations.
+  - **Sharpe:** coevolution +1.160, single +0.634, population +1.193, B&H +0.968. At 2× cost, coevolution +1.025 (B&H +0.968). FAIL.
+  - **Gap / P:** vs single +0.527/0.013, vs population −0.033/0.56, vs B&H +0.193/0.22, vs MA +1.015/0.006.
+  - **Reading:** voting lifts both population arms a little but leaves the tie.
+  - **Per fold, coevolution vs population:**
+    - Coevolution wins the bear folds: fold 0 −0.28 vs −0.92.
+    - It loses bull fold 4 (0.94 vs 1.26).
+    - Timing: coevolution 0.23, population 0.12.
+- **Diagnosis:** in R8a/R10a, traders train half the time under adversarial input shifts. But PBT exploitation and best_trader selection rank them on an unperturbed exam, so selection throws away the robustness that training built.
+- **R11a (child of R10a):** competitive-coevolution trader fitness = 0.5 × unperturbed exam + 0.5 × the trader's mean score against the adversary population. That score uses the adversaries' windows and perturbations, is already computed in the exam, and costs nothing extra. Coevolution only; vote scoring kept. Smoke test on 1 fold passed.
