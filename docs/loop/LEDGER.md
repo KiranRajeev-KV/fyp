@@ -845,3 +845,14 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - `TradingEnv`: `decision_every`, `start_long`, `funding_col`;
   - `EngineConfig` fields of the same names;
   - `evaluate_on_segments`: records the per-bar values, so Sharpe stays hourly.
+
+### V7 orx project `fyp-coevo7` (id 2d90d0f2), worktree `../fyp-coevo`, branches `orx/*`
+- Smoke + timing runs: plumbing only; their output dirs were deleted.
+- **Trial 65, V7-0 informed baseline (root, orx run 6b925faf, 61 min):**
+  - **Setup:** 12 generations, 6 traders, 3 seeds; inputs = 19 engine features + FLOW + POS + rhat(4h); 4h decisions; episodes start long.
+  - **Sharpe (48 segments):** coevolution +0.283, single +0.241, population +0.351, B&H +0.968, MA +0.146. At 2× cost, coevolution −0.135. FAIL.
+  - **Exposure:** coevolution 0.19, single 0.55, population 0.52. Timing is ≈ 0 for every arm (0.02-0.06): no arm uses the forecast.
+  - **Gap to B&H per fold:** +1.42, −0.80, −3.14, −1.91, +0.33, −0.01.
+- **Round R1 (children of the root): the adversary's strength and objective.**
+  - **R1a:** env_adversary_frac 0.5. **R1b:** regret objective. **R1c:** shared exam 8.
+  - Order: R1b first, because it targets the missed-rally failure.
