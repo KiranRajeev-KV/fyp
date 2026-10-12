@@ -113,6 +113,9 @@ class EngineConfig:
     #                 learns instead of terminating.
     #   regret_bh  -- regret against buy & hold alone: cash on a falling window
     #                 beats the reference, so only missed rallies pay.
+    #   pop_regret -- PAIRED-style (needs shared_exam): on each served window,
+    #                 best trader's score minus the population mean; rewards
+    #                 windows the traders disagree on, i.e. learnable ones.
     env_fitness: str = "neg_sharpe"
     # Refuse to start in an out_dir that already holds a populated
     # generations.csv (a relaunch destroyed the V4 ledgers). True = overwrite.
@@ -204,8 +207,10 @@ class CoevolutionEngine:
 
         if config.segment_sampling not in ("uniform", "regime_balanced"):
             raise ValueError(f"unknown segment_sampling {config.segment_sampling!r}")
-        if config.env_fitness not in ("neg_sharpe", "regret", "regret_bh"):
+        if config.env_fitness not in ("neg_sharpe", "regret", "regret_bh", "pop_regret"):
             raise ValueError(f"unknown env_fitness {config.env_fitness!r}")
+        if config.env_fitness == "pop_regret" and not config.shared_exam:
+            raise ValueError("pop_regret is scored in the shared exam: set shared_exam > 0")
         # regret reference per pool segment: the best trivial policy's score
         # (cash = 0, buy & hold, MA-crossover) under the same fee model
         self._ref_by_start = {}
@@ -718,12 +723,17 @@ class CoevolutionEngine:
                 self.env_kwargs, cfg.fitness_metric)
         for ind in self.env_pop or []:
             segs = ind.select_segments(self.pool, cfg.segments_per_match, self.rng)
-            scores = []
+            scores, per_trader = [], []
             for t in self.traders:
                 score, per_seg = tp.evaluate_on_segments(
                     t, self.pool.df, self.feature_columns, segs,
                     self.env_kwargs, cfg.fitness_metric)
-                scores.append(self._adversary_score(segs, per_seg, score))
+                per_trader.append([m[cfg.fitness_metric] for m in per_seg])
+                if cfg.env_fitness != "pop_regret":
+                    scores.append(self._adversary_score(segs, per_seg, score))
+            if cfg.env_fitness == "pop_regret":
+                S = np.array(per_trader)                     # traders x windows
+                scores = list(S.max(axis=0) - S.mean(axis=0))
             ind.raw_fitness, ind.evaluated = float(np.mean(scores)), True
 
     def _adversary_score(self, segs, per_seg, score):

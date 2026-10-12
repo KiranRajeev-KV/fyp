@@ -1,7 +1,7 @@
 """The ONE file an orx node varies (COEVO V7 GOAL). coevo_eval.py is fixed."""
 
 CONFIG = {
-    "name": "r5a-regret-bh-adversary",
+    "name": "r6a-paired-pop-regret",
     "seeds": [42, 43, 44],
     "flow_pos": True,          # add order-flow + positioning features
     "features": ["volatility_168h", "ema50_ema200_ratio"],   # explicit inputs (overrides the above)
@@ -13,5 +13,5 @@ CONFIG = {
         "env_fresh_frac": 0.25, "env_weight_sigma": 0.7, "env_temp_sigma": 0.35,
         "trade_penalty": 0.0, "decision_every": 4, "start_long": True, "target_position": True,
     },
-    "arm_overrides": {"coevolution": {"env_fitness": "regret_bh", "shared_exam": 8, "env_adversary_frac": 0.5}},
+    "arm_overrides": {"coevolution": {"env_fitness": "pop_regret", "shared_exam": 8, "env_adversary_frac": 0.5}},
 }
