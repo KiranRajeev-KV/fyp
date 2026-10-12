@@ -927,3 +927,17 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
     - The comparators swing by about ±0.3 run to run at 3 seeds on near-identical configs: single 0.74 / 1.03 / 0.78 / 1.36, population 1.17 / 1.34 / 1.16 / 0.86.
     - The binding constraint is now comparator noise, not the method.
 - **R7a (child of R6a):** R6a unchanged except seeds 42-47 for all arms (noise down by about √2). About 2.5 h. If it passes, the ETH+SOL confirmations also run at 6 seeds, about 2.5 h each.
+- **Trial 72, R7a = R6a with 6 seeds (orx run 87e0bb6a, about 155 min):**
+  - **Sharpe:** coevolution +1.065, single +1.156, population +1.226, B&H +0.968, MA +0.146. At 2× cost, coevolution +0.865. FAIL.
+  - **Gap / P:** vs single −0.090/0.72, vs population −0.161/0.92, vs B&H +0.098/0.32, vs MA +0.920/0.007.
+  - **Reading:** with less noise, all three arms sit at about 1.1-1.2, above B&H, and the adversary adds nothing. R6a's lead over population was noise.
+- **Diagnosis, input drift:** standardized rhat24/rhat72 means (sd) on pool vs val vs test per fold. Examples:
+  - fold 0 test rhat72 −0.72 (2.35);
+  - fold 1 test −0.86 (1.10), with val +1.35 (1.76);
+  - fold 3 val −1.66.
+  
+  The forecast features move by 0.3-1.7 sd and change scale between train and test (cross-fitted train predictions vs full-fit test predictions, plus regime change). Every arm's learned threshold is therefore miscalibrated on test, and no arm can separate.
+- **R8a (child of R6a, 3 seeds):** coevolution-only adversarial domain randomization (RARL-style).
+  - Each adversary also carries a shift (±2 sd) and a log-scale (±1). These are applied to rhat4/24/72 in the matches it serves and in its shared-exam evaluation.
+  - Fitness is pop_regret under its perturbation. Trader ranking (exam) and test use unperturbed inputs.
+  - Unit check (affine applied to the chosen columns only) and a one-fold smoke test passed.
