@@ -941,3 +941,15 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - Each adversary also carries a shift (±2 sd) and a log-scale (±1). These are applied to rhat4/24/72 in the matches it serves and in its shared-exam evaluation.
   - Fitness is pop_regret under its perturbation. Trader ranking (exam) and test use unperturbed inputs.
   - Unit check (affine applied to the chosen columns only) and a one-fold smoke test passed.
+- **Trial 73, R8a adversarial forecast shift (orx run f972af13, about 75 min):**
+  - **Sharpe:** coevolution +1.105, single +0.634, population +1.184, B&H +0.968, MA +0.146. At 2× cost, coevolution +0.949 (B&H +0.968). FAIL.
+  - **Gap / P:** vs single +0.471/0.016, vs population −0.079/0.65, vs B&H +0.137/0.30, vs MA +0.959/0.010.
+  - **Behaviour:**
+    - Coevolution has the best timing of any run so far: up-minus-down exposure 0.20 (single 0.07, population 0.12).
+    - The evolved shift drifts negative in every fold (−0.6 to −1.3 sd by the last generation), and log-scale goes to −0.2 to −0.7. The adversary makes forecasts look bearish and compressed.
+  - **Diagnosis:**
+    - Single and population configs have been identical since R6a, yet single scored 1.36 / 1.16 / 0.63. The comparators carry ±0.4 rerun noise.
+    - Better timing did not turn into Sharpe. With 4h decisions an episode has 180 decisions, most of them reward-equivalent holds. This is signal dilution (arXiv 2606.22164).
+    - PPO BTC policy gains come mainly from lower turnover (2609.12536).
+    - The simple rhat24/72 gates that reach 1.44-1.50 act on regime-scale signal.
+- **R9a (child of R8a):** R8a with decision_every 24 for all arms. That gives 30 decisions per episode and about 136 episodes per match at the same step budget.
