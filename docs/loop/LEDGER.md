@@ -856,3 +856,17 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
 - **Round R1 (children of the root): the adversary's strength and objective.**
   - **R1a:** env_adversary_frac 0.5. **R1b:** regret objective. **R1c:** shared exam 8.
   - Order: R1b first, because it targets the missed-rally failure.
+- **Trial 66, R1b regret adversary (orx run 48687b9a, 62 min):**
+  - **Sharpe:** coevolution +0.333, single +0.745, population +0.830, B&H +0.968, MA +0.146. At 2× cost, coevolution −0.015. FAIL.
+  - **Gap / P:** vs single −0.412/0.93, vs population −0.498/0.98, vs B&H −0.635/0.99, vs MA +0.187/0.32.
+  - **Exposure:** coevolution 0.41 (root 0.19), single 0.52, population 0.58. The regret objective lifts exposure but not Sharpe.
+  - **Run-to-run noise:** single and population had config and seeds identical to the root, yet single moved from +0.241 to +0.745 and population from +0.351 to +0.830. Training is not bit-deterministic, so arm means carry about ±0.5 Sharpe of rerun noise at 3 seeds. A dev pass can be a fluke; the ETH+SOL confirmation is the guard.
+- **Feasibility check (not a trial; rules applied directly to dev, agent cost model):**
+  - Perp always-long: +0.812, below B&H +0.968, because funding costs about 0.16.
+  - Vol targeting: +0.56 to +0.66.
+  - Gate "long if rhat > train quantile q", 4h decisions:
+    - rhat4: +0.98 to +1.10;
+    - rhat24: up to +1.50 (gap +0.53, P 0.12);
+    - rhat72 at q 0.1: +1.44 (gap +0.48, P 0.02).
+  - Twelve rules were tried, so these are optimistic. Still, the longer-horizon forecasts carry more timing value than rhat4.
+- **R2a (child of R1b):** R1b + rhat at 4h, 24h and 72h as features, for all arms. The prepare() edit is in the node branch.
