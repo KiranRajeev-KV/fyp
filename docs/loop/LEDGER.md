@@ -983,3 +983,15 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
     - Traders disagree there because they extrapolate differently. This is PAIRED's unrealistic-environment failure.
   - **They do not shape the traders:** policy disagreement falls 0.48 → 0.19 in coevolution and 0.50 → 0.22 in population. The convergence comes from PBT, not from the adversary.
 - **R12a (child of R10a):** R8a config with vote scoring. The applied perturbation is clipped to the observed train→test drift range: |shift| ≤ 0.75 sd, |log_scale| ≤ 0.4. Unit check of the clip passed. This is the last node that can still be confirmed on ETH+SOL before 07:00.
+- **Trial 77, R12a realistic-range adversary (orx run 73f929f6, about 74 min):**
+  - **Sharpe:** coevolution +1.109, single +1.017, population +1.206, B&H +0.968. At 2× cost, coevolution +0.993. FAIL.
+  - **Gap / P:** vs single +0.092/0.36, vs population −0.098/0.77, vs B&H +0.141/0.20, vs MA +0.963/0.005.
+  - **Diagnosis:**
+    - 70% of the late top-3 adversaries sit at the −0.75 bound (genome mean −1.04). The adversary is effectively a constant bearish bias on rhat.
+    - Traders fit their thresholds to down-shifted inputs. On test the forecasts look relatively high, so coevolution has the highest exposure (0.75 vs population 0.69).
+    - It loses the bear fold 5: +0.04 vs population +0.48.
+  - **Coevolution minus population, trials 66-77:** −0.50, −0.15, −0.56, −0.27, −0.15, +0.28, −0.16, −0.08, −0.28, −0.03, +0.03, −0.10. Mean about −0.16, so on BTC dev coevolution sits consistently at or below population.
+- **R13a (child of R12a):** the adversary sets the drift size (|shift| ≤ 0.75, log-scale ≤ 0.4) and the sign is drawn at random. That makes it zero-mean domain randomization.
+  - One draw per match (shared by training and scoring).
+  - One draw per adversary in the exam (the same for all traders, so pop_regret compares like with like).
+  - Unit check: sign balance over 400 draws, and the clip is kept. One-fold smoke test passed.
