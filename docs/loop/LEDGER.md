@@ -918,3 +918,12 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - Adversary fitness = mean over its windows of (best trader's Sharpe − population mean Sharpe).
   - This rewards windows the traders disagree on, i.e. learnable ones, with no built-in direction bias.
   - Shared exam 8 + frac 0.5 kept. One-fold smoke test passed.
+- **Trial 71, R6a PAIRED population-regret adversary (orx run bd431a01, about 78 min):**
+  - **Sharpe:** coevolution **+1.139** (best coevolution so far), single +1.355, population +0.856, B&H +0.968, MA +0.146. At 2× cost, coevolution +0.986 (B&H +0.968). FAIL (single).
+  - **Gap / P:** vs single −0.216/0.86, vs population +0.283/0.15, vs B&H +0.171/0.18, vs MA +0.993/0.007.
+  - **Behaviour:** the curriculum is balanced (bear share 0.27 → 0.29, bull 0.32). Coevolution up/down exposure 0.74/0.62.
+  - **Diagnosis:**
+    - Coevolution in the lean setup is improving with the adversary design: +0.61 → +1.06 → +1.02 → +1.14.
+    - The comparators swing by about ±0.3 run to run at 3 seeds on near-identical configs: single 0.74 / 1.03 / 0.78 / 1.36, population 1.17 / 1.34 / 1.16 / 0.86.
+    - The binding constraint is now comparator noise, not the method.
+- **R7a (child of R6a):** R6a unchanged except seeds 42-47 for all arms (noise down by about √2). About 2.5 h. If it passes, the ETH+SOL confirmations also run at 6 seeds, about 2.5 h each.
