@@ -36,6 +36,7 @@ class TradingEnv(gym.Env):
         start_long=False,
         funding_col=None,
         target_position=False,
+        obs_affine=None,
     ):
 
         super().__init__()
@@ -64,6 +65,9 @@ class TradingEnv(gym.Env):
 
         self._close = self.df["close"].astype(float).values
         self._features = self.df[feature_columns].values.astype(np.float32)
+        if obs_affine is not None:     # (column indices, shift, scale) set by the adversary
+            idx, shift, scale = obs_affine
+            self._features[:, idx] = self._features[:, idx] * scale + shift
 
         self.target_position = target_position
         self.action_space = spaces.Discrete(2 if target_position else 3)

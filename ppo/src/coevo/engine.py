@@ -129,6 +129,9 @@ class EngineConfig:
     start_long: bool = False           # episodes open fully invested
     funding_col: str = ""              # df column of perp funding paid per bar ("" = none)
     target_position: bool = False      # 2 actions: cash / long
+    # inputs the adversary may shift/rescale in the matches it serves
+    # (adversarial domain randomisation against input drift); () = off
+    obs_adversary: tuple = ()
 
 
 class CoevolutionEngine:
@@ -161,6 +164,7 @@ class CoevolutionEngine:
         }
         if config.target_position:
             self.env_kwargs["target_position"] = True
+        self._obs_idx = [list(feature_columns).index(c) for c in config.obs_adversary]
         if config.decision_every != 1 or config.start_long or config.funding_col:
             self.env_kwargs.update(decision_every=config.decision_every,
                                    start_long=config.start_long,
@@ -328,7 +332,7 @@ class CoevolutionEngine:
         self.env_log_path = os.path.join(out_dir, "adversary_params.csv")
         self._env_log_fields = (
             ["generation", "env_id", "rank", "raw_fitness", "shared_fitness",
-             "niche", "temperature", "selection_entropy", "evaluated",
+             "niche", "temperature", "shift", "log_scale", "selection_entropy", "evaluated",
              "n_matches", "weight_norm",
              "frac_bear", "frac_bull", "frac_sideways"]
             + [f"w_{name}" for name in DESCRIPTOR_NAMES]
@@ -553,6 +557,7 @@ class CoevolutionEngine:
                 "shared_fitness": ind.fitness,
                 "niche": ind.niche,
                 "temperature": ind.temperature,
+                "shift": ind.shift, "log_scale": ind.log_scale,
                 "selection_entropy": ind.selection_entropy(dm),
                 # False => never drawn as an opponent, so raw_fitness 0.0 is a
                 # placeholder, not a measurement; excluded from elites/parents
@@ -650,11 +655,11 @@ class CoevolutionEngine:
                 segs, k_adv = self._match_segments(opp, cfg.segments_per_match)
                 tp.train_on_segments(
                     trader, self.pool.df, self.feature_columns, segs,
-                    self.env_kwargs, cfg.timesteps_per_match,
+                    self._kw(opp), cfg.timesteps_per_match,
                 )
                 score, per_seg = tp.evaluate_on_segments(
                     trader, self.pool.df, self.feature_columns, segs,
-                    self.env_kwargs, cfg.fitness_metric,
+                    self._kw(opp), cfg.fitness_metric,
                 )
                 no_trade = [m["no_trade"] for m in per_seg]
                 trader.record(score, float(np.mean(no_trade)))
@@ -709,9 +714,16 @@ class CoevolutionEngine:
                     segs = ind.select_segments(self.pool, cfg.segments_per_match, self.rng)
                     score, per_seg = tp.evaluate_on_segments(
                         shell, self.pool.df, self.feature_columns, segs,
-                        self.env_kwargs, cfg.fitness_metric,
+                        self._kw(ind), cfg.fitness_metric,
                     )
                     ind.record(self._adversary_score(segs, per_seg, score))
+
+    def _kw(self, ind):
+        """env kwargs for a match served by adversary `ind` (None = uniform)."""
+        if ind is None or not self._obs_idx:
+            return self.env_kwargs
+        return {**self.env_kwargs,
+                "obs_affine": (self._obs_idx, ind.shift, float(np.exp(ind.log_scale)))}
 
     def _shared_exam(self):
         """Overwrite match-based fitness with common-ground scores (see shared_exam)."""
@@ -727,7 +739,7 @@ class CoevolutionEngine:
             for t in self.traders:
                 score, per_seg = tp.evaluate_on_segments(
                     t, self.pool.df, self.feature_columns, segs,
-                    self.env_kwargs, cfg.fitness_metric)
+                    self._kw(ind), cfg.fitness_metric)
                 per_trader.append([m[cfg.fitness_metric] for m in per_seg])
                 if cfg.env_fitness != "pop_regret":
                     scores.append(self._adversary_score(segs, per_seg, score))
