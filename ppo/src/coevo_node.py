@@ -1,10 +1,10 @@
 """The ONE file an orx node varies (COEVO V7 GOAL). coevo_eval.py is fixed."""
 
 CONFIG = {
-    "name": "r1b-regret-adversary",
+    "name": "r2a-multi-horizon-forecasts",
     "seeds": [42, 43, 44],
     "flow_pos": True,          # add order-flow + positioning features
-    "rhat": 4,                 # ridge forecast feature horizon (0 = off)
+    "rhat": [4, 24, 72],       # ridge forecast horizons (int = one feature "rhat", 0 = off)
     "engine": {                # EngineConfig overrides, all arms
         "generations": 12, "n_traders": 6, "n_env": 12, "matches_per_trader": 2,
         "segments_per_match": 4, "timesteps_per_match": 4096, "hof_matches": 1,

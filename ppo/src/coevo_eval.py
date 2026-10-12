@@ -70,13 +70,16 @@ def prepare(sym, cfg):
     df = load_coin(sym)
     wins = fold_windows(df)
     cols = list(FEATURE_COLUMNS) + (FLOW + POS if cfg.get("flow_pos", True) else [])
-    rh = rhat_feature(df, list(FEATURE_COLUMNS) + FLOW + POS, wins, cfg["rhat"]) if cfg.get("rhat") else None
-    feats = cols + (["rhat"] if rh else [])
+    # rhat: one horizon (feature "rhat") or a list of horizons (features "rhat<h>")
+    hs = cfg.get("rhat") or []
+    names = {hs: "rhat"} if isinstance(hs, int) else {h: f"rhat{h}" for h in hs}
+    rh = {n: rhat_feature(df, list(FEATURE_COLUMNS) + FLOW + POS, wins, h) for h, n in names.items()}
+    feats = cols + list(rh)
     data = {}
     for w in wins:
         d = df.copy()
-        if rh:
-            d["rhat"] = rh[w["fold"]]
+        for n, r in rh.items():
+            d[n] = r[w["fold"]]
         train = d.iloc[w["train_start"]:w["train_end"]].reset_index(drop=True)
         test = d.iloc[w["test_start"]:w["test_end"]].reset_index(drop=True)
         mu, sd = train[feats].mean(), train[feats].std().replace(0, 1)
