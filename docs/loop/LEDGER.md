@@ -879,3 +879,12 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **No timing at all:** exposure in up vs down segments is single 0.56/0.53, population 0.55/0.49, coevolution 0.20/0.18 (root), and the same pattern in R1b. All 48 segments are evaluated deterministically. The policies' best action flips on input noise, so every arm loses heavily in the 28 up segments (gap −0.9 to −2.5) and wins in the 20 down segments.
   - **Literature:** arXiv 2610.03369 finds that deep-RL trading gains across architectures usually fail to beat seed variance, consistent with the ±0.5 rerun noise seen here.
   - **Implication:** the arms differ by noise; none learns the signal that simple gates on rhat24/72 show exists. Next lever: a **lean observation** (rhat 4/24/72, volatility_168h, ema50_ema200_ratio, funding_paid) so PPO can learn the gate instead of fitting 31 noisy inputs.
+- **Trial 67, R2a multi-horizon forecasts (orx run 2a7a65fb, about 62 min):**
+  - **Sharpe:** coevolution +0.370, single +0.803, population +0.515, B&H +0.968, MA +0.146. At 2× cost, coevolution +0.018. FAIL.
+  - **Gap / P:** vs single −0.433/0.96, vs population −0.145/0.73, vs B&H −0.598/0.99, vs MA +0.225/0.30.
+  - **Why it failed:** still no timing. Exposure in up vs down segments: coevolution 0.53/0.44, single 0.52/0.46, population 0.51/0.48. Adding rhat24/72 to 29 other inputs does not make PPO use them. The 3-action buy/sell/hold space makes about 0.5 exposure the near-random default.
+- **R3a (child of R2a):**
+  - Inputs = rhat4/24/72 + volatility_168h + ema50_ema200_ratio only.
+  - Action space: 2 actions, target position (0 = cash, 1 = long). New options `TradingEnv(target_position)` and `EngineConfig.target_position`; eval passes it.
+  - Regret adversary kept.
+  - funding_paid was left out of the inputs: standardizing it in place would corrupt the funding cost column.
