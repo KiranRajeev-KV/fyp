@@ -1002,3 +1002,27 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
 - **R14a (child of R13a):** env_adversary_frac 1.0, so all of each coevolution match's segments are adversary-chosen; before, half were uniform.
   - The 0.5 mix was added in R4a to stop a bearish adversary from starving exposure. The zero-mean drift adversary removes that reason.
   - Launched 04:31. Its result cannot be confirmed on ETH+SOL before the 07:00 deadline.
+- **Trial 79, R14a full adversarial control (orx run 22c7884f, about 75 min):**
+  - **Sharpe:** coevolution +0.898, single +1.163, population +1.097, B&H +0.968. FAIL.
+  - **Gap / P:** vs population −0.199/0.82, vs single −0.264/0.84, vs B&H −0.070/0.63, vs MA +0.753/0.028.
+  - **Reading:** with all segments adversary-chosen, coevolution is strong in the 2022 bear fold 0 (−0.15 vs population −1.08) but weak in folds 3-4 (0.78/0.85 vs 1.93/1.28). The curriculum trades bull performance for bear protection.
+
+### LOOP END (2026-10-13 05:50 IST, deadline 07:00): no DEV PASS, nothing to confirm
+- **Trials:** 66-79 (14 nodes, R1b-R14a). Trial count is now 79. No node passed on BTC dev, so ETH/SOL were never used and stay unspent.
+- **Coevolution minus population, mean over the 14 nodes:** −0.16 Sharpe overall. By fold: f0 −0.10, f1 −0.36, f2 −0.07, f3 +0.03, f4 −0.01, f5 −0.45. There is no fold where coevolution is consistently ahead.
+- **What holds up:**
+  - Every lean-setup arm (R3a onwards) beats MA crossover clearly. Coevolution vs MA has P ≤ 0.03 in most nodes.
+  - Every arm sits slightly above spot B&H (+0.1 to +0.2, never P ≤ 0.10).
+  - This comes from the shared setup (ridge forecasts, a 2-action target position, start long), not from coevolution.
+- **Why coevolution does not separate:**
+  1. **Rerun noise.** Arm means move ±0.4 at 3 seeds on identical configs (single 0.63-1.36), so a true gap of about 0.1 is invisible.
+  2. **Selection on noise.** In-population ranking does not predict held-out results (ρ ≈ 0), so PBT and best_trader selection add little.
+  3. **The adversary does not fall off, but it optimizes the wrong thing:**
+     - segment adversaries drift toward bear or bull (R4a, R5a);
+     - disagreement adversaries escape off-distribution (R8a) or pin at a bound (R12a);
+     - trader convergence is identical in coevolution and population.
+  4. **A curriculum trades regimes.** More adversarial control buys bear protection at the cost of bull performance (R14a), and the net is zero.
+- **Open next steps (not run):**
+  - Prioritized level replay (learner-regret replay of segments instead of an evolved generator).
+  - 6+ seeds as standard.
+  - A multi-coin training pool so the adversary has real distribution shift to exploit.
