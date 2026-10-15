@@ -89,6 +89,19 @@ def prepare(sym, cfg):
     return data, feats, wins
 
 
+def merged_pool(frames):
+    """One segment pool over several coins' train frames; no segment crosses a coin boundary."""
+    import dataclasses
+    from segments import SegmentPool, build_segment_pool
+    dfs, segs, off = [], [], 0
+    for f in frames:
+        p = build_segment_pool(f.reset_index(drop=True), segment_length=SEG, stride=POOL_STRIDE)
+        segs += [dataclasses.replace(sg, start=sg.start + off, end=sg.end + off) for sg in p.segments]
+        dfs.append(p.df)
+        off += len(p.df)
+    return SegmentPool(df=pd.concat(dfs, ignore_index=True), segments=segs)
+
+
 def engine_config(cfg, arm, seed, sym):
     from coevo.engine import EngineConfig
     kw = dict(cfg.get("engine", {}))
@@ -103,13 +116,13 @@ def train_job(job):
     import torch
     torch.set_num_threads(1)
     from coevo.engine import CoevolutionEngine
-    from segments import build_segment_pool
     train, _ = DATA[fold]
     if os.path.exists(os.path.join(out_dir, "best_trader.zip")):
         return job, 0.0
     random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
     val = train.iloc[-VAL_SPAN:].reset_index(drop=True)
-    pool = build_segment_pool(train.iloc[:-VAL_SPAN].reset_index(drop=True), segment_length=SEG, stride=POOL_STRIDE)
+    # aux coins (node "aux_coins"): their bars from the same calendar train window, val span cut too
+    pool = merged_pool([train.iloc[:-VAL_SPAN]] + [AUX[c][fold][0].iloc[:-VAL_SPAN] for c in AUX])
     t0 = time.time()
     import contextlib
     with open(os.path.join(os.path.dirname(out_dir), f"{os.path.basename(out_dir)}.log"), "w") as log, \
@@ -169,7 +182,7 @@ def baselines(test, mult):
 
 
 def main():
-    global DATA, FEATS, CFG, SYM
+    global DATA, FEATS, CFG, SYM, AUX
     ap = argparse.ArgumentParser()
     ap.add_argument("--coin", default="BTCUSDT")
     ap.add_argument("--workers", type=int, default=11)
@@ -180,6 +193,7 @@ def main():
     from evaluate import paired_bootstrap
 
     DATA, FEATS, wins = prepare(SYM, CFG)
+    AUX = {c: prepare(c, CFG)[0] for c in CFG.get("aux_coins", []) if c != SYM}
     folds = args.folds if args.folds is not None else [w["fold"] for w in wins]
     out_root = os.path.join(OUT_BASE, CFG["name"], SYM)
     os.makedirs(out_root, exist_ok=True)

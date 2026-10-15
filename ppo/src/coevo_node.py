@@ -1,8 +1,9 @@
 """The ONE file an orx node varies (COEVO V7 GOAL). coevo_eval.py is fixed."""
 
 CONFIG = {
-    "name": "r13a-sign-randomised-drift", "score": "vote",
-    "seeds": [42, 43, 44],
+    "name": "r15a-multi-coin-6-seeds", "score": "vote",
+    "aux_coins": ["BNBUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT"],
+    "seeds": [42, 43, 44, 45, 46, 47],
     "flow_pos": True,          # add order-flow + positioning features
     "features": ["volatility_168h", "ema50_ema200_ratio"],   # explicit inputs (overrides the above)
     "rhat": [4, 24, 72],       # ridge forecast horizons (int = one feature "rhat", 0 = off)
