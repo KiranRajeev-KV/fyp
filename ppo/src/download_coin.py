@@ -8,8 +8,10 @@ BTC files. Each archive is unzipped to CSV next to it; existing CSVs are skipped
 """
 
 import argparse
+import http.client
 import io
 import os
+import time
 import urllib.error
 import urllib.request
 import zipfile
@@ -27,10 +29,16 @@ def months(start, end):
 def fetch(url, out_csv):
     if os.path.exists(out_csv):
         return "skip"
-    try:
-        data = urllib.request.urlopen(url, timeout=60).read()
-    except urllib.error.HTTPError as e:
-        return f"{e.code}"
+    for attempt in range(5):                  # flaky connections reset mid-run; retry, then give up
+        try:
+            data = urllib.request.urlopen(url, timeout=60).read()
+            break
+        except urllib.error.HTTPError as e:
+            return f"{e.code}"
+        except (urllib.error.URLError, OSError, http.client.HTTPException):
+            time.sleep(2 ** attempt)
+    else:
+        return "neterr"
     with zipfile.ZipFile(io.BytesIO(data)) as z:
         name = z.namelist()[0]
         open(out_csv, "wb").write(z.read(name))
