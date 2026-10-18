@@ -1106,3 +1106,20 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **Fitness:** the mean over served windows of |population-mean Sharpe now − at the last exam of that window|. Unseen windows get the generation's mean progress.
   - **Kept:** the regime lock.
   - **Checks:** a 3-generation smoke test is OK (fitness is 0 at generation 0, then > 0). orx run d4d567d3 launched 02:54.
+- **R18a result:** FAIL, but the first node with coevolution above population and above B&H on the same run.
+  - Sharpe: coevolution +1.189, population +1.163, single +0.739, B&H +0.968.
+  - Coevolution gap / P: vs single +0.45/0.004, vs population +0.03/0.43, vs B&H +0.22/0.15, vs MA +1.04/0.004. 2x: +1.058 vs B&H +0.968.
+  - **Per-fold coevolution − population:**
+
+    | Fold | 0 | 1 | 2 | 3 | 4 | 5 |
+    |---|---|---|---|---|---|---|
+    | Gap | −0.19 | +0.04 | −0.25 | +0.33 | +0.21 | 0.00 |
+
+  - **By regime:** bull −0.14 (18-node average −0.23), bear +0.26.
+  - **Adversary:** ALP fitness rises 1.01→1.17 over generations and entropy falls 4.6→3.3. At generation 11 it prefers trend strength (+0.48), regime transitions (+0.24) and shallow drawdowns (−0.19).
+  - The +0.03 vs population is well inside rerun noise.
+- **R19a (child of R18a, trial 85): pure replication with seeds 48-53.**
+  - **PRE-REGISTERED (before any R19a result):** pool R18a + R19a per segment, with each arm = the mean of the two runs' seed-means (12 seeds), and apply the dev rule once with `ppo/src/coevo_seedpool.py r18a-progress-6-seeds r19a-progress-seeds48-53`.
+  - **If PASS:** freeze the R18a config and run ETH + SOL confirmations, then coevo_pool.
+  - **If FAIL:** ALP is logged as no better than population. R19a counts as one trial and the pooled test as the decision; R18a alone is not re-tested.
+  - orx run 1ec9d33a launched 05:26.
