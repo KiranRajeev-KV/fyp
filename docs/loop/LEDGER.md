@@ -1065,3 +1065,21 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **Why:** every objective so far moves the regime mix, which moves the exposure dial, and the net is about zero. Lock the mix so any effect has to come from *which* windows within a regime the trader trains on.
   - **Change:** `adv_regime_lock=True`. For each adversary pick, the regime is drawn from a uniform pool draw, and the adversary's softmax is restricted to that regime. This applies in matches, HOF matches, adversary-vs-HOF and the shared exam.
   - **Checks:** a smoke test showed mixed regimes in the adversary picks. orx run c7f19202 launched 00:14.
+- **R17a result:** FAIL.
+  - Sharpe: coevolution +1.038, population +1.157, single +1.047, B&H +0.968.
+  - Coevolution gap / P: vs single −0.01/0.52, vs population −0.12/0.75, vs B&H +0.07/0.39, vs MA +0.89/0.015.
+  - **The regime lock worked exactly:** the adversary served bear 0.22, bull 0.36, sideways 0.41, the same as uniform.
+  - **Per-fold coevolution − population:**
+
+    | Fold | 0 | 1 | 2 | 3 | 4 | 5 |
+    |---|---|---|---|---|---|---|
+    | Gap | +0.22 | −0.47 | −0.39 | +0.96 | −0.08 | −0.95 |
+
+    The pattern has no regime structure left. It is noise.
+  - **Rerun-noise floor:** the population and single configs are identical in R16a and R17a.
+    - Population changed −0.006 overall (P 0.52), with per-fold swings of ±0.4.
+    - Single changed +0.16 overall (P 0.20), with per-fold swings of −0.66 to +1.71.
+    - Coevolution − population across R13a, R15a, R16a and R17a (+0.05?, −0.20, −0.03, −0.12) sits inside this floor.
+  - **Conclusion:** on BTC in-distribution test, coevolution is indistinguishable from PBT, with a point estimate of about −0.08.
+- **Probe (trial 83, exploratory, no retraining):** zero-shot cross-asset test of BTC-trained R16a and R17a models on the BNB, XRP, ADA and DOGE test windows of the same folds. ETH and SOL are untouched.
+  - **Why:** the one replicated coevolution win (synthetic, sealed) comes from distribution shift, and BTC dev test ≈ train.
