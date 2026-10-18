@@ -1079,7 +1079,7 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **Rerun-noise floor:** the population and single configs are identical in R16a and R17a.
     - Population changed −0.006 overall (P 0.52), with per-fold swings of ±0.4.
     - Single changed +0.16 overall (P 0.20), with per-fold swings of −0.66 to +1.71.
-    - Coevolution − population across R13a, R15a, R16a and R17a (+0.05?, −0.20, −0.03, −0.12) sits inside this floor.
+    - Coevolution − population across R13a, R15a, R16a and R17a (−0.05, −0.20, −0.03, −0.12) sits inside this floor.
   - **Conclusion:** on BTC in-distribution test, coevolution is indistinguishable from PBT, with a point estimate of about −0.08.
 - **Probe (trial 83, exploratory, no retraining):** zero-shot cross-asset test of BTC-trained R16a and R17a models on the BNB, XRP, ADA and DOGE test windows of the same folds. ETH and SOL are untouched.
   - **Why:** the one replicated coevolution win (synthetic, sealed) comes from distribution shift, and BTC dev test ≈ train.
