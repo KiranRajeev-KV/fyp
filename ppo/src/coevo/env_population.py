@@ -55,8 +55,16 @@ class EnvIndividual:
         p = np.exp(logits)
         return p / p.sum()
 
-    def select_segments(self, pool, n, rng):
+    def select_segments(self, pool, n, rng, regimes=None):
         probs = self.selection_probs(pool.descriptor_matrix)
+        if regimes is not None:   # regime mix fixed by the caller; the adversary picks within each regime
+            labels = np.array([s.regime for s in pool.segments])
+            idx = []
+            for r in regimes:
+                p = probs * (labels == r)
+                p[idx] = 0.0
+                idx.append(int(rng.choice(len(pool), p=p / p.sum())))
+            return [(pool.segments[i].start, pool.segments[i].end) for i in idx]
         n = min(n, len(pool))
         idx = rng.choice(len(pool), size=n, replace=False, p=probs)
         return [(pool.segments[i].start, pool.segments[i].end) for i in idx]

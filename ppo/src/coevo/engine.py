@@ -135,6 +135,9 @@ class EngineConfig:
     # inputs the adversary may shift/rescale in the matches it serves
     # (adversarial domain randomisation against input drift); () = off
     obs_adversary: tuple = ()
+    # adversary picks keep the uniform pool's regime mix (regimes drawn uniformly,
+    # adversary chooses within each), so it cannot just move the exposure dial
+    adv_regime_lock: bool = False
     obs_sign_random: bool = False      # random sign per served match / exam eval (zero-mean drift)
     obs_bound: tuple = ()              # (max |shift|, max |log_scale|) applied; () = genome bounds
 
@@ -620,6 +623,11 @@ class CoevolutionEngine:
             idx = self.rng.choice(len(self.pool), size=min(n, len(self.pool)), replace=False)
         return [(self.pool.segments[i].start, self.pool.segments[i].end) for i in idx]
 
+    def _adv_select(self, ind, n):
+        regimes = ([self._regime_by_start[st] for st, _ in self._uniform_segments(n)]
+                   if self.cfg.adv_regime_lock else None)
+        return ind.select_segments(self.pool, n, self.rng, regimes)
+
     def _match_segments(self, opp, n):
         """(segments, k) for one match: the FIRST k were picked by the adversary,
         the rest drawn uniformly from the pool.
@@ -633,7 +641,7 @@ class CoevolutionEngine:
         if opp is None:
             return self._uniform_segments(n), 0
         k = min(n, round(n * self.cfg.env_adversary_frac))
-        adversary_segs = opp.select_segments(self.pool, k, self.rng) if k else []
+        adversary_segs = self._adv_select(opp, k) if k else []
         return adversary_segs + self._uniform_segments(n - k), k
 
     # ------------------------------------------------------------------
@@ -697,7 +705,7 @@ class CoevolutionEngine:
             # matches against archived adversaries: evaluation only, so the
             # trader cannot forget how to beat old opponents (anti-cycling)
             for h, entry in enumerate(self.env_hof.sample(cfg.hof_matches)):
-                segs = entry.payload.select_segments(self.pool, cfg.segments_per_match, self.rng)
+                segs = self._adv_select(entry.payload, cfg.segments_per_match)
                 score, per_seg = tp.evaluate_on_segments(
                     trader, self.pool.df, self.feature_columns, segs,
                     self.env_kwargs, cfg.fitness_metric,
@@ -717,7 +725,7 @@ class CoevolutionEngine:
             for ind in self.env_pop:
                 for entry in self.trader_hof.sample(cfg.env_hof_matches):
                     shell.model.set_parameters(entry.payload)
-                    segs = ind.select_segments(self.pool, cfg.segments_per_match, self.rng)
+                    segs = self._adv_select(ind, cfg.segments_per_match)
                     score, per_seg = tp.evaluate_on_segments(
                         shell, self.pool.df, self.feature_columns, segs,
                         self._kw(ind), cfg.fitness_metric,
@@ -745,7 +753,7 @@ class CoevolutionEngine:
                 t, self.pool.df, self.feature_columns, exam,
                 self.env_kwargs, cfg.fitness_metric)
         for ind in self.env_pop or []:
-            segs = ind.select_segments(self.pool, cfg.segments_per_match, self.rng)
+            segs = self._adv_select(ind, cfg.segments_per_match)
             scores, per_trader = [], []
             kw = self._kw(ind)                       # same perturbation for every trader
             for t in self.traders:
