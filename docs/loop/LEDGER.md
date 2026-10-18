@@ -1048,3 +1048,20 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **Change:** `env_fitness="learnability"` scored in the shared exam. Per served window, p = share of traders whose Sharpe beats B&H, and fitness = mean of p(1−p). The success criterion matches the pass rule (beat B&H).
   - **Kept:** BTC only (aux dropped, since it did not help and slowed confirmation), vote, frac 0.5, sign-random drift, seeds 42-47.
   - **Checks:** a one-fold smoke test passed, and raw fitness takes p(1−p) values. orx run 72a8fc2c launched 21:37.
+- **R16a result:** FAIL, but the closest coevolution has come to population.
+  - Sharpe: coevolution +1.131, population +1.163, single +0.885, B&H +0.968.
+  - Coevolution gap / P: vs single +0.25/0.12, vs population −0.03/0.56, vs B&H +0.16/0.28, vs MA +0.99/0.010. 2x: +0.970 vs B&H +0.968.
+  - **Per-fold coevolution − population:**
+
+    | Fold | 0 | 1 | 2 | 3 | 4 | 5 |
+    |---|---|---|---|---|---|---|
+    | Gap | +0.34 | +0.39 | −0.51 | −0.27 | +0.29 | −0.43 |
+
+    It wins the bear fold 0 and loses the strong-bull folds 2 and 3.
+  - **Adversary:** it served bear 0.38, bull 0.20, sideways 0.42, against uniform bear 0.22, bull 0.37, sideways 0.41, so learnability also drifts the regime mix.
+  - **Dynamics:** fitness fell 0.155→0.126 and entropy fell 4.6→3.1 nats; it specializes and does not collapse.
+  - **Diagnosis:** this is the fifth adversary objective (after neg_sharpe, regret, pop_regret and frac 1.0) whose gains in one regime are paid for in another.
+- **R17a (child of R16a, trial 82), regime-locked learnability adversary, 6 seeds:**
+  - **Why:** every objective so far moves the regime mix, which moves the exposure dial, and the net is about zero. Lock the mix so any effect has to come from *which* windows within a regime the trader trains on.
+  - **Change:** `adv_regime_lock=True`. For each adversary pick, the regime is drawn from a uniform pool draw, and the adversary's softmax is restricted to that regime. This applies in matches, HOF matches, adversary-vs-HOF and the shared exam.
+  - **Checks:** a smoke test showed mixed regimes in the adversary picks. orx run c7f19202 launched 00:14.
