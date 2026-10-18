@@ -1036,3 +1036,15 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **Seeds:** 42-47.
   - **Confirmation:** ETH and SOL stay unspent. A confirmation uses pool = target coin + the same 4 aux coins.
   - **Checks:** merged-pool unit check and a one-fold smoke test passed. orx run b899c946 launched 18:55.
+- **R15a result:** FAIL. Coevolution +0.982, population +1.176, single +0.510, B&H +0.968, MA +0.146.
+  - Coevolution gap / P: vs single +0.47/0.012, vs population −0.20/0.87, vs B&H +0.01/0.50, vs MA +0.84/0.018.
+  - Exposure: coevolution 0.64, population 0.55, single 0.49.
+  - Per-fold coevolution − population: +0.31 in fold 1, −0.87 in fold 2 (strong bull), small elsewhere.
+  - **Adversary vs coin:** the adversary's coin shares match the pool's base rate (±0.05), so it does not use the coin dimension. Its segment descriptors are regime features, not coin identity.
+  - **Adversary vs regime:** it skews bull (0.46 vs 0.36 uniform), because pop_regret pays where some traders miss rallies. Coevolution still lost in the bull fold.
+  - **Tail check across all 16 nodes:** CVaR25 of segment Sharpe, coevolution − population averages −0.20. Coevolution has no tail-risk edge to report instead (vs B&H +0.89, but every arm has that).
+- **R16a (child of R15a, trial 81), learnability adversary (SFL), 6 seeds:**
+  - **Why:** Rutherford et al. (NeurIPS 2024, "No Regrets", arXiv 2408.15099) show regret proxies track success rate (difficulty), not learnability, so the curriculum goes to extremes. That matches R4a-R14a (bear and bull drift, bound pinning). SFL samples levels where the success rate is strictly between 0 and 1.
+  - **Change:** `env_fitness="learnability"` scored in the shared exam. Per served window, p = share of traders whose Sharpe beats B&H, and fitness = mean of p(1−p). The success criterion matches the pass rule (beat B&H).
+  - **Kept:** BTC only (aux dropped, since it did not help and slowed confirmation), vote, frac 0.5, sign-random drift, seeds 42-47.
+  - **Checks:** a one-fold smoke test passed, and raw fitness takes p(1−p) values. orx run 72a8fc2c launched 21:37.
