@@ -119,6 +119,10 @@ class EngineConfig:
     #   learnability -- SFL (Rutherford et al. 2024, needs shared_exam): p(1-p)
     #                 per window, p = share of traders beating buy & hold on it.
     #                 Zero where all win or all lose; peaks where half do.
+    #   progress   -- teacher-style learning progress (ALP-GMM, TSCL; needs
+    #                 shared_exam): |change of the population-mean score on a
+    #                 window since it was last examined|; never-seen windows
+    #                 get the generation's mean progress.
     env_fitness: str = "neg_sharpe"
     # Refuse to start in an out_dir that already holds a populated
     # generations.csv (a relaunch destroyed the V4 ledgers). True = overwrite.
@@ -219,9 +223,9 @@ class CoevolutionEngine:
 
         if config.segment_sampling not in ("uniform", "regime_balanced"):
             raise ValueError(f"unknown segment_sampling {config.segment_sampling!r}")
-        if config.env_fitness not in ("neg_sharpe", "regret", "regret_bh", "pop_regret", "learnability"):
+        if config.env_fitness not in ("neg_sharpe", "regret", "regret_bh", "pop_regret", "learnability", "progress"):
             raise ValueError(f"unknown env_fitness {config.env_fitness!r}")
-        if config.env_fitness in ("pop_regret", "learnability") and not config.shared_exam:
+        if config.env_fitness in ("pop_regret", "learnability", "progress") and not config.shared_exam:
             raise ValueError(f"{config.env_fitness} is scored in the shared exam: set shared_exam > 0")
         # regret reference per pool segment: the best trivial policy's score
         # (cash = 0, buy & hold, MA-crossover) under the same fee model
@@ -240,6 +244,9 @@ class CoevolutionEngine:
         # which regime each segment belongs to, so the curriculum the adversary
         # actually served can be logged (not just the genome that chose it)
         self._regime_by_start = {sg.start: sg.regime for sg in pool.segments}
+        # progress fitness: last population-mean exam score per window start
+        # ponytail: not checkpointed, a resumed run restarts the history
+        self._seg_hist = {}
         # a fixed probe batch for measuring how far apart the policies are.
         # Seeded independently of the run so it is identical across seeds.
         self._probe = self._build_probe()
@@ -752,6 +759,7 @@ class CoevolutionEngine:
             t.fitness, _ = tp.evaluate_on_segments(
                 t, self.pool.df, self.feature_columns, exam,
                 self.env_kwargs, cfg.fitness_metric)
+        pending = []                                 # progress fitness, scored after all adversaries
         for ind in self.env_pop or []:
             segs = self._adv_select(ind, cfg.segments_per_match)
             scores, per_trader = [], []
@@ -761,7 +769,7 @@ class CoevolutionEngine:
                     t, self.pool.df, self.feature_columns, segs,
                     kw, cfg.fitness_metric)
                 per_trader.append([m[cfg.fitness_metric] for m in per_seg])
-                if cfg.env_fitness not in ("pop_regret", "learnability"):
+                if cfg.env_fitness not in ("pop_regret", "learnability", "progress"):
                     scores.append(self._adversary_score(segs, per_seg, score))
             if cfg.env_fitness == "pop_regret":
                 S = np.array(per_trader)                     # traders x windows
@@ -769,7 +777,17 @@ class CoevolutionEngine:
             elif cfg.env_fitness == "learnability":
                 p = (np.array(per_trader) > np.array([self._ref_by_start[st] for st, _ in segs])).mean(axis=0)
                 scores = list(p * (1 - p))
+            elif cfg.env_fitness == "progress":
+                pending.append((ind, [(st, v) for (st, _), v in zip(segs, np.array(per_trader).mean(axis=0))]))
+                continue
             ind.raw_fitness, ind.evaluated = float(np.mean(scores)), True
+        alp = [[abs(v - self._seg_hist[st]) if st in self._seg_hist else None for st, v in sv] for _, sv in pending]
+        seen = [a for L in alp for a in L if a is not None]
+        for (ind, sv), L in zip(pending, alp):
+            ind.raw_fitness = float(np.mean([np.mean(seen) if seen and a is None else (a or 0.0) for a in L]))
+            ind.evaluated = True
+        for _, sv in pending:
+            self._seg_hist.update(sv)
 
     def _adversary_score(self, segs, per_seg, score):
         """What the adversary earns for a match it served (higher = harder)."""
