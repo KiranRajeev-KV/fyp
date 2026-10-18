@@ -1083,3 +1083,26 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **Conclusion:** on BTC in-distribution test, coevolution is indistinguishable from PBT, with a point estimate of about −0.08.
 - **Probe (trial 83, exploratory, no retraining):** zero-shot cross-asset test of BTC-trained R16a and R17a models on the BNB, XRP, ADA and DOGE test windows of the same folds. ETH and SOL are untouched.
   - **Why:** the one replicated coevolution win (synthetic, sealed) comes from distribution shift, and BTC dev test ≈ train.
+- **Probe result (trial 83):** zero-shot on BNB, XRP, ADA and DOGE (192 segments).
+  - R16a: coevolution +0.355, population +0.135, single +0.008, B&H +0.327.
+    - Coevolution vs population +0.22, P 0.014; vs B&H +0.03, P 0.41.
+  - R17a: coevolution +0.245, population +0.305, single +0.084.
+    - Coevolution vs population −0.06, P 0.79.
+  - **The segment bootstrap is anti-conservative.** The population arm has an identical config in R16a and R17a, yet R17a − R16a = +0.17 with P 0.008.
+    - The bootstrap resamples segments with the seed-mean fixed, so training (rerun) variance is ignored.
+    - So R16a's +0.22 is not evidence.
+    - Any future pass gets a run-level check: a rerun of the frozen node, or a seed×segment bootstrap from per-seed evals.
+- **Across all 18 BTC nodes, conditional gaps:**
+
+  | Segments | Coevolution − population | Nodes negative |
+  |---|---|---|
+  | Bull | −0.23 | 16/18 |
+  | Bear | −0.03 | — |
+
+  - Coevolution − single on bear segments is +0.05. Exposure is matched (−0.05).
+  - **Mechanism:** every adversary objective so far selects windows where deviating from B&H sometimes pays. That teaches deviation, and BTC's weak timing signal (timing ≈ 0.1 for every arm, even with ridge forecasts on flow and positioning features) does not reward it.
+- **R18a (child of R17a, trial 84), learning-progress adversary, 6 seeds:**
+  - **Why:** this is the one untried literature curriculum objective (ALP-GMM, Portelas et al. 2019; TSCL, Matiisen et al. 2017). It is a teacher, not a difficulty-seeker.
+  - **Fitness:** the mean over served windows of |population-mean Sharpe now − at the last exam of that window|. Unseen windows get the generation's mean progress.
+  - **Kept:** the regime lock.
+  - **Checks:** a 3-generation smoke test is OK (fitness is 0 at generation 0, then > 0). orx run d4d567d3 launched 02:54.
