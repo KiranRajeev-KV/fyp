@@ -1026,3 +1026,13 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - Prioritized level replay (learner-regret replay of segments instead of an evolved generator).
   - 6+ seeds as standard.
   - A multi-coin training pool so the adversary has real distribution shift to exploit.
+
+### V7 resumed (2026-10-18): multi-coin training pool
+- **R15a (child of R13a, trial 80), multi-coin training pool, 6 seeds:**
+  - **Why:** over 14 BTC-only nodes, coevolution minus population averaged −0.16. On BTC alone the adversary can only drift between bear and bull windows, go off-distribution, or trade one regime for another. In the synthetic benchmark, coevolution wins when the training data has real shift.
+  - **Training pool:** for every fold, BTC plus BNB, XRP, ADA and DOGE segments from the same calendar train window, with the val span cut. Each coin has its own features, rhat and standardization. No segment crosses coins.
+  - **Data:** downloaded to 2026-04 (sealed from 2026-05). The only gaps are months before each coin's spot or perp listing. Train windows end on the day before each BTC test start.
+  - **Unchanged:** test is the BTC 48 segments and the pass rule.
+  - **Seeds:** 42-47.
+  - **Confirmation:** ETH and SOL stay unspent. A confirmation uses pool = target coin + the same 4 aux coins.
+  - **Checks:** merged-pool unit check and a one-fold smoke test passed. orx run b899c946 launched 18:55.
