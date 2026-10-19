@@ -1154,3 +1154,29 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **PRE-REGISTERED:** pool R21a + R22a with `coevo_seedpool.py r21a-pure-alp r22a-pure-alp-seeds48-53` and apply the dev rule once.
   - **If PASS:** run the ETH + SOL confirmation with the R21a config at seeds 42-44, then coevo_pool.
   - orx run 874419f9 launched 13:07, done about 15:40. This is the last node before the 18:00 deadline.
+- **R22a result:** single +1.041, population +1.336, coevolution +1.268, B&H +0.968.
+  - Coevolution gap / P: vs single +0.23/0.060, vs population −0.07/0.66, vs B&H +0.30/0.13.
+- **PRE-REGISTERED POOL R21a + R22a (12 seeds): FAIL.**
+  - Sharpe: coevolution +1.254, population +1.279, single +0.939, B&H +0.968.
+  - Gap / P: vs single +0.32/0.003, vs population −0.03/0.59, vs B&H +0.29/0.12, vs MA +1.11/0.002. 2x: +1.103 vs +0.968.
+
+### LOOP END 2 (2026-10-19 15:45 IST, trials 80-88, no DEV PASS; ETH and SOL still unspent)
+- **ALP teacher adversary, frac 0.5, four 6-seed runs (R18a, R19a, R21a, R22a):**
+
+  | Coevolution vs | Gaps (four runs) | Mean |
+  |---|---|---|
+  | Population | +0.03, +0.03, +0.02, −0.07 | ≈ 0.00 |
+  | B&H | +0.22, +0.29, +0.27, +0.30 | ≈ +0.27, pooled P 0.12-0.13 |
+  | Single | — | +0.32 to +0.34, pooled P ≤ 0.005 |
+  | MA | — | about +1.1, P 0.002 |
+
+  - This is the best and most stable coevolution variant found on BTC. It is reportable as "coevolution significantly beats plain PPO and MA crossover, and matches PBT", not as a pass.
+- **Ruled out this session:**
+  - multi-coin pool (R15a);
+  - learnability/SFL adversary (R16a);
+  - regime-locked selection (R17a; the lock works but has no effect);
+  - ALP at frac 1.0 (R20a, worse);
+  - the obs drift adversary under ALP (R21a vs R18a, no difference).
+- **Method finding:** the segment paired bootstrap ignores training-rerun variance. An identical population config moves ±0.17-0.18 overall (R16a vs R17a, R18a vs R20a; zero-shot P 0.008), so single-run P-values vs population are anti-conservative. Seed pooling with pre-registration (`coevo_seedpool.py`) is the fix used here.
+- **Mechanism:** every arm sits about +0.2-0.3 above B&H through the shared setup (ridge forecasts + target position + start long). Coevolution can only move the curriculum. On BTC's weak timing signal (timing ≈ 0.1-0.2 for all arms), no curriculum changes the outcome beyond rerun noise.
+- **Trial count:** 88.
