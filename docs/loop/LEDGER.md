@@ -1123,3 +1123,14 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **If PASS:** freeze the R18a config and run ETH + SOL confirmations, then coevo_pool.
   - **If FAIL:** ALP is logged as no better than population. R19a counts as one trial and the pooled test as the decision; R18a alone is not re-tested.
   - orx run 1ec9d33a launched 05:26.
+- **R19a result:** single +1.035, population +1.227, coevolution +1.260, B&H +0.968.
+  - Coevolution gap / P: vs single +0.23/0.079, vs population +0.03/0.415, vs B&H +0.29/0.111, vs MA +1.12/0.001. 2x: +1.089.
+- **PRE-REGISTERED POOL R18a + R19a (12 seeds): FAIL.**
+  - Sharpe: coevolution +1.224, population +1.195, single +0.887, B&H +0.968.
+  - Gap / P: vs single +0.34/0.005, vs population +0.03/0.39, vs B&H +0.26/0.13, vs MA +1.08/0.002. 2x: +1.073 vs +0.968.
+  - **Reading:** the ALP teacher is the first adversary objective whose coevolution beats population and B&H in both of two independent seed sets. But the effect vs population (+0.03) is about 8× smaller than what this test can detect (needs about +0.23).
+  - Per the pre-registration, ALP at frac 0.5 is no better than population.
+- **R20a (child of R18a, trial 86), ALP dose test, frac 1.0, seeds 42-47:**
+  - **Why:** if the teacher curriculum carries the small edge, more of it should widen the gap. R14a's frac-1.0 failure was for a difficulty-seeking adversary that drifted the regime mix; here the regime lock fixes the mix.
+  - orx run 3cf8062d launched 07:59.
+  - **Time budget:** this is the last dev node that leaves room for a 6-seed ETH+SOL confirmation before 18:00 (done about 10:30, plus about 5 h).
