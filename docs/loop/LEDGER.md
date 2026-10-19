@@ -1134,3 +1134,13 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **Why:** if the teacher curriculum carries the small edge, more of it should widen the gap. R14a's frac-1.0 failure was for a difficulty-seeking adversary that drifted the regime mix; here the regime lock fixes the mix.
   - orx run 3cf8062d launched 07:59.
   - **Time budget:** this is the last dev node that leaves room for a 6-seed ETH+SOL confirmation before 18:00 (done about 10:30, plus about 5 h).
+- **R20a result:** FAIL.
+  - Sharpe: coevolution +1.123, population +1.347, single +0.707, B&H +0.968.
+  - Coevolution gap / P: vs single +0.42/0.030, vs population −0.23/0.87, vs B&H +0.16/0.24, vs MA +0.98/0.004.
+  - **Dose effect:** more ALP control raised exposure to 0.71 (population 0.61) and lowered timing to 0.07 (R18a 0.16). Coevolution fell 0.07 vs R18a, so the dose does not help.
+  - Population (identical config to R18a) moved +0.18 again, the same rerun noise.
+- **R21a (child of R18a, trial 87), pure ALP teacher (obs drift removed), seeds 42-47:**
+  - **Defect found:** with `obs_sign_random`, each exam evaluation draws a fresh random-sign rhat drift. So in R18a-R20a, ALP's |Δscore| between two exams of a window partly measured the sign flip, not learning progress.
+  - **Change:** R21a removes the obs adversary (segment-only teacher). Frac 0.5 and the regime lock are kept.
+  - orx run 7a7274f0 launched 10:33, done about 13:05.
+  - **If DEV PASS:** confirm at 6 seeds if it lands by about 13:00, otherwise 3 seeds (42-44, pre-registered here) so ETH and SOL finish by 18:00.
