@@ -1144,3 +1144,13 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **Change:** R21a removes the obs adversary (segment-only teacher). Frac 0.5 and the regime lock are kept.
   - orx run 7a7274f0 launched 10:33, done about 13:05.
   - **If DEV PASS:** confirm at 6 seeds if it lands by about 13:00, otherwise 3 seeds (42-44, pre-registered here) so ETH and SOL finish by 18:00.
+- **R21a result:** FAIL.
+  - Sharpe: coevolution +1.239, population +1.223, single +0.837, B&H +0.968.
+  - Coevolution gap / P: vs single +0.40/0.006, vs population +0.02/0.45, vs B&H +0.27/0.14, vs MA +1.09/0.002. 2x: +1.083.
+  - Exposure: coevolution 0.59, population 0.67.
+  - **ALP at frac 0.5, three runs so far:** coevolution − population = +0.03, +0.03, +0.02, and coevolution − B&H = +0.22, +0.29, +0.27. The direction is consistent but tiny vs population.
+  - Removing the obs drift changed nothing measurable.
+- **R22a (child of R21a, trial 88): pure ALP replication, seeds 48-53.**
+  - **PRE-REGISTERED:** pool R21a + R22a with `coevo_seedpool.py r21a-pure-alp r22a-pure-alp-seeds48-53` and apply the dev rule once.
+  - **If PASS:** run the ETH + SOL confirmation with the R21a config at seeds 42-44, then coevo_pool.
+  - orx run 874419f9 launched 13:07, done about 15:40. This is the last node before the 18:00 deadline.
