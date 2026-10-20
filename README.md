@@ -45,7 +45,7 @@ Preparing the BTC data and running the full evaluation are described in
 [`ppo/README.md`](ppo/README.md).
 
 ### Members
-[Kiran Rajeev](https://github.com/KiranRajeev-KV)
-[Nandgopal R Nair](https://github.com/Nandgopal-R/)
-[Adarssh KG](https://github.com/adar-ssh)
-[Vijay S B](https://github.com/vijay-sb)
+- [Kiran Rajeev](https://github.com/KiranRajeev-KV)
+- [Nandgopal R Nair](https://github.com/Nandgopal-R/)
+- [Adarssh KG](https://github.com/adar-ssh)
+- [Vijay S B](https://github.com/vijay-sb)
