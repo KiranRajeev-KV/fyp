@@ -1294,3 +1294,8 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - B&H is 0.423 throughout.
   - **Chosen: f = 0.25** (highest coevolution Sharpe).
   - Confirmation coins: VET, XTZ, THETA, SAND, MANA, AXS, CHZ, EGLD (all ten passed `prepare()`; the first 8 are used).
+- **V4 vs V7 on BTC (descriptive, for the deck).** The V4 method from the Sept walk-forward (`runs/walkforward/compare.csv`, final-population mean) is scored on the identical 48 segments; B&H matches segment for segment.
+  - V4 coevolution 0.05 (exposure 9%). V7 ALP pool 1.24 (exposure 63%). Gain +1.19, P 0.0007.
+  - **Cost confound:** V4 paid 0.1% fee + 0.05% slippage; V7 pays 0.02% + 0.01% plus funding. The V7 models were re-scored at V4 costs (MULT = 5; MA reproduces V4's −0.67): coevolution 0.638, population 0.711, single 0.285.
+  - V7 at V4 costs vs V4: +0.59, P 0.06. About half of the V4 → V7 gain is cheaper execution.
+  - Data: `runs/coevo7/btc_alp_pooled_v4cost.csv`.
