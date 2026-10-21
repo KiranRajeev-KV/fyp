@@ -1299,3 +1299,15 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **Cost confound:** V4 paid 0.1% fee + 0.05% slippage; V7 pays 0.02% + 0.01% plus funding. The V7 models were re-scored at V4 costs (MULT = 5; MA reproduces V4's −0.67): coevolution 0.638, population 0.711, single 0.285.
   - V7 at V4 costs vs V4: +0.59, P 0.06. About half of the V4 → V7 gain is cheaper execution.
   - Data: `runs/coevo7/btc_alp_pooled_v4cost.csv`.
+- **Trial 94 result: PASS (f = 0.25, pre-registered rule applied once).**
+  - Coins: VET, XTZ, THETA, SAND, MANA, AXS, CHZ, EGLD; 384 segments, 24 seeds pooled.
+  - 1×: coevolution −0.081, population −0.106, single −0.131, B&H −0.250, MA −0.587.
+  - Coevolution vs population: +0.025, P 0.031 ✔.
+  - Coevolution vs B&H: +0.169, P 0.000 ✔.
+  - Coevolution vs single: +0.049, P 0.001 ✔.
+  - Coevolution vs MA: +0.506, P 0.000 ✔.
+  - 2× costs: coevolution −0.107 > B&H −0.250 ✔.
+  - **Fold 2 (2023–24 bull) coevolution − B&H: −0.24 at f = 0 → +0.03 at f = 0.25. The under-exposure fix works.**
+  - Per-run coevolution − population: +0.03, −0.07, +0.13, +0.01.
+  - Descriptive, f = 0 on the same coins (a third out-of-sample replication of the base pipeline): coevolution vs population +0.053 (P 0.015), vs B&H +0.163 (P 0.000).
+  - Data: `runs/coevo7/t94_pooled_x1.csv`, `t94_pooled_x2.csv`.
