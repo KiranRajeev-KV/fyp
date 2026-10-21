@@ -1220,3 +1220,18 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - The pool is fixed in advance: average over the 24 seeds per segment, apply the V8 rule once (coevolution beats single, population, B&H and MA with gap > 0 and P ≤ 0.10).
   - This tests whether the probe's coevolution > population edge replicates on fresh coins.
   - On a pass: run the same zero-shot on ETH/SOL as the confirmation.
+- **Trial 91 result (dev, 288 segments, 24 seeds pooled):** coevolution 0.577, population 0.534, B&H 0.423, single 0.340, MA −0.484.
+  - Coevolution vs population: +0.043, P 0.084.
+  - Coevolution vs B&H: +0.154, P 0.012.
+  - Coevolution vs single: +0.237, P 0.000.
+  - Coevolution vs MA: +1.06, P 0.000.
+  - **The 1× legs PASS.**
+  - Per-run coevolution − population: +0.10, −0.00, +0.02, +0.06. Coevolution ≥ population on 5 of 6 coins (BCH −0.03).
+  - Caveats:
+    - The gap comes mostly from folds 4–5 (+0.24, +0.13); folds 0–3 are about 0.
+    - The segment bootstrap is anti-conservative, so P 0.084 is marginal.
+  - The 2× leg was not in the zero-shot script. It is run now on dev, before confirmation.
+- **Confirmation (pre-registered, before the run):**
+  - The same 24 BTC-only ALP models (R18a, R19a, R21a, R22a), zero-shot on ETH + SOL (96 segments). Seeds pooled per segment.
+  - Full rule applied once: gap > 0 and P ≤ 0.10 against single, population, B&H and MA, plus coevolution 2× > B&H 2×.
+  - No further changes after this.
