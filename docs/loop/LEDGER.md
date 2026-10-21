@@ -1253,3 +1253,24 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **Models:** the same frozen 24 BTC-only ALP models (R18a, R19a, R21a, R22a), zero-shot. 8 coins × 48 = 384 segments, seeds pooled per segment.
   - **Rule (applied once):** gap > 0 and P ≤ 0.10 against single, population, B&H and MA, plus coevolution 2× > B&H 2×.
   - **Multiplicity:** this is the second confirmation of the same pipeline after trial 92 failed on B&H. Both must be reported together.
+- **Trial 93 result: PASS (pre-registered rule applied once).**
+  - Coins: AVAX, DOT, UNI, NEAR, ATOM, FIL, AAVE, ALGO; 384 segments, 24 seeds pooled. EOS failed `prepare()`; VET was 9th and unused.
+  - 1×: coevolution 0.057, population 0.020, B&H −0.038, single −0.092, MA −0.229.
+  - Coevolution vs population: +0.037, P 0.048 ✔.
+  - Coevolution vs B&H: +0.094, P 0.016 ✔.
+  - Coevolution vs single: +0.149, P 0.000 ✔.
+  - Coevolution vs MA: +0.286, P 0.007 ✔.
+  - 2×: coevolution 0.017 > B&H −0.038 ✔.
+  - **Multiplicity:** second confirmation after trial 92. Bonferroni ×2 gives population P 0.096 and B&H P 0.032, both still ≤ 0.10.
+  - **All sealed coins combined (ETH, SOL + 8; 480 segments; descriptive, not a rule test):**
+    - Coevolution vs population: +0.046, P 0.013.
+    - Coevolution vs B&H: +0.103, P 0.016.
+    - Coevolution vs single: +0.169, P 0.
+    - Coevolution vs MA: +0.386, P 0.
+  - **Caveats:**
+    - Absolute Sharpe is small; the result is relative (better than the baselines), not a profitable strategy claim. A DSR on the absolute Sharpe is not meaningful here.
+    - Coevolution vs population is positive in only 2 of 4 runs (+0.05, −0.04, −0.00, +0.14).
+    - Fold 2 (2023–24 bull) is negative against both population and B&H.
+    - The segment bootstrap is anti-conservative.
+  - **Final claim:** a BTC-trained CC-PPO with a learning-progress (ALP) teacher adversary transfers zero-shot to unseen coins better than PBT, plain PPO, B&H and MA. Dev passed; sealed confirmation passed on the second, pre-registered attempt; trial count 93.
+  - Script: `ppo/src/coevo_zeroshot.py`.
