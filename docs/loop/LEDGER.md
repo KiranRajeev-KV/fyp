@@ -1282,3 +1282,15 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
     - Priority list: VET, XTZ, THETA, SAND, MANA, AXS, CHZ, EGLD, GRT, KSM. The first 8 that pass `prepare()` are used.
     - Full rule at the chosen f, applied once: gap > 0 and P ≤ 0.10 against single, population, B&H and MA, plus coevolution 2× > B&H 2×.
     - Fold 2 (2023-24 bull) coevolution − B&H is reported. The fix counts as working if it is ≥ 0 there, or at least much smaller than at f = 0.
+- **Trial 94 dev selection (6 dev coins, 1×).** Sanity check: f = 0 reproduces the zero-shot Sharpes exactly (max diff 0.0).
+
+  | f | coevolution | population | single | coevolution − B&H, fold 2 |
+  |---|---|---|---|---|
+  | 0 | 0.577 | 0.534 | 0.340 | −0.59 |
+  | **0.25** | **0.637** | 0.593 | 0.507 | −0.09 |
+  | 0.5 | 0.552 | 0.526 | 0.471 | −0.05 |
+  | 0.75 | 0.478 | 0.467 | 0.440 | −0.02 |
+
+  - B&H is 0.423 throughout.
+  - **Chosen: f = 0.25** (highest coevolution Sharpe).
+  - Confirmation coins: VET, XTZ, THETA, SAND, MANA, AXS, CHZ, EGLD (all ten passed `prepare()`; the first 8 are used).
