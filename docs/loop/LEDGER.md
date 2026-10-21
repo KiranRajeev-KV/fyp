@@ -1274,3 +1274,11 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
     - The segment bootstrap is anti-conservative.
   - **Final claim:** a BTC-trained CC-PPO with a learning-progress (ALP) teacher adversary transfers zero-shot to unseen coins better than PBT, plain PPO, B&H and MA. Dev passed; sealed confirmation passed on the second, pre-registered attempt; trial count 93.
   - Script: `ppo/src/coevo_zeroshot.py`.
+- **Trial 94 (user asked to fix the bull-run under-exposure; pre-registered before any run):** an inference-time exposure floor, no retraining.
+  - **Method:** portfolio = f × B&H core (spot fees, bought at the segment start) + (1−f) × the agent's portfolio. Applied identically to single, population and coevolution, using the same 24 frozen BTC-only ALP models.
+  - **Floor options:** f ∈ {0, 0.25, 0.5, 0.75}.
+  - **Selection (dev only, 6 dev coins, 1×):** choose the f with the highest pooled coevolution Sharpe; ties go to the smaller f. Fold-2 coevolution − B&H is reported for each f.
+  - **Confirmation on fresh coins:**
+    - Priority list: VET, XTZ, THETA, SAND, MANA, AXS, CHZ, EGLD, GRT, KSM. The first 8 that pass `prepare()` are used.
+    - Full rule at the chosen f, applied once: gap > 0 and P ≤ 0.10 against single, population, B&H and MA, plus coevolution 2× > B&H 2×.
+    - Fold 2 (2023-24 bull) coevolution − B&H is reported. The fix counts as working if it is ≥ 0 there, or at least much smaller than at f = 0.
