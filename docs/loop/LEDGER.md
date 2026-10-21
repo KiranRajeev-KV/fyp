@@ -1205,3 +1205,18 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - **Config:** R21a pure ALP teacher (frac 0.5, regime lock, shared exam 8, vote) + multi-coin training pool, seeds 42-47.
   - **Why the pool:** to close the B&H gap on alts, where BTC-only policies lose to B&H, and to give the teacher a more diverse level set.
   - orx run ee84b8ff launched 18:35.
+- **V8-0 result (trial 90): FAIL.** 288 held-out-coin segments, 171 min.
+  - Sharpe: coevolution +0.535, population +0.523, B&H +0.423, single −0.224, MA −0.484.
+  - Coevolution vs population: +0.011, P 0.42 (fails).
+  - Coevolution vs B&H: +0.111, P 0.044. Vs single: +0.76, P 0. Vs MA: +1.02, P 0.
+  - 2× leverage: coevolution 0.455 > B&H 0.423.
+  - Per coin vs population: BCH −0.16, ETC +0.17, LINK −0.04, LTC +0.08, TRX +0.11, XLM −0.09.
+  - Exposure: coevolution 0.75, population 0.68.
+  - **Diagnosis:**
+    - The multi-coin pool closed the alt B&H gap: both learned arms now beat B&H, where the BTC-only probe was below it.
+    - The pool also erased coevolution's edge over population. With a diverse training distribution, PBT gets the same generalisation that the adversary's curriculum gave it on BTC-only training. This matches domain randomisation ≈ UED when the base distribution is already broad (Jiang et al. 2021, PLR; Dennis et al. 2020).
+    - The probe's +0.10 edge existed only under BTC-only training.
+- **Trial 91 (pre-registered before the run):** zero-shot of the four existing BTC-only ALP runs (R18a, R19a, R21a, R22a; 24 seeds) on the six dev coins (288 segments).
+  - The pool is fixed in advance: average over the 24 seeds per segment, apply the V8 rule once (coevolution beats single, population, B&H and MA with gap > 0 and P ≤ 0.10).
+  - This tests whether the probe's coevolution > population edge replicates on fresh coins.
+  - On a pass: run the same zero-shot on ETH/SOL as the confirmation.
