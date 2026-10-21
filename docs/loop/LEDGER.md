@@ -1180,3 +1180,28 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
 - **Method finding:** the segment paired bootstrap ignores training-rerun variance. An identical population config moves ±0.17-0.18 overall (R16a vs R17a, R18a vs R20a; zero-shot P 0.008), so single-run P-values vs population are anti-conservative. Seed pooling with pre-registration (`coevo_seedpool.py`) is the fix used here.
 - **Mechanism:** every arm sits about +0.2-0.3 above B&H through the shared setup (ridge forecasts + target position + start long). Coevolution can only move the curriculum. On BTC's weak timing signal (timing ≈ 0.1-0.2 for all arms), no curriculum changes the outcome beyond rerun noise.
 - **Trial count:** 88.
+
+## V8: held-out real coins (user-approved pivot, 2026-10-21; deadline 02:00 on 2026-10-22)
+- **Why:**
+  - UED methods (PAIRED, PLR, ACCEL) claim gains on held-out environments, not in-distribution.
+  - On BTC dev, coevolution ties PBT over 88 trials; its only replicated win is under shift (synthetic).
+  - User chose "held-out coins" over "BTC test only".
+- **Contract (V8):**
+  - Training pool: BTC + BNB, XRP, ADA, DOGE, using per-fold calendar train windows with the val span cut.
+  - Dev test: zero-shot on held-out LTC, LINK, BCH, ETC, TRX, XLM test windows (same 6 calendar folds, 288 segments, downloaded to 2026-04, gaps only before listing).
+  - Each coin's features and rhat ridge are fit on that coin's own past only (no RL training on it).
+  - Pass rule and costs are unchanged from V7, pooled over the 288 segments.
+- **PRE-REGISTERED:**
+  1. A single-run dev pass triggers a seeds 48-53 replication.
+  2. The R-style 12-seed pool (coevo_seedpool over both runs, on per_segment_<coins>.csv) must pass.
+  3. Then an eval-only confirmation on ETH + SOL (`--test-coins ETHUSDT SOLUSDT`, both seed sets) pooled, with the rule applied once.
+- **Probe (trial 89, exploratory):** zero-shot of the four BTC-only ALP runs (R18a, R19a, R21a, R22a; 24 seeds) on BNB, XRP, ADA and DOGE (192 segments).
+  - Coevolution − population per run: +0.14, +0.07, −0.01, +0.20.
+  - Pooled: coevolution +0.249, population +0.150, single +0.079, B&H +0.327.
+  - Pooled coevolution vs population +0.10 (P 0.006), vs single +0.17 (P 0.0001), vs B&H −0.08 (P 0.78).
+  - Coevolution > population on all 4 coins.
+  - **Reading:** in distribution (BTC), these same runs tie population. Under cross-asset shift coevolution leads population, as UED predicts. All arms are below alt B&H.
+- **V8-0 (trial 90):**
+  - **Config:** R21a pure ALP teacher (frac 0.5, regime lock, shared exam 8, vote) + multi-coin training pool, seeds 42-47.
+  - **Why the pool:** to close the B&H gap on alts, where BTC-only policies lose to B&H, and to give the teacher a more diverse level set.
+  - orx run ee84b8ff launched 18:35.
