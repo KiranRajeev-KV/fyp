@@ -1245,6 +1245,11 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - 2×: coevolution 0.701 > B&H 0.657 ✔.
   - **CONFIRMATION FAILS on the B&H leg.**
   - Coevolution > population on both coins (ETH +0.10, SOL +0.06) and in 3 of 4 runs.
-  - Coevolution vs B&H per fold: +0.57, −0.01, −0.86, −0.12, +0.24, +1.01. Fold 2 (2022 bear) loses heavily, and with n = 96 the P value is too weak.
+  - Coevolution vs B&H per fold: +0.57, −0.01, −0.86, −0.12, +0.24, +1.01. Fold 2 (Aug 2023–Apr 2024 bull run; coevolution under-exposed) loses heavily, and with n = 96 the P value is too weak.
   - **Honest claim:** BTC-trained coevolution (ALP teacher) beats PBT, plain PPO and MA zero-shot on unseen coins. This is confirmed on sealed ETH/SOL (vs PBT P 0.073). It is ahead of B&H on average but not significantly on the sealed set.
   - Trials to date: 92.
+- **Trial 93 (user chose a fresh-coin test; pre-registered before any download):**
+  - **Coin selection (fixed):** a priority list by rough market cap of coins never used in this project: AVAX, DOT, UNI, NEAR, ATOM, FIL, AAVE, ALGO, VET, EOS. Download all ten and keep the first 8 whose data passes `prepare()` (≥ 8000 train bars before the 2022-03-23 fold-0 test start, and full test windows).
+  - **Models:** the same frozen 24 BTC-only ALP models (R18a, R19a, R21a, R22a), zero-shot. 8 coins × 48 = 384 segments, seeds pooled per segment.
+  - **Rule (applied once):** gap > 0 and P ≤ 0.10 against single, population, B&H and MA, plus coevolution 2× > B&H 2×.
+  - **Multiplicity:** this is the second confirmation of the same pipeline after trial 92 failed on B&H. Both must be reported together.
