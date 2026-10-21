@@ -1235,3 +1235,16 @@ Its edge is concentrated in the two bear folds. This is the same exposure patter
   - The same 24 BTC-only ALP models (R18a, R19a, R21a, R22a), zero-shot on ETH + SOL (96 segments). Seeds pooled per segment.
   - Full rule applied once: gap > 0 and P ≤ 0.10 against single, population, B&H and MA, plus coevolution 2× > B&H 2×.
   - No further changes after this.
+- **Dev 2× (trial 91 check):** coevolution 2× 0.504 > B&H 2× 0.423. **The full dev rule PASSES.**
+- **Confirmation, ETH + SOL (trial 92, sealed, rule applied once):**
+  - 1×: coevolution 0.795, population 0.714, B&H 0.657, single 0.543, MA 0.01.
+  - Coevolution vs population: +0.080, P 0.073 ✔.
+  - Coevolution vs single: +0.251, P 0.000 ✔.
+  - Coevolution vs MA: +0.785, P 0.001 ✔.
+  - **Coevolution vs B&H: +0.138, P 0.200 ✘.**
+  - 2×: coevolution 0.701 > B&H 0.657 ✔.
+  - **CONFIRMATION FAILS on the B&H leg.**
+  - Coevolution > population on both coins (ETH +0.10, SOL +0.06) and in 3 of 4 runs.
+  - Coevolution vs B&H per fold: +0.57, −0.01, −0.86, −0.12, +0.24, +1.01. Fold 2 (2022 bear) loses heavily, and with n = 96 the P value is too weak.
+  - **Honest claim:** BTC-trained coevolution (ALP teacher) beats PBT, plain PPO and MA zero-shot on unseen coins. This is confirmed on sealed ETH/SOL (vs PBT P 0.073). It is ahead of B&H on average but not significantly on the sealed set.
+  - Trials to date: 92.
