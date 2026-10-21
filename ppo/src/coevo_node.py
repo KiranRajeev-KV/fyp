@@ -1,7 +1,9 @@
 """The ONE file an orx node varies (COEVO V7 GOAL). coevo_eval.py is fixed."""
 
 CONFIG = {
-    "name": "r21a-pure-alp", "score": "vote",
+    "name": "v8-0-alp-heldout", "score": "vote",
+    "aux_coins": ["BNBUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT"],     # training pool = BTC + these
+    "test_coins": ["LTCUSDT", "LINKUSDT", "BCHUSDT", "ETCUSDT", "TRXUSDT", "XLMUSDT"],   # V8 dev: zero-shot, held out
     "seeds": [42, 43, 44, 45, 46, 47],
     "flow_pos": True,          # add order-flow + positioning features
     "features": ["volatility_168h", "ema50_ema200_ratio"],   # explicit inputs (overrides the above)
