@@ -1,0 +1,1290 @@
+{
+  "metric": "sharpe",
+  "n_segments": 200,
+  "regimes": {
+    "sideways": 104,
+    "bull": 75,
+    "bear": 21
+  },
+  "move_regimes": {
+    "bull": 94,
+    "sideways": 59,
+    "bear": 47
+  },
+  "arms": {
+    "best": {
+      "coevolution_exam": {
+        "mean": 2.479721817401323,
+        "std_seeds": 0.1827568585122861,
+        "n_seeds": 6,
+        "per_seed": {
+          "42": 2.564762964011797,
+          "43": 2.780057864033999,
+          "44": 2.4384815389967027,
+          "45": 2.379419544297532,
+          "46": 2.1824795044930623,
+          "47": 2.533129488574846
+        },
+        "per_regime": {
+          "bear": 1.2209476180837076,
+          "bull": 5.1429564375095635,
+          "sideways": 0.8132954873777845
+        },
+        "per_move_regime": {
+          "bear": -0.784291454292373,
+          "bull": 5.186138141665581,
+          "sideways": 0.7679504494142627
+        },
+        "per_regime_exposure": {
+          "bear": 0.1032849857606464,
+          "bull": 0.8317261628805439,
+          "sideways": 0.45272993117221205
+        },
+        "timing": 0.33202250880492523,
+        "corr_exposure_move": 0.5708942928932755,
+        "exposure": 0.5581617987946221,
+        "exposure_up": 0.687650577228543,
+        "exposure_down": 0.3556280684236178
+      },
+      "coevolution": {
+        "mean": 2.0300033229528127,
+        "std_seeds": 0.2465135430266704,
+        "n_seeds": 6,
+        "per_seed": {
+          "42": 2.171539719752701,
+          "43": 1.7803121112023161,
+          "44": 1.948814147131748,
+          "45": 2.37595213223197,
+          "46": 1.6836519321427188,
+          "47": 2.21974989525542
+        },
+        "per_regime": {
+          "bear": 0.9338686081514961,
+          "bull": 4.632115379666192,
+          "sideways": 0.3748150994655448
+        },
+        "per_move_regime": {
+          "bear": -0.9571329112447685,
+          "bull": 4.491052755055208,
+          "sideways": 0.4885924143029989
+        },
+        "per_regime_exposure": {
+          "bear": 0.10742433273726736,
+          "bull": 0.7440333796940195,
+          "sideways": 0.31099327770050994
+        },
+        "timing": 0.31969809819852,
+        "corr_exposure_move": 0.5434842914784239,
+        "exposure": 0.45200857672693556,
+        "exposure_up": 0.5766908350243584,
+        "exposure_down": 0.25699273682583834
+      },
+      "coevolution_regret": {
+        "mean": 2.3935421360226528,
+        "std_seeds": 0.0977231211063447,
+        "n_seeds": 6,
+        "per_seed": {
+          "42": 2.2588850962906344,
+          "43": 2.457543918655296,
+          "44": 2.2825569497517715,
+          "45": 2.472697931940506,
+          "46": 2.3698338067084954,
+          "47": 2.519735112789214
+        },
+        "per_regime": {
+          "bear": 0.2303456696374844,
+          "bull": 5.134985853985444,
+          "sideways": 0.853338741281107
+        },
+        "per_move_regime": {
+          "bear": -2.0381666750085086,
+          "bull": 5.771930638707175,
+          "sideways": 0.5413691676517962
+        },
+        "per_regime_exposure": {
+          "bear": 0.2192750071748681,
+          "bull": 0.9276216968011127,
+          "sideways": 0.8263413394672088
+        },
+        "timing": 0.25813879481313756,
+        "corr_exposure_move": 0.5927021422432216,
+        "exposure": 0.8005795085767269,
+        "exposure_up": 0.9012536385538505,
+        "exposure_down": 0.6431148437407128
+      },
+      "reweighted": {
+        "mean": 2.5730584083155015,
+        "std_seeds": 0.10225001726274173,
+        "n_seeds": 6,
+        "per_seed": {
+          "42": 2.611293315554875,
+          "43": 2.5953920030434734,
+          "44": 2.721341696320957,
+          "45": 2.3803708967873085,
+          "46": 2.5925683517153493,
+          "47": 2.537384186471046
+        },
+        "per_regime": {
+          "bear": 0.8730037136642709,
+          "bull": 5.171944334187571,
+          "sideways": 1.0421421020392574
+        },
+        "per_move_regime": {
+          "bear": -1.75656513029368,
+          "bull": 5.893431183760294,
+          "sideways": 0.7319951103972168
+        },
+        "per_regime_exposure": {
+          "bear": 0.2151135836810385,
+          "bull": 0.9350888579817648,
+          "sideways": 0.9029100246068257
+        },
+        "timing": 0.24361030286837984,
+        "corr_exposure_move": 0.5850254541946147,
+        "exposure": 0.8427584608252203,
+        "exposure_up": 0.9377664789438883,
+        "exposure_down": 0.6941561760755084
+      },
+      "population": {
+        "mean": 2.3221056108023137,
+        "std_seeds": 0.32822487383192694,
+        "n_seeds": 6,
+        "per_seed": {
+          "42": 2.6052002739051816,
+          "43": 1.6757011272581253,
+          "44": 2.289714017169684,
+          "45": 2.2117238382644997,
+          "46": 2.634790373274251,
+          "47": 2.51550403494214
+        },
+        "per_regime": {
+          "bear": -0.4183265688694786,
+          "bull": 5.13029440961273,
+          "sideways": 0.8503259556323746
+        },
+        "per_move_regime": {
+          "bear": -2.3854971905455753,
+          "bull": 5.776069284471073,
+          "sideways": 0.5693047012851513
+        },
+        "per_regime_exposure": {
+          "bear": 0.32438130560522777,
+          "bull": 0.9389707927677329,
+          "sideways": 0.8569081880104134
+        },
+        "timing": 0.24436173963066957,
+        "corr_exposure_move": 0.5266599475880539,
+        "exposure": 0.8317663421418637,
+        "exposure_up": 0.9270674205978249,
+        "exposure_down": 0.6827056809671552
+      },
+      "single": {
+        "mean": 2.395376578307363,
+        "std_seeds": 0.2458798611270675,
+        "n_seeds": 6,
+        "per_seed": {
+          "42": 2.623414180099931,
+          "43": 2.0529789641284246,
+          "44": 2.079103782970287,
+          "45": 2.62698804684785,
+          "46": 2.3948196146062464,
+          "47": 2.594954881191439
+        },
+        "per_regime": {
+          "bear": -0.05400182671032901,
+          "bull": 5.069115098098939,
+          "sideways": 0.961785785240088
+        },
+        "per_move_regime": {
+          "bear": -1.9595993904096087,
+          "bull": 5.712431694967618,
+          "sideways": 0.5797950454875944
+        },
+        "per_regime_exposure": {
+          "bear": 0.26021590833830055,
+          "bull": 0.9320321434090558,
+          "sideways": 0.8333890553118649
+        },
+        "timing": 0.2524349103956482,
+        "corr_exposure_move": 0.4944141154504188,
+        "exposure": 0.8101970329160871,
+        "exposure_up": 0.9086466479703899,
+        "exposure_down": 0.6562117375747417
+      }
+    },
+    "final": {
+      "coevolution_exam": {
+        "mean": 2.382398381260584,
+        "std_seeds": 0.11291547705039805,
+        "n_seeds": 6,
+        "per_seed": {
+          "42": 2.4518787527636663,
+          "43": 2.5156816586597746,
+          "44": 2.491101957511467,
+          "45": 2.245060457438307,
+          "46": 2.2318168191222827,
+          "47": 2.358850642068006
+        },
+        "per_regime": {
+          "bear": 1.0475490451449323,
+          "bull": 5.097845274720776,
+          "sideways": 0.6936802951924514
+        },
+        "per_move_regime": {
+          "bear": -0.9100382509524607,
+          "bull": 5.106027460280294,
+          "sideways": 0.6658456403480475
+        },
+        "per_regime_exposure": {
+          "bear": 0.10652057531403845,
+          "bull": 0.82847318806985,
+          "sideways": 0.4578170692022395
+        },
+        "timing": 0.31987009946208744,
+        "corr_exposure_move": 0.6062836125827107,
+        "exposure": 0.5599269819193324,
+        "exposure_up": 0.6846763207095466,
+        "exposure_down": 0.36480622124745904
+      },
+      "coevolution": {
+        "mean": 2.1334042851953674,
+        "std_seeds": 0.2746317560494575,
+        "n_seeds": 6,
+        "per_seed": {
+          "42": 2.2229791963014405,
+          "43": 1.9431263839917363,
+          "44": 1.6689515801024306,
+          "45": 2.4822882804351263,
+          "46": 2.087457068780655,
+          "47": 2.395623201560815
+        },
+        "per_regime": {
+          "bear": 0.8467200151417027,
+          "bull": 4.727801404968176,
+          "sideways": 0.5222560706585049
+        },
+        "per_move_regime": {
+          "bear": -1.151207139320665,
+          "bull": 4.769789589684501,
+          "sideways": 0.5496164602847728
+        },
+        "per_regime_exposure": {
+          "bear": 0.12003692297503145,
+          "bull": 0.7717837273991655,
+          "sideways": 0.42821476810741416
+        },
+        "timing": 0.32533042097997406,
+        "corr_exposure_move": 0.6514603747043494,
+        "exposure": 0.5246944541029207,
+        "exposure_up": 0.6515733182851107,
+        "exposure_down": 0.3262428973051365
+      },
+      "coevolution_regret": {
+        "mean": 2.263280794401872,
+        "std_seeds": 0.20331342699547816,
+        "n_seeds": 6,
+        "per_seed": {
+          "42": 2.416815141263888,
+          "43": 2.471654931975691,
+          "44": 2.2633723708771707,
+          "45": 2.420617810013146,
+          "46": 1.9001350211786714,
+          "47": 2.107089491102662
+        },
+        "per_regime": {
+          "bear": 0.5005785584958415,
+          "bull": 4.938882123568999,
+          "sideways": 0.6896908642719877
+        },
+        "per_move_regime": {
+          "bear": -1.5259741093960784,
+          "bull": 5.24615460302609,
+          "sideways": 0.5294645650430079
+        },
+        "per_regime_exposure": {
+          "bear": 0.16415408305185772,
+          "bull": 0.8488135527739145,
+          "sideways": 0.5920189967369209
+        },
+        "timing": 0.2967020395876218,
+        "corr_exposure_move": 0.6589971811738249,
+        "exposure": 0.6433911393138618,
+        "exposure_up": 0.7591049347530344,
+        "exposure_down": 0.46240289516541255
+      },
+      "reweighted": {
+        "mean": 2.5225811934153333,
+        "std_seeds": 0.036541437012740347,
+        "n_seeds": 6,
+        "per_seed": {
+          "42": 2.566296945223641,
+          "43": 2.553510659037281,
+          "44": 2.4890611077859166,
+          "45": 2.4643220619954946,
+          "46": 2.515665115235586,
+          "47": 2.54663127121408
+        },
+        "per_regime": {
+          "bear": 0.7032449545357404,
+          "bull": 5.17562095357296,
+          "sideways": 0.9766973376908098
+        },
+        "per_move_regime": {
+          "bear": -1.8029693754397869,
+          "bull": 5.812939744911997,
+          "sideways": 0.7260925984238784
+        },
+        "per_regime_exposure": {
+          "bear": 0.21647956818332342,
+          "bull": 0.9314089785195488,
+          "sideways": 0.856473556577868
+        },
+        "timing": 0.25099439067852053,
+        "corr_exposure_move": 0.6263090623016242,
+        "exposure": 0.8173749710245711,
+        "exposure_up": 0.9152627833891942,
+        "exposure_down": 0.6642683927106736
+      },
+      "population": {
+        "mean": 2.417627900171082,
+        "std_seeds": 0.11114522606029449,
+        "n_seeds": 6,
+        "per_seed": {
+          "42": 2.5850506336616337,
+          "43": 2.220044287051294,
+          "44": 2.42400798014161,
+          "45": 2.374238910408025,
+          "46": 2.413326704858883,
+          "47": 2.4890988849050477
+        },
+        "per_regime": {
+          "bear": 0.03280861771940449,
+          "bull": 5.113452682132713,
+          "sideways": 0.9550735375207261
+        },
+        "per_move_regime": {
+          "bear": -2.1556446522421036,
+          "bull": 5.85957266633792,
+          "sideways": 0.5769669161666251
+        },
+        "per_regime_exposure": {
+          "bear": 0.27114516413890544,
+          "bull": 0.9433936022253129,
+          "sideways": 0.9002699172640062
+        },
+        "timing": 0.2448978825014815,
+        "corr_exposure_move": 0.6179056236007117,
+        "exposure": 0.8503832000463607,
+        "exposure_up": 0.9458933742219384,
+        "exposure_down": 0.7009954917204569
+      },
+      "single": {
+        "mean": 2.395376578307363,
+        "std_seeds": 0.2458798611270675,
+        "n_seeds": 6,
+        "per_seed": {
+          "42": 2.623414180099931,
+          "43": 2.0529789641284246,
+          "44": 2.079103782970287,
+          "45": 2.62698804684785,
+          "46": 2.3948196146062464,
+          "47": 2.594954881191439
+        },
+        "per_regime": {
+          "bear": -0.05400182671032901,
+          "bull": 5.069115098098939,
+          "sideways": 0.961785785240088
+        },
+        "per_move_regime": {
+          "bear": -1.9595993904096087,
+          "bull": 5.712431694967618,
+          "sideways": 0.5797950454875944
+        },
+        "per_regime_exposure": {
+          "bear": 0.26021590833830055,
+          "bull": 0.9320321434090558,
+          "sideways": 0.8333890553118649
+        },
+        "timing": 0.2524349103956482,
+        "corr_exposure_move": 0.4944141154504188,
+        "exposure": 0.8101970329160871,
+        "exposure_up": 0.9086466479703899,
+        "exposure_down": 0.6562117375747417
+      }
+    }
+  },
+  "baselines": {
+    "buy_hold": {
+      "mean": 1.6765233562980948,
+      "per_regime": {
+        "bear": -6.0427873016751485,
+        "bull": 4.918864086742236,
+        "sideways": 0.8970038277800898
+      },
+      "per_move_regime": {
+        "bear": -5.370320284876877,
+        "bull": 6.032740964659989,
+        "sideways": 0.3496961689964964
+      }
+    },
+    "ma_crossover": {
+      "mean": 0.8438459959715717,
+      "per_regime": {
+        "bear": -2.2398132358754177,
+        "bull": 2.9424982253943455,
+        "sideways": -0.04694317073920972
+      },
+      "per_move_regime": {
+        "bear": -3.1638162333763242,
+        "bull": 3.6792034117104118,
+        "sideways": -0.48095861928435796
+      }
+    }
+  },
+  "pairs": {
+    "best": {
+      "coevolution_exam vs coevolution": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.4497184944485109,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0016,
+        "n_segments_for_t2": 21
+      },
+      "coevolution_exam vs coevolution_regret": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.08617968137867033,
+        "seed_wins": 4,
+        "p_segments": 0.1742,
+        "p_seeds": 0.13695,
+        "p_hierarchical": 0.25045,
+        "n_segments_for_t2": 988
+      },
+      "coevolution_exam vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.09333659091417836,
+        "seed_wins": 1,
+        "p_segments": 0.8308,
+        "p_seeds": 0.87535,
+        "p_hierarchical": 0.7486,
+        "n_segments_for_t2": 895
+      },
+      "coevolution_exam vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.1576162065990097,
+        "seed_wins": 4,
+        "p_segments": 0.0572,
+        "p_seeds": 0.2226,
+        "p_hierarchical": 0.25225,
+        "n_segments_for_t2": 326
+      },
+      "coevolution_exam vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.08434523909396031,
+        "seed_wins": 2,
+        "p_segments": 0.18755,
+        "p_seeds": 0.30195,
+        "p_hierarchical": 0.3316,
+        "n_segments_for_t2": 1012
+      },
+      "coevolution_exam vs buy_hold": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.8031984611032287,
+        "seed_wins": 6,
+        "p_segments": 0.00015,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.00015,
+        "n_segments_for_t2": 62
+      },
+      "coevolution_exam vs ma_crossover": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 1.6358758214297515,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 12
+      },
+      "coevolution vs coevolution_exam": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.4497184944485109,
+        "seed_wins": 0,
+        "p_segments": 1.0,
+        "p_seeds": 1.0,
+        "p_hierarchical": 0.9978,
+        "n_segments_for_t2": 21
+      },
+      "coevolution vs coevolution_regret": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.3635388130698406,
+        "seed_wins": 0,
+        "p_segments": 0.99825,
+        "p_seeds": 1.0,
+        "p_hierarchical": 0.98345,
+        "n_segments_for_t2": 93
+      },
+      "coevolution vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.5430550853626893,
+        "seed_wins": 0,
+        "p_segments": 0.99995,
+        "p_seeds": 1.0,
+        "p_hierarchical": 0.99825,
+        "n_segments_for_t2": 42
+      },
+      "coevolution vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.29210228784950126,
+        "seed_wins": 2,
+        "p_segments": 0.9902,
+        "p_seeds": 0.9827,
+        "p_hierarchical": 0.9304,
+        "n_segments_for_t2": 145
+      },
+      "coevolution vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.3653732553545507,
+        "seed_wins": 0,
+        "p_segments": 0.9987,
+        "p_seeds": 1.0,
+        "p_hierarchical": 0.99495,
+        "n_segments_for_t2": 82
+      },
+      "coevolution vs buy_hold": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.35347996665471776,
+        "seed_wins": 6,
+        "p_segments": 0.0663,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.08775,
+        "n_segments_for_t2": 366
+      },
+      "coevolution vs ma_crossover": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 1.1861573269812407,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 21
+      },
+      "coevolution_regret vs coevolution_exam": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.08617968137867033,
+        "seed_wins": 2,
+        "p_segments": 0.81015,
+        "p_seeds": 0.8656,
+        "p_hierarchical": 0.74595,
+        "n_segments_for_t2": 988
+      },
+      "coevolution_regret vs coevolution": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.3635388130698406,
+        "seed_wins": 6,
+        "p_segments": 0.0025,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0175,
+        "n_segments_for_t2": 93
+      },
+      "coevolution_regret vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.17951627229284867,
+        "seed_wins": 1,
+        "p_segments": 1.0,
+        "p_seeds": 0.99365,
+        "p_hierarchical": 0.9732,
+        "n_segments_for_t2": 53
+      },
+      "coevolution_regret vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.07143652522033932,
+        "seed_wins": 3,
+        "p_segments": 0.06845,
+        "p_seeds": 0.3507,
+        "p_hierarchical": 0.34555,
+        "n_segments_for_t2": 371
+      },
+      "coevolution_regret vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.0018344422847100421,
+        "seed_wins": 2,
+        "p_segments": 0.51745,
+        "p_seeds": 0.5236,
+        "p_hierarchical": 0.5272,
+        "n_segments_for_t2": 514925
+      },
+      "coevolution_regret vs buy_hold": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.7170187797245584,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 48
+      },
+      "coevolution_regret vs ma_crossover": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 1.5496961400510811,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 12
+      },
+      "reweighted vs coevolution_exam": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.09333659091417836,
+        "seed_wins": 5,
+        "p_segments": 0.1701,
+        "p_seeds": 0.12425,
+        "p_hierarchical": 0.2414,
+        "n_segments_for_t2": 895
+      },
+      "reweighted vs coevolution": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.5430550853626893,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0025,
+        "n_segments_for_t2": 42
+      },
+      "reweighted vs coevolution_regret": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.17951627229284867,
+        "seed_wins": 5,
+        "p_segments": 0.0,
+        "p_seeds": 0.008,
+        "p_hierarchical": 0.0283,
+        "n_segments_for_t2": 53
+      },
+      "reweighted vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.25095279751318805,
+        "seed_wins": 5,
+        "p_segments": 0.0,
+        "p_seeds": 0.01025,
+        "p_hierarchical": 0.03285,
+        "n_segments_for_t2": 26
+      },
+      "reweighted vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.17768183000813867,
+        "seed_wins": 3,
+        "p_segments": 0.0001,
+        "p_seeds": 0.0874,
+        "p_hierarchical": 0.10495,
+        "n_segments_for_t2": 57
+      },
+      "reweighted vs buy_hold": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.896535052017407,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 35
+      },
+      "reweighted vs ma_crossover": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 1.7292124123439299,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 10
+      },
+      "population vs coevolution_exam": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.1576162065990097,
+        "seed_wins": 2,
+        "p_segments": 0.9422,
+        "p_seeds": 0.7821,
+        "p_hierarchical": 0.7524,
+        "n_segments_for_t2": 326
+      },
+      "population vs coevolution": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.29210228784950126,
+        "seed_wins": 4,
+        "p_segments": 0.0085,
+        "p_seeds": 0.0147,
+        "p_hierarchical": 0.06965,
+        "n_segments_for_t2": 145
+      },
+      "population vs coevolution_regret": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.07143652522033932,
+        "seed_wins": 3,
+        "p_segments": 0.92675,
+        "p_seeds": 0.6482,
+        "p_hierarchical": 0.64885,
+        "n_segments_for_t2": 371
+      },
+      "population vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.25095279751318805,
+        "seed_wins": 1,
+        "p_segments": 1.0,
+        "p_seeds": 0.9887,
+        "p_hierarchical": 0.9692,
+        "n_segments_for_t2": 26
+      },
+      "population vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.07327096750504938,
+        "seed_wins": 2,
+        "p_segments": 0.9577,
+        "p_seeds": 0.75565,
+        "p_hierarchical": 0.71705,
+        "n_segments_for_t2": 270
+      },
+      "population vs buy_hold": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.645582254504219,
+        "seed_wins": 5,
+        "p_segments": 0.0,
+        "p_seeds": 5e-05,
+        "p_hierarchical": 0.0001,
+        "n_segments_for_t2": 49
+      },
+      "population vs ma_crossover": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 1.4782596148307419,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 12
+      },
+      "single vs coevolution_exam": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.08434523909396031,
+        "seed_wins": 4,
+        "p_segments": 0.8106,
+        "p_seeds": 0.69545,
+        "p_hierarchical": 0.67475,
+        "n_segments_for_t2": 1012
+      },
+      "single vs coevolution": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.3653732553545507,
+        "seed_wins": 6,
+        "p_segments": 0.00105,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0051,
+        "n_segments_for_t2": 82
+      },
+      "single vs coevolution_regret": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.0018344422847100421,
+        "seed_wins": 4,
+        "p_segments": 0.48425,
+        "p_seeds": 0.47415,
+        "p_hierarchical": 0.47845,
+        "n_segments_for_t2": 514925
+      },
+      "single vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.17768183000813867,
+        "seed_wins": 3,
+        "p_segments": 0.99995,
+        "p_seeds": 0.91595,
+        "p_hierarchical": 0.89675,
+        "n_segments_for_t2": 57
+      },
+      "single vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.07327096750504938,
+        "seed_wins": 4,
+        "p_segments": 0.0417,
+        "p_seeds": 0.2401,
+        "p_hierarchical": 0.28565,
+        "n_segments_for_t2": 270
+      },
+      "single vs buy_hold": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.7188532220092684,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.00015,
+        "n_segments_for_t2": 46
+      },
+      "single vs ma_crossover": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 1.5515305823357912,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 11
+      }
+    },
+    "final": {
+      "coevolution_exam vs coevolution": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.24899409606521664,
+        "seed_wins": 4,
+        "p_segments": 0.0,
+        "p_seeds": 0.03605,
+        "p_hierarchical": 0.0538,
+        "n_segments_for_t2": 25
+      },
+      "coevolution_exam vs coevolution_regret": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.11911758685871256,
+        "seed_wins": 5,
+        "p_segments": 0.0104,
+        "p_seeds": 0.05285,
+        "p_hierarchical": 0.09825,
+        "n_segments_for_t2": 150
+      },
+      "coevolution_exam vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.14018281215474934,
+        "seed_wins": 1,
+        "p_segments": 0.94125,
+        "p_seeds": 1.0,
+        "p_hierarchical": 0.9195,
+        "n_segments_for_t2": 324
+      },
+      "coevolution_exam vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.03522951891049825,
+        "seed_wins": 2,
+        "p_segments": 0.6369,
+        "p_seeds": 0.69545,
+        "p_hierarchical": 0.61485,
+        "n_segments_for_t2": 6464
+      },
+      "coevolution_exam vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.01297819704677894,
+        "seed_wins": 2,
+        "p_segments": 0.55505,
+        "p_seeds": 0.5739,
+        "p_hierarchical": 0.53425,
+        "n_segments_for_t2": 37567
+      },
+      "coevolution_exam vs buy_hold": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.7058750249624896,
+        "seed_wins": 6,
+        "p_segments": 0.0002,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0007,
+        "n_segments_for_t2": 78
+      },
+      "coevolution_exam vs ma_crossover": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 1.5385523852890122,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 13
+      },
+      "coevolution vs coevolution_exam": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.24899409606521664,
+        "seed_wins": 2,
+        "p_segments": 1.0,
+        "p_seeds": 0.9633,
+        "p_hierarchical": 0.94785,
+        "n_segments_for_t2": 25
+      },
+      "coevolution vs coevolution_regret": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.12987650920650418,
+        "seed_wins": 3,
+        "p_segments": 0.9944,
+        "p_seeds": 0.81485,
+        "p_hierarchical": 0.7944,
+        "n_segments_for_t2": 123
+      },
+      "coevolution vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.38917690821996603,
+        "seed_wins": 1,
+        "p_segments": 1.0,
+        "p_seeds": 0.9999,
+        "p_hierarchical": 0.9959,
+        "n_segments_for_t2": 41
+      },
+      "coevolution vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.2842236149757149,
+        "seed_wins": 1,
+        "p_segments": 0.99855,
+        "p_seeds": 0.9978,
+        "p_hierarchical": 0.97895,
+        "n_segments_for_t2": 96
+      },
+      "coevolution vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.2619722931119956,
+        "seed_wins": 0,
+        "p_segments": 0.99805,
+        "p_seeds": 1.0,
+        "p_hierarchical": 0.99195,
+        "n_segments_for_t2": 96
+      },
+      "coevolution vs buy_hold": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.45688092889727283,
+        "seed_wins": 5,
+        "p_segments": 0.01585,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.03025,
+        "n_segments_for_t2": 189
+      },
+      "coevolution vs ma_crossover": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 1.2895582892237956,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 16
+      },
+      "coevolution_regret vs coevolution_exam": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.11911758685871256,
+        "seed_wins": 1,
+        "p_segments": 0.98925,
+        "p_seeds": 0.95285,
+        "p_hierarchical": 0.9014,
+        "n_segments_for_t2": 150
+      },
+      "coevolution_regret vs coevolution": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.12987650920650418,
+        "seed_wins": 3,
+        "p_segments": 0.00505,
+        "p_seeds": 0.1819,
+        "p_hierarchical": 0.19475,
+        "n_segments_for_t2": 123
+      },
+      "coevolution_regret vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.2593003990134619,
+        "seed_wins": 0,
+        "p_segments": 1.0,
+        "p_seeds": 1.0,
+        "p_hierarchical": 0.99775,
+        "n_segments_for_t2": 38
+      },
+      "coevolution_regret vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.15434710576921082,
+        "seed_wins": 2,
+        "p_segments": 0.99125,
+        "p_seeds": 0.9222,
+        "p_hierarchical": 0.8914,
+        "n_segments_for_t2": 145
+      },
+      "coevolution_regret vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.13209578390549148,
+        "seed_wins": 2,
+        "p_segments": 0.98595,
+        "p_seeds": 0.8233,
+        "p_hierarchical": 0.80525,
+        "n_segments_for_t2": 160
+      },
+      "coevolution_regret vs buy_hold": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.586757438103777,
+        "seed_wins": 6,
+        "p_segments": 0.00065,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.00355,
+        "n_segments_for_t2": 89
+      },
+      "coevolution_regret vs ma_crossover": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 1.4194347984302997,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 13
+      },
+      "reweighted vs coevolution_exam": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.14018281215474934,
+        "seed_wins": 5,
+        "p_segments": 0.0562,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.08385,
+        "n_segments_for_t2": 324
+      },
+      "reweighted vs coevolution": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.38917690821996603,
+        "seed_wins": 5,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0033,
+        "n_segments_for_t2": 41
+      },
+      "reweighted vs coevolution_regret": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.2593003990134619,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.00145,
+        "n_segments_for_t2": 38
+      },
+      "reweighted vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.10495329324425112,
+        "seed_wins": 5,
+        "p_segments": 0.0,
+        "p_seeds": 0.00055,
+        "p_hierarchical": 0.0236,
+        "n_segments_for_t2": 58
+      },
+      "reweighted vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.1272046151079704,
+        "seed_wins": 3,
+        "p_segments": 0.0005,
+        "p_seeds": 0.1035,
+        "p_hierarchical": 0.1282,
+        "n_segments_for_t2": 80
+      },
+      "reweighted vs buy_hold": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.8460578371172388,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 38
+      },
+      "reweighted vs ma_crossover": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 1.6787351974437614,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 10
+      },
+      "population vs coevolution_exam": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.03522951891049825,
+        "seed_wins": 4,
+        "p_segments": 0.35865,
+        "p_seeds": 0.30695,
+        "p_hierarchical": 0.38575,
+        "n_segments_for_t2": 6464
+      },
+      "population vs coevolution": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.2842236149757149,
+        "seed_wins": 5,
+        "p_segments": 0.00205,
+        "p_seeds": 0.0029,
+        "p_hierarchical": 0.02135,
+        "n_segments_for_t2": 96
+      },
+      "population vs coevolution_regret": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.15434710576921082,
+        "seed_wins": 4,
+        "p_segments": 0.0089,
+        "p_seeds": 0.0747,
+        "p_hierarchical": 0.10685,
+        "n_segments_for_t2": 145
+      },
+      "population vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.10495329324425112,
+        "seed_wins": 1,
+        "p_segments": 0.99995,
+        "p_seeds": 0.99975,
+        "p_hierarchical": 0.97765,
+        "n_segments_for_t2": 58
+      },
+      "population vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.022251321863719333,
+        "seed_wins": 3,
+        "p_segments": 0.26985,
+        "p_seeds": 0.39975,
+        "p_hierarchical": 0.4186,
+        "n_segments_for_t2": 2098
+      },
+      "population vs buy_hold": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.7411045438729877,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 41
+      },
+      "population vs ma_crossover": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 1.5737819041995105,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 11
+      },
+      "single vs coevolution_exam": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.01297819704677894,
+        "seed_wins": 4,
+        "p_segments": 0.4348,
+        "p_seeds": 0.4338,
+        "p_hierarchical": 0.46465,
+        "n_segments_for_t2": 37567
+      },
+      "single vs coevolution": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.2619722931119956,
+        "seed_wins": 6,
+        "p_segments": 0.0024,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.007,
+        "n_segments_for_t2": 96
+      },
+      "single vs coevolution_regret": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.13209578390549148,
+        "seed_wins": 4,
+        "p_segments": 0.0124,
+        "p_seeds": 0.17795,
+        "p_hierarchical": 0.18875,
+        "n_segments_for_t2": 160
+      },
+      "single vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.1272046151079704,
+        "seed_wins": 3,
+        "p_segments": 0.99955,
+        "p_seeds": 0.8961,
+        "p_hierarchical": 0.8726,
+        "n_segments_for_t2": 80
+      },
+      "single vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.022251321863719333,
+        "seed_wins": 3,
+        "p_segments": 0.73415,
+        "p_seeds": 0.60085,
+        "p_hierarchical": 0.5786,
+        "n_segments_for_t2": 2098
+      },
+      "single vs buy_hold": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.7188532220092684,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 46
+      },
+      "single vs ma_crossover": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 1.5515305823357912,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0,
+        "n_segments_for_t2": 11
+      }
+    }
+  }
+}

@@ -1,12 +1,16 @@
 """Entry point for the three-way ablation: single / population / coevolution.
 
 Each (mode, seed) run gets its own output directory containing config.json,
-generations.csv (internal + external ledgers), and best_trader.zip.
+generations.csv (internal + external ledgers), best_trader.zip and
+final_traders/ (every trader of the last generation).
 
 Examples (from ppo/src):
     python run_coevolution.py --mode single --seeds 42 43 44
     python run_coevolution.py --mode population --seeds 42 43 44
     python run_coevolution.py --mode coevolution --seeds 42 43 44
+
+All engine knobs live in engine_cli.py and are shared with run_walkforward.py,
+so the same flags produce the same EngineConfig in both drivers.
 """
 
 import argparse
@@ -17,45 +21,27 @@ import pandas as pd
 import torch
 
 from segments import build_segment_pool
-from coevo.engine import CoevolutionEngine, EngineConfig
+from coevo.engine import CoevolutionEngine
+from engine_cli import add_engine_args, config_from_args
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--mode", choices=["single", "population", "coevolution"],
                         default="coevolution")
     parser.add_argument("--seeds", type=int, nargs="+", default=[42])
     parser.add_argument("--train-data", default="../data/processed/train.parquet")
     parser.add_argument("--val-data", default="../data/processed/val.parquet")
     parser.add_argument("--out-root", default="../runs")
-    parser.add_argument("--generations", type=int, default=20)
-    parser.add_argument("--n-traders", type=int, default=8)
-    parser.add_argument("--n-env", type=int, default=12)
-    parser.add_argument("--timesteps-per-match", type=int, default=8192)
+    parser.add_argument("--run-name", default=None,
+                        help="directory name under --out-root (default: <mode>_seed<seed>); "
+                             "use to keep two variants of one mode apart, e.g. coevolution_regret")
+    parser.add_argument("--features", default="../models/feature_columns.pkl",
+                        help="joblib list of feature columns (synthetic data ships its own)")
     parser.add_argument("--segment-length", type=int, default=720)
     parser.add_argument("--segment-stride", type=int, default=168)
-    parser.add_argument("--matches-per-trader", type=int, default=3)
-    parser.add_argument("--segments-per-match", type=int, default=4)
-    parser.add_argument("--fitness-metric", default="sharpe",
-                        choices=["sharpe", "sortino", "calmar",
-                                 "total_return_pct", "max_drawdown_pct"])
-    parser.add_argument("--elite-frac", type=float, default=0.25)
-    parser.add_argument("--sharing-strength", type=float, default=1.0)
-    parser.add_argument("--env-weight-sigma", type=float, default=0.3,
-                        help="adversary weight mutation scale (raise to fight disengagement)")
-    parser.add_argument("--env-temp-sigma", type=float, default=0.15,
-                        help="adversary temperature mutation scale")
-    parser.add_argument("--env-fresh-frac", type=float, default=0.0,
-                        help="fraction of fresh random adversaries injected per generation (try 0.25)")
-    parser.add_argument("--trade-penalty", type=float, default=0.0,
-                        help="anti-churn: extra reward penalty per executed trade (try 0.001-0.005)")
-    parser.add_argument("--gamma", type=float, default=0.99,
-                        help="PPO discount; raise to 0.995-0.999 for a longer horizon")
-    parser.add_argument("--env-skip-no-trade-matches", action="store_true",
-                        help="drop matches where the trader never traded from adversary "
-                             "fitness (they measure trader collapse, not adversary skill)")
-    parser.add_argument("--ent-coef-max", type=float, default=0.1,
-                        help="cap on evolved entropy coef (try 0.02 to reduce random flipping)")
+    add_engine_args(parser)
     args = parser.parse_args()
 
     train_df = pd.read_parquet(args.train_data)
@@ -63,7 +49,7 @@ def main():
 
     try:
         import joblib
-        feature_columns = joblib.load("../models/feature_columns.pkl")
+        feature_columns = joblib.load(args.features)
     except FileNotFoundError:
         from train_ppo import FEATURE_COLUMNS as feature_columns
 
@@ -79,42 +65,28 @@ def main():
         np.random.seed(seed)
         torch.manual_seed(seed)
 
-        config = EngineConfig(
-            mode=args.mode,
-            seed=seed,
-            generations=args.generations,
-            n_traders=args.n_traders,
-            n_env=args.n_env,
-            timesteps_per_match=args.timesteps_per_match,
-            matches_per_trader=args.matches_per_trader,
-            segments_per_match=args.segments_per_match,
-            fitness_metric=args.fitness_metric,
-            elite_frac=args.elite_frac,
-            sharing_strength=args.sharing_strength,
-            env_weight_sigma=args.env_weight_sigma,
-            env_temp_sigma=args.env_temp_sigma,
-            env_fresh_frac=args.env_fresh_frac,
-            trade_penalty=args.trade_penalty,
-            gamma=args.gamma,
-            ent_coef_max=args.ent_coef_max,
-            env_skip_no_trade_matches=args.env_skip_no_trade_matches,
-        )
-        out_dir = f"{args.out_root}/{args.mode}_seed{seed}"
+        config = config_from_args(args, args.mode, seed)
+        name = args.run_name or args.mode
+        out_dir = f"{args.out_root}/{name}_seed{seed}"
         engine = CoevolutionEngine(config, pool, feature_columns, val_df, out_dir)
 
         def report(gen, row):
             print(
-                f"[{args.mode} seed={seed}] gen {gen:3d} | "
+                f"[{name} seed={seed}] gen {gen:3d} | "
                 f"internal fit (mean/max): "
                 f"{row['internal_trader_fitness_mean']:+.3f}/"
                 f"{row['internal_trader_fitness_max']:+.3f} | "
+                f"env fit (mean/max): "
+                f"{row['internal_env_fitness_mean']:+.3f}/"
+                f"{row['internal_env_fitness_max']:+.3f} | "
                 f"external val sharpe: {row['external_val_sharpe']:+.3f} "
                 f"(B&H {row['baseline_bh_sharpe']:+.3f}, "
-                f"MA {row['baseline_ma_sharpe']:+.3f})"
+                f"MA {row['baseline_ma_sharpe']:+.3f})",
+                flush=True,
             )
 
         _, model_path = engine.run(on_generation=report)
-        print(f"[{args.mode} seed={seed}] done -> {model_path}.zip")
+        print(f"[{name} seed={seed}] done -> {model_path}.zip", flush=True)
 
 
 if __name__ == "__main__":

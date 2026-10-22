@@ -1,0 +1,313 @@
+{
+  "0.13": {
+    "bear_share": 0.13,
+    "n_segments": 200,
+    "bar_level_bear_share": 0.2304375,
+    "sharpe": {
+      "coevolution": 2.3511541672945664,
+      "coevolution_regret": 2.3649818430937497,
+      "reweighted": 2.4628463855276403,
+      "population": 2.245123347685712,
+      "single": 2.2305545465597763
+    },
+    "buy_hold": 0.6960388897808403,
+    "timing": {
+      "coevolution": 0.4473104259294654,
+      "coevolution_regret": 0.4025273824327848,
+      "reweighted": 0.33158768482733203,
+      "population": 0.3069027423707762,
+      "single": 0.3177316469384338
+    },
+    "exposure": {
+      "coevolution": 0.4678934863235977,
+      "coevolution_regret": 0.5732681386184515,
+      "reweighted": 0.7156183356513677,
+      "population": 0.7496934399629115,
+      "single": 0.7241898470097358
+    },
+    "pairs": {
+      "coevolution vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.1205996207347901,
+        "seed_wins": 5,
+        "p_segments": 0.12845,
+        "p_seeds": 0.04225,
+        "p_hierarchical": 0.18885,
+        "n_segments_for_t2": 657,
+        "p_reverse": 0.81115
+      },
+      "coevolution vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.10603081960885406,
+        "seed_wins": 5,
+        "p_segments": 0.1641,
+        "p_seeds": 0.15965,
+        "p_hierarchical": 0.24315,
+        "n_segments_for_t2": 851,
+        "p_reverse": 0.75685
+      },
+      "coevolution vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.11169221823307383,
+        "seed_wins": 3,
+        "p_segments": 0.8671,
+        "p_seeds": 0.8218,
+        "p_hierarchical": 0.7601,
+        "n_segments_for_t2": 627,
+        "p_reverse": 0.2399
+      }
+    }
+  },
+  "0.25": {
+    "bear_share": 0.25,
+    "n_segments": 200,
+    "bar_level_bear_share": 0.31838194444444445,
+    "sharpe": {
+      "coevolution": 2.1485307685269697,
+      "coevolution_regret": 2.142891137000174,
+      "reweighted": 2.174000895581244,
+      "population": 1.9073917290621774,
+      "single": 1.9215755877798426
+    },
+    "buy_hold": -0.1280235424336358,
+    "timing": {
+      "coevolution": 0.47560885090222715,
+      "coevolution_regret": 0.4487903981449705,
+      "reweighted": 0.4074626640310315,
+      "population": 0.38075296320797886,
+      "single": 0.39047212639006806
+    },
+    "exposure": {
+      "coevolution": 0.4146224501622624,
+      "coevolution_regret": 0.5100288305516921,
+      "reweighted": 0.63735483310153,
+      "population": 0.6747655887807139,
+      "single": 0.6504404265183125
+    },
+    "pairs": {
+      "coevolution vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.2269551807471265,
+        "seed_wins": 5,
+        "p_segments": 0.0158,
+        "p_seeds": 0.01125,
+        "p_hierarchical": 0.0633,
+        "n_segments_for_t2": 181,
+        "p_reverse": 0.9367
+      },
+      "coevolution vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.2411390394647922,
+        "seed_wins": 5,
+        "p_segments": 0.0121,
+        "p_seeds": 0.0196,
+        "p_hierarchical": 0.0707,
+        "n_segments_for_t2": 162,
+        "p_reverse": 0.9293
+      },
+      "coevolution vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": -0.02547012705427458,
+        "seed_wins": 3,
+        "p_segments": 0.6088,
+        "p_seeds": 0.5807,
+        "p_hierarchical": 0.56625,
+        "n_segments_for_t2": 11201,
+        "p_reverse": 0.43374999999999997
+      }
+    }
+  },
+  "0.40": {
+    "bear_share": 0.4,
+    "n_segments": 200,
+    "bar_level_bear_share": 0.4228125,
+    "sharpe": {
+      "coevolution": 1.8463363012629692,
+      "coevolution_regret": 1.7806140166129236,
+      "reweighted": 1.816949681617677,
+      "population": 1.4743678136280796,
+      "single": 1.5078705100070877
+    },
+    "buy_hold": -1.4415745820951997,
+    "timing": {
+      "coevolution": 0.5036931154606114,
+      "coevolution_regret": 0.49747200556648274,
+      "reweighted": 0.4908205116357522,
+      "population": 0.4616959582592804,
+      "single": 0.4691691435954621
+    },
+    "exposure": {
+      "coevolution": 0.3514377607788595,
+      "coevolution_regret": 0.4356413711172925,
+      "reweighted": 0.5421447612424664,
+      "population": 0.5832345271210013,
+      "single": 0.560074177097821
+    },
+    "pairs": {
+      "coevolution vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.3384657912558813,
+        "seed_wins": 4,
+        "p_segments": 0.00025,
+        "p_seeds": 0.00155,
+        "p_hierarchical": 0.0167,
+        "n_segments_for_t2": 75,
+        "p_reverse": 0.9833
+      },
+      "coevolution vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.3719684876348893,
+        "seed_wins": 5,
+        "p_segments": 0.0002,
+        "p_seeds": 0.00415,
+        "p_hierarchical": 0.01895,
+        "n_segments_for_t2": 60,
+        "p_reverse": 0.98105
+      },
+      "coevolution vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.0293866196452921,
+        "seed_wins": 4,
+        "p_segments": 0.36635,
+        "p_seeds": 0.39835,
+        "p_hierarchical": 0.4021,
+        "n_segments_for_t2": 7114,
+        "p_reverse": 0.5979
+      }
+    }
+  },
+  "0.58": {
+    "bear_share": 0.58,
+    "n_segments": 200,
+    "bar_level_bear_share": 0.5400555555555555,
+    "sharpe": {
+      "coevolution": 1.2444143090522874,
+      "coevolution_regret": 1.1340224965227639,
+      "reweighted": 1.1004153040267781,
+      "population": 0.700326448566094,
+      "single": 0.7340794774711269
+    },
+    "buy_hold": -3.0641558591306493,
+    "timing": {
+      "coevolution": 0.5415020308100976,
+      "coevolution_regret": 0.552374081581314,
+      "reweighted": 0.5722447047855602,
+      "population": 0.5374379407759102,
+      "single": 0.5355392971874197
+    },
+    "exposure": {
+      "coevolution": 0.2677984469170144,
+      "coevolution_regret": 0.3424127839592026,
+      "reweighted": 0.43129679531757065,
+      "population": 0.47743857209086693,
+      "single": 0.45656815020862307
+    },
+    "pairs": {
+      "coevolution vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.5103348315811606,
+        "seed_wins": 5,
+        "p_segments": 0.0,
+        "p_seeds": 5e-05,
+        "p_hierarchical": 0.0038,
+        "n_segments_for_t2": 32,
+        "p_reverse": 0.9962
+      },
+      "coevolution vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.5440878604861934,
+        "seed_wins": 5,
+        "p_segments": 0.0,
+        "p_seeds": 0.00025,
+        "p_hierarchical": 0.0035,
+        "n_segments_for_t2": 26,
+        "p_reverse": 0.9965
+      },
+      "coevolution vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.14399900502550958,
+        "seed_wins": 4,
+        "p_segments": 0.0486,
+        "p_seeds": 0.0346,
+        "p_hierarchical": 0.11945,
+        "n_segments_for_t2": 287,
+        "p_reverse": 0.8805499999999999
+      }
+    }
+  },
+  "0.75": {
+    "bear_share": 0.75,
+    "n_segments": 200,
+    "bar_level_bear_share": 0.6663402777777777,
+    "sharpe": {
+      "coevolution": 0.80878652474747,
+      "coevolution_regret": 0.6092989622135839,
+      "reweighted": 0.5559194262498367,
+      "population": 0.0753881855470238,
+      "single": 0.09654310909524877
+    },
+    "buy_hold": -4.691227061295293,
+    "timing": {
+      "coevolution": 0.49452351851517357,
+      "coevolution_regret": 0.5238469535409731,
+      "reweighted": 0.5742284758974606,
+      "population": 0.5490450902829207,
+      "single": 0.5432402707785183
+    },
+    "exposure": {
+      "coevolution": 0.1835506490496059,
+      "coevolution_regret": 0.24524860917941585,
+      "reweighted": 0.3132730644413537,
+      "population": 0.36361671302735277,
+      "single": 0.3427202132591562
+    },
+    "pairs": {
+      "coevolution vs single": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.7122434156522212,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.0014,
+        "n_segments_for_t2": 17,
+        "p_reverse": 0.9986
+      },
+      "coevolution vs population": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.7333983392004463,
+        "seed_wins": 6,
+        "p_segments": 0.0,
+        "p_seeds": 0.0,
+        "p_hierarchical": 0.00025,
+        "n_segments_for_t2": 16,
+        "p_reverse": 0.99975
+      },
+      "coevolution vs reweighted": {
+        "n_seeds": 6,
+        "n_segments": 200,
+        "mean_diff": 0.25286709849763345,
+        "seed_wins": 5,
+        "p_segments": 0.0022,
+        "p_seeds": 0.0027,
+        "p_hierarchical": 0.03235,
+        "n_segments_for_t2": 105,
+        "p_reverse": 0.96765
+      }
+    }
+  },
+  "sign_change_vs_single": []
+}

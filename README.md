@@ -1,31 +1,48 @@
 # Team 100 - FYP
 
-Competitive coevolutionary PPO for cryptocurrency trading (CC-PPO): a
-population of PPO trading agents evolved against an adversarial population
-that selects which real historical market segments the traders have to
-trade on. The hypothesis under test is generalization, not raw profit — see
-[`context.md`](context.md) for the full design, evaluation standards, and
-milestone plan, and [`docs/design-history.md`](docs/design-history.md) for
-how the architecture arrived here from earlier panel reviews.
+Competitive coevolutionary PPO for Bitcoin trading (CC-PPO): a population of
+PPO trading agents is trained against an adversary population that chooses
+which real historical BTC market windows the traders practise on. The
+adversary rewards windows where the traders are still learning (learning
+progress), so training keeps moving to the market conditions the traders
+handle worst.
 
-## Status
+## Result
 
-The full pipeline is implemented in `ppo/`: data pipeline and feature
-engineering, regime labeling, segment pool + walk-forward splitting, a gym
-environment with fees and slippage, the coevolutionary engine (trader
-population with PBT, adversarial environment population, halls of fame,
-fitness sharing, external-yardstick logging), baselines, and a per-regime
-evaluation harness with bootstrap significance. Verified end-to-end on
-synthetic data (`ppo/tests/smoke_test.py`); full-scale experiments on the
-real BTCUSDT data (three-way ablation, multi-seed) are the next step.
-See `ppo/README.md` for how to run everything.
+Scored on six BTC periods (Mar 2022 – May 2026) that no agent trained on,
+24 seeds, realistic perpetual-futures costs:
+
+| Strategy | Sharpe |
+|---|---|
+| Coevolution (this project) | 1.24 |
+| Population-based training (PBT) | 1.24 |
+| Buy & hold | 0.97 |
+| Single PPO agent | 0.91 |
+| Moving-average crossover | 0.15 |
+
+Coevolution beats the single agent (P < 0.001) and the MA crossover
+(P = 0.002), and ties PBT.
 
 ## Repo layout
 
-- `context.md` — current design doc (read this first).
+- `ppo/` — all code: data pipeline, trading environment, coevolution engine,
+  evaluation. See [`ppo/README.md`](ppo/README.md) for how to run it.
+- `context.md` — design document.
 - `docs/design-history.md` — how the architecture evolved across panel reviews.
-- `ppo/` — data pipeline, gym environment, and PPO baseline code.
-- `reviews/` — panel review reports and slides (PR1, PR2).
+- `docs/experiment-notes.md` — experiment notes and diagnoses.
+- `docs/audit-2026-09.md` — September code audit and the fixes it led to.
+- `download_klines.py` — downloads hourly BTCUSDT candles from the Binance public archive.
+
+## Quick start
+
+```bash
+cd ppo
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cd tests && python smoke_test.py        # end-to-end check on synthetic data, no download needed
+```
+Preparing the BTC data and running the full evaluation are described in
+[`ppo/README.md`](ppo/README.md).
 
 ### Members
 [Kiran Rajeev](https://github.com/KiranRajeev-KV)

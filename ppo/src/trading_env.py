@@ -32,6 +32,11 @@ class TradingEnv(gym.Env):
         segments=None,
         max_episode_steps=5000,
         trade_penalty=0.0,
+        decision_every=1,
+        start_long=False,
+        funding_col=None,
+        target_position=False,
+        obs_affine=None,
     ):
 
         super().__init__()
@@ -47,11 +52,25 @@ class TradingEnv(gym.Env):
         # discourages high-churn policies that bleed capital to fees/slippage
         # (the observed dominant failure mode). 0.0 = disabled (original behavior).
         self.trade_penalty = trade_penalty
+        # V7 options (defaults reproduce the original env):
+        #   decision_every -- hold each action for k bars (reward = k-bar log return)
+        #   start_long     -- each episode opens fully invested (entry cost charged)
+        #   funding_col    -- per-bar perp funding paid while long (df column),
+        #                     deducted from the position every bar held
+        #   target_position -- 2 actions: 0 = be in cash, 1 = be long
+        self.decision_every = decision_every
+        self.start_long = start_long
+        self._funding = (self.df[funding_col].astype(float).values
+                         if funding_col else None)
 
         self._close = self.df["close"].astype(float).values
         self._features = self.df[feature_columns].values.astype(np.float32)
+        if obs_affine is not None:     # (column indices, shift, scale) set by the adversary
+            idx, shift, scale = obs_affine
+            self._features[:, idx] = self._features[:, idx] * scale + shift
 
-        self.action_space = spaces.Discrete(3)
+        self.target_position = target_position
+        self.action_space = spaces.Discrete(2 if target_position else 3)
 
         obs_size = len(feature_columns) + 3
         self.observation_space = spaces.Box(
@@ -88,6 +107,11 @@ class TradingEnv(gym.Env):
         self.position = 0
         self.portfolio_value = self.initial_balance
         self.trade_count = 0
+        if self.start_long:
+            price = self._close[self.current_step]
+            self.btc_held = self.cash * (1 - self.trading_fee) / (price * (1 + self.slippage))
+            self.cash = 0
+            self.position = 1
 
         return self._get_observation(), {}
 
@@ -110,6 +134,9 @@ class TradingEnv(gym.Env):
         return obs
 
     def step(self, action):
+
+        if self.target_position:
+            action = 1 if action == 1 else 2      # long -> buy, cash -> sell (no-ops if already there)
 
         current_price = self._close[self.current_step]
 
@@ -158,16 +185,20 @@ class TradingEnv(gym.Env):
         # Next Step
         # -----------------------------
 
-        self.current_step += 1
+        # advance k bars (k = 1 is the original single step), recording the
+        # value at every bar so Sharpe stays hourly whatever k is
+        bar_values = []
+        for _ in range(self.decision_every):
+            if self._funding is not None and self.btc_held > 0:
+                self.btc_held *= 1 - self._funding[self.current_step]
+            self.current_step += 1
+            bar_values.append(self.cash + self.btc_held * self._close[self.current_step])
+            if self.current_step >= self._episode_end - 1:
+                break
 
         done = self.current_step >= self._episode_end - 1
 
-        next_price = self._close[self.current_step]
-
-        new_portfolio_value = (
-            self.cash +
-            self.btc_held * next_price
-        )
+        new_portfolio_value = bar_values[-1]
 
         self.portfolio_value = new_portfolio_value
 
@@ -185,6 +216,7 @@ class TradingEnv(gym.Env):
             "cash": self.cash,
             "btc_held": self.btc_held,
             "trade_count": self.trade_count,
+            "bar_values": bar_values,
         }
 
         return self._get_observation(), reward, done, False, info

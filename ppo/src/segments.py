@@ -28,8 +28,13 @@ DESCRIPTOR_NAMES = [
 class Segment:
     start: int              # iloc start into the source df
     end: int                # iloc end (exclusive)
-    regime: str             # majority regime label inside the segment
+    regime: str             # majority of the per-bar TRAILING labels inside the segment
     descriptor: np.ndarray  # aligned with DESCRIPTOR_NAMES
+    # regime by the segment's OWN net log move over [start, end) with the same
+    # threshold. The trailing-label majority lags by up to a window, so a
+    # segment that rallies +15% can still be "sideways" by majority vote;
+    # report per-regime results under both definitions.
+    move_regime: str = "sideways"
 
 
 @dataclass
@@ -52,8 +57,16 @@ class SegmentPool:
     def slice(self, segment):
         return self.df.iloc[segment.start:segment.end].reset_index(drop=True)
 
-    def regimes(self):
-        return pd.Series([s.regime for s in self.segments]).value_counts().to_dict()
+    def regimes(self, by="regime"):
+        return pd.Series([getattr(s, by) for s in self.segments]).value_counts().to_dict()
+
+
+def move_regime_label(net_log_move, threshold=0.10):
+    if net_log_move > threshold:
+        return "bull"
+    if net_log_move < -threshold:
+        return "bear"
+    return "sideways"
 
 
 def build_segment_pool(
@@ -69,6 +82,7 @@ def build_segment_pool(
     """
     df = df.reset_index(drop=True)
     regimes = label_regimes(df, window=regime_window, threshold=regime_threshold)
+    true_regimes = df["true_regime"] if "true_regime" in df.columns else None
     close = df["close"].astype(float).values
     log_close = np.log(close)
 
@@ -88,6 +102,10 @@ def build_segment_pool(
         seg_regimes = regimes.iloc[start:end]
         transitions = int((seg_regimes != seg_regimes.shift()).sum() - 1)
         majority = seg_regimes.mode().iloc[0]
+        # synthetic data (synth_market.py) knows the regime that generated
+        # each bar: label the segment with its true majority instead
+        if true_regimes is not None:
+            majority = true_regimes.iloc[start:end].mode().iloc[0]
 
         dd = abs(max_drawdown(close[start:end]))
 
@@ -105,7 +123,8 @@ def build_segment_pool(
             dd,
             transitions,
         ], dtype=np.float64)
-        segments.append(Segment(start=start, end=end, regime=majority, descriptor=descriptor))
+        segments.append(Segment(start=start, end=end, regime=majority, descriptor=descriptor,
+                                move_regime=move_regime_label(net_move, regime_threshold)))
 
     return SegmentPool(df=df, segments=segments)
 

@@ -29,14 +29,21 @@ from coevo.trader_population import evaluate_on_segments
 METRIC_KEYS = ["total_return_pct", "sharpe", "sortino", "max_drawdown_pct", "calmar"]
 
 
-def eval_baselines_per_segment(pool, initial_balance, trading_fee):
+def eval_baselines_per_segment(pool, initial_balance, trading_fee, slippage=0.0):
+    """Baselines on every segment under the SAME fee + slippage model as the agent.
+
+    slippage defaults to 0.0 so older callers reproduce the V1-V4 numbers;
+    evaluate.py's CLI passes the env's slippage.
+    """
     rows = []
     for seg in pool.segments:
         seg_df = pool.slice(seg)
         rows.append({
             "regime": seg.regime,
-            "buy_hold": summarize(buy_and_hold(seg_df, initial_balance, trading_fee)),
-            "ma_crossover": summarize(ma_crossover(seg_df, initial_balance, trading_fee)),
+            "buy_hold": summarize(buy_and_hold(
+                seg_df, initial_balance, trading_fee, slippage)),
+            "ma_crossover": summarize(ma_crossover(
+                seg_df, initial_balance, trading_fee, slippage=slippage)),
         })
     return rows
 
@@ -88,7 +95,7 @@ def main():
     }
 
     baseline_rows = eval_baselines_per_segment(
-        pool, args.initial_balance, args.trading_fee)
+        pool, args.initial_balance, args.trading_fee, args.slippage)
 
     per_model = {}
     for path in args.models:
