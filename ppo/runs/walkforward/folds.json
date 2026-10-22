@@ -1,0 +1,71 @@
+{
+  "geometry": {
+    "train_span": 40000,
+    "test_span": 6000,
+    "val_span": 4000,
+    "step": null,
+    "features": "../data/features/btcusdt_features.parquet"
+  },
+  "folds": [
+    {
+      "fold": 0,
+      "train_start": 0,
+      "train_end": 40000,
+      "test_start": 40000,
+      "test_end": 46000,
+      "train_from": "2017-08-24 04:00:00",
+      "test_from": "2022-03-23 05:00:00",
+      "test_to": "2022-11-28 04:00:00"
+    },
+    {
+      "fold": 1,
+      "train_start": 6000,
+      "train_end": 46000,
+      "test_start": 46000,
+      "test_end": 52000,
+      "train_from": "2018-05-02 20:00:00",
+      "test_from": "2022-11-28 05:00:00",
+      "test_to": "2023-08-05 06:00:00"
+    },
+    {
+      "fold": 2,
+      "train_start": 12000,
+      "train_end": 52000,
+      "test_start": 52000,
+      "test_end": 58000,
+      "train_from": "2019-01-09 00:00:00",
+      "test_from": "2023-08-05 07:00:00",
+      "test_to": "2024-04-11 06:00:00"
+    },
+    {
+      "fold": 3,
+      "train_start": 18000,
+      "train_end": 58000,
+      "test_start": 58000,
+      "test_end": 64000,
+      "train_from": "2019-09-17 01:00:00",
+      "test_from": "2024-04-11 07:00:00",
+      "test_to": "2024-12-17 06:00:00"
+    },
+    {
+      "fold": 4,
+      "train_start": 24000,
+      "train_end": 64000,
+      "test_start": 64000,
+      "test_end": 70000,
+      "train_from": "2020-05-24 14:00:00",
+      "test_from": "2024-12-17 07:00:00",
+      "test_to": "2025-08-24 06:00:00"
+    },
+    {
+      "fold": 5,
+      "train_start": 30000,
+      "train_end": 70000,
+      "test_start": 70000,
+      "test_end": 76000,
+      "train_from": "2021-01-29 23:00:00",
+      "test_from": "2025-08-24 07:00:00",
+      "test_to": "2026-05-01 06:00:00"
+    }
+  ]
+}
