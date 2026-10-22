@@ -1,9 +1,9 @@
-# Research loop ledger (brief: docs/loop/PROMPT.md)
+# Research loop ledger
 
 Branch `loop/experiments` (from `fix/v5-audit` @ ebffc75). Deadline 2026-10-09 18:00. MAX_ITERATIONS 2.
 
 ## Pre-registered criteria
-Section 4 of PROMPT.md, verbatim, frozen before the first arm run. Not edited.
+Section 4 of the research brief, verbatim, frozen before the first arm run. Not edited.
 
 ## Benchmarks
 ### SYNTH_V1 (Task B, synthetic; separate from real data — never compared across benchmarks)
@@ -48,7 +48,7 @@ Section 4 of PROMPT.md, verbatim, frozen before the first arm run. Not edited.
 
 ### Task A (done 2026-10-08 23:40, while iter01 runs)
 - `ppo/src/signal_probe.py` (+ `ppo/data/funding/BTCUSDT_funding.parquet`, built from the earlier session's Binance zips, 2020-01..2026-09).
-- Acceptance (±0.01 vs PROMPT §1): PASS for AUC@24h 0.529, trend feats, funding (0.519 / adds nothing), B&H 0.927 & 0.968,
+- Acceptance (±0.01 vs the research brief, §1): PASS for AUC@24h 0.529, trend feats, funding (0.519 / adds nothing), B&H 0.927 & 0.968,
   long/flat timer +0.013 (no-entry-cost convention), trend filter −0.103 (= close > SMA720; momentum>0 gives +0.23), all arm
   exposures/corrs. MISS: vol-target +0.771 (vs 0.76, +0.011), long/short −1.12/−1.08 (vs −0.97), AUC@168h 0.516 (vs ~0.53).
   The originals' code is lost; conventions searched for ~15 min then stopped. No conclusion changes.
@@ -61,7 +61,7 @@ Section 4 of PROMPT.md, verbatim, frozen before the first arm run. Not edited.
   Adversary served bear share (pool 12.9%): coevolution 0.24→0.50 (g5)→0.56 (g10)→0.27 (g19); regret 0.24→0.33→0.26→0.26.
 
 #### iter01 Result (dev, 2026-10-09 07:20) — files `ppo/runs/loop/iter01_taskB/compare_dev_{shift,control}.{json,csv}`
-Headline convention, fixed BEFORE the sealed run: per-seed value = **final-population mean** (`--final-traders`; as in PROMPT §1),
+Headline convention, fixed BEFORE the sealed run: per-seed value = **final-population mean** (`--final-traders`; as in the research brief, §1),
 hierarchical bootstrap, 20k resamples; rank-0 `best_trader` reported alongside. B&H: shift −3.55, control +1.68.
 
 | arm | shift final (best) | control final (best) | shift exposure (bear / bull / sideways) |

@@ -1,6 +1,6 @@
 # Zero-shot probe: BTC-trained node models evaluated on other coins' test windows (same folds).
 import sys, os, json, multiprocessing as mp, numpy as np, pandas as pd
-os.chdir("/home/nandu/uni/fyp/fyp-coevo/ppo/src"); sys.path.insert(0, ".")
+os.chdir(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ".")
 import coevo_eval as E
 from evaluate import paired_bootstrap
 node, coins = sys.argv[1], sys.argv[2:]

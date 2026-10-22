@@ -9,6 +9,7 @@ the confirmation coins downloaded by download_coin.py.
 """
 
 import glob
+import os
 import json
 
 import numpy as np
@@ -22,7 +23,8 @@ SEALED_FROM = pd.Timestamp("2026-05-01 07:00")    # BTC bars from here on are sp
 
 
 def _paths(sym):
-    if sym == "BTCUSDT":
+    # BTC: the original hand-assembled files if present, else the download_coin.py layout
+    if sym == "BTCUSDT" and os.path.isdir("../data/external/metrics/csv"):
         return "../data/raw", "../data/external/metrics/csv", None
     root = f"../data/coins/{sym}"
     return f"{root}/raw", f"{root}/metrics", f"{root}/funding"

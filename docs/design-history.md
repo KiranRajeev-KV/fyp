@@ -9,14 +9,14 @@ design.**
 Proposed NEAT evolving network topology, with PPO doing gradient-based weight
 optimization within each topology. Fitness via Sharpe/Sortino/Calmar. Nothing
 implemented in code at this stage — literature survey and problem
-formalization only. See `reviews/pr1/`.
+formalization only.
 
 ## PR2 (2026-03-29) — Self-play CC-PPO
 Pivoted to a single population of PPO agents competing against each other:
 dominance-based fitness (fraction of opponents beaten), a Strategy Diversity
 Index (mean KL divergence of action distributions vs. a reference
 trajectory), adaptive opponent sampling (EMA win-rate, oversample hard
-opponents), and MAP-Elites archiving. See `reviews/pr2/`.
+opponents), and MAP-Elites archiving.
 
 **Status: superseded, not merged into the current design.** No code in this
 repo implements the self-play loop, dominance fitness, SDI, adaptive opponent

@@ -2,7 +2,7 @@
 (docs/loop/LEDGER.md, "MAKER-FEE QUESTION"). Bars >= 76000 (2026-05-01 07:00 ->
 2026-08-31), trained on the preceding 40,000 bars, 4 segments of 720 bars.
 
-    python orx_sealed.py --strategy-dir ../../../fyp-orx/ppo/src
+    python orx_sealed.py --strategy-dir <folder holding orx_strategy.py>
 """
 
 import argparse

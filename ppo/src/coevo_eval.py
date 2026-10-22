@@ -30,7 +30,7 @@ AGENT_FEE, AGENT_SLIP = 0.0002, 0.0001
 SPOT_FEE, SPOT_SLIP = 0.001, 0.0005
 SEG, VAL_SPAN, POOL_STRIDE = 720, 4000, 168
 ARMS = ["single", "population", "coevolution"]
-OUT_BASE = "/home/nandu/uni/fyp/fyp/ppo/runs/coevo7"
+OUT_BASE = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "runs", "coevo7"))
 
 
 def rhat_feature(df, cols, folds_win, horizon):

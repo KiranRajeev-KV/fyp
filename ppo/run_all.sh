@@ -11,7 +11,7 @@
 # (2026-09-09 and 2026-09-14) each cost a full run before this existed.
 #
 # Optional: relaunch automatically after every boot with
-#   crontab -e   ->   @reboot sleep 120 && cd /home/nandu/uni/fyp/fyp && bash ppo/run_all.sh >> ppo/runs/run_all.log 2>&1
+#   crontab -e   ->   @reboot sleep 120 && cd /path/to/fyp && bash ppo/run_all.sh >> ppo/runs/run_all.log 2>&1
 # ---------------------------------------------------------------------------
 set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

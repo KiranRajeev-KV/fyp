@@ -398,8 +398,8 @@ Full write-up: [`audit-2026-09.md`](audit-2026-09.md). The short version:
 
 - **V4's per-generation ledgers were destroyed** by a relaunch on 2026-09-09 (16 of 18 runs);
   the frozen models and eval JSONs survive, so the headline table reproduces, but the curriculum /
-  drift / cost analyses have no data behind them until V5 finishes. What survives is in
-  `docs/artifacts/v4_evidence.tar.gz`.
+  drift / cost analyses have no data behind them until V5 finishes. What survives was archived
+  locally (not in git).
 - **The trader hall of fame was aliasing live weights and overwrote trader 0 every generation** in
   the coevolution arm only (an unintended between-arm difference). Fixed; V5 is the re-run.
 - **Coevolution vs single / population was never significance-tested.** `compare_arms.py` now does
@@ -581,7 +581,7 @@ known regime and a deliberate train/test regime shift.
   - This deviates from the pre-registered "change only the signal". Noise alone cannot lower the AUC, because the price features carry the regime. The user approved the change before the freeze.
 
 **Protocol.**
-- Criteria were frozen in `docs/loop/PROMPT.md` §4. Every trial was written into `docs/loop/LEDGER.md` before it ran.
+- Criteria were frozen before the first run (see the top of `docs/loop/LEDGER.md`). Every trial was written into `docs/loop/LEDGER.md` before it ran.
 - Five arms: single, population, coevolution, coevolution_regret, and the oracle `reweighted`. The oracle is population + PBT trained on regime-balanced segments, so it uses the true labels that coevolution never sees.
 - 6 seeds × 20 generations, V5 config.
 - Score: final-population mean Sharpe per seed. Significance: hierarchical bootstrap P(coevolution ≤ X).
