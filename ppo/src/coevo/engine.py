@@ -111,6 +111,18 @@ class EngineConfig:
     #                 trader's score: "where does the trader do worse than a
     #                 trivial policy?". Unbounded, and it moves as the trader
     #                 learns instead of terminating.
+    #   regret_bh  -- regret against buy & hold alone: cash on a falling window
+    #                 beats the reference, so only missed rallies pay.
+    #   pop_regret -- PAIRED-style (needs shared_exam): on each served window,
+    #                 best trader's score minus the population mean; rewards
+    #                 windows the traders disagree on, i.e. learnable ones.
+    #   learnability -- SFL (Rutherford et al. 2024, needs shared_exam): p(1-p)
+    #                 per window, p = share of traders beating buy & hold on it.
+    #                 Zero where all win or all lose; peaks where half do.
+    #   progress   -- teacher-style learning progress (ALP-GMM, TSCL; needs
+    #                 shared_exam): |change of the population-mean score on a
+    #                 window since it was last examined|; never-seen windows
+    #                 get the generation's mean progress.
     env_fitness: str = "neg_sharpe"
     # Refuse to start in an out_dir that already holds a populated
     # generations.csv (a relaunch destroyed the V4 ledgers). True = overwrite.
@@ -123,6 +135,15 @@ class EngineConfig:
     decision_every: int = 1            # hold each action for k bars
     start_long: bool = False           # episodes open fully invested
     funding_col: str = ""              # df column of perp funding paid per bar ("" = none)
+    target_position: bool = False      # 2 actions: cash / long
+    # inputs the adversary may shift/rescale in the matches it serves
+    # (adversarial domain randomisation against input drift); () = off
+    obs_adversary: tuple = ()
+    # adversary picks keep the uniform pool's regime mix (regimes drawn uniformly,
+    # adversary chooses within each), so it cannot just move the exposure dial
+    adv_regime_lock: bool = False
+    obs_sign_random: bool = False      # random sign per served match / exam eval (zero-mean drift)
+    obs_bound: tuple = ()              # (max |shift|, max |log_scale|) applied; () = genome bounds
 
 
 class CoevolutionEngine:
@@ -153,6 +174,9 @@ class CoevolutionEngine:
             "slippage": config.slippage,
             "trade_penalty": config.trade_penalty,
         }
+        if config.target_position:
+            self.env_kwargs["target_position"] = True
+        self._obs_idx = [list(feature_columns).index(c) for c in config.obs_adversary]
         if config.decision_every != 1 or config.start_long or config.funding_col:
             self.env_kwargs.update(decision_every=config.decision_every,
                                    start_long=config.start_long,
@@ -199,24 +223,30 @@ class CoevolutionEngine:
 
         if config.segment_sampling not in ("uniform", "regime_balanced"):
             raise ValueError(f"unknown segment_sampling {config.segment_sampling!r}")
-        if config.env_fitness not in ("neg_sharpe", "regret"):
+        if config.env_fitness not in ("neg_sharpe", "regret", "regret_bh", "pop_regret", "learnability", "progress"):
             raise ValueError(f"unknown env_fitness {config.env_fitness!r}")
+        if config.env_fitness in ("pop_regret", "learnability", "progress") and not config.shared_exam:
+            raise ValueError(f"{config.env_fitness} is scored in the shared exam: set shared_exam > 0")
         # regret reference per pool segment: the best trivial policy's score
         # (cash = 0, buy & hold, MA-crossover) under the same fee model
         self._ref_by_start = {}
-        if config.env_fitness == "regret" and self.env_pop is not None:
+        if config.env_fitness in ("regret", "regret_bh", "learnability") and self.env_pop is not None:
             for sg in pool.segments:
                 seg_df = pool.slice(sg)
                 bh = summarize(buy_and_hold(
                     seg_df, config.initial_balance, config.trading_fee, config.slippage))
                 ma = summarize(ma_crossover(
                     seg_df, config.initial_balance, config.trading_fee, slippage=config.slippage))
-                self._ref_by_start[sg.start] = max(
-                    0.0, bh[config.fitness_metric], ma[config.fitness_metric])
+                self._ref_by_start[sg.start] = (
+                    bh[config.fitness_metric] if config.env_fitness in ("regret_bh", "learnability")
+                    else max(0.0, bh[config.fitness_metric], ma[config.fitness_metric]))
 
         # which regime each segment belongs to, so the curriculum the adversary
         # actually served can be logged (not just the genome that chose it)
         self._regime_by_start = {sg.start: sg.regime for sg in pool.segments}
+        # progress fitness: last population-mean exam score per window start
+        # ponytail: not checkpointed, a resumed run restarts the history
+        self._seg_hist = {}
         # a fixed probe batch for measuring how far apart the policies are.
         # Seeded independently of the run so it is identical across seeds.
         self._probe = self._build_probe()
@@ -317,7 +347,7 @@ class CoevolutionEngine:
         self.env_log_path = os.path.join(out_dir, "adversary_params.csv")
         self._env_log_fields = (
             ["generation", "env_id", "rank", "raw_fitness", "shared_fitness",
-             "niche", "temperature", "selection_entropy", "evaluated",
+             "niche", "temperature", "shift", "log_scale", "selection_entropy", "evaluated",
              "n_matches", "weight_norm",
              "frac_bear", "frac_bull", "frac_sideways"]
             + [f"w_{name}" for name in DESCRIPTOR_NAMES]
@@ -542,6 +572,7 @@ class CoevolutionEngine:
                 "shared_fitness": ind.fitness,
                 "niche": ind.niche,
                 "temperature": ind.temperature,
+                "shift": ind.shift, "log_scale": ind.log_scale,
                 "selection_entropy": ind.selection_entropy(dm),
                 # False => never drawn as an opponent, so raw_fitness 0.0 is a
                 # placeholder, not a measurement; excluded from elites/parents
@@ -599,6 +630,11 @@ class CoevolutionEngine:
             idx = self.rng.choice(len(self.pool), size=min(n, len(self.pool)), replace=False)
         return [(self.pool.segments[i].start, self.pool.segments[i].end) for i in idx]
 
+    def _adv_select(self, ind, n):
+        regimes = ([self._regime_by_start[st] for st, _ in self._uniform_segments(n)]
+                   if self.cfg.adv_regime_lock else None)
+        return ind.select_segments(self.pool, n, self.rng, regimes)
+
     def _match_segments(self, opp, n):
         """(segments, k) for one match: the FIRST k were picked by the adversary,
         the rest drawn uniformly from the pool.
@@ -612,7 +648,7 @@ class CoevolutionEngine:
         if opp is None:
             return self._uniform_segments(n), 0
         k = min(n, round(n * self.cfg.env_adversary_frac))
-        adversary_segs = opp.select_segments(self.pool, k, self.rng) if k else []
+        adversary_segs = self._adv_select(opp, k) if k else []
         return adversary_segs + self._uniform_segments(n - k), k
 
     # ------------------------------------------------------------------
@@ -637,13 +673,14 @@ class CoevolutionEngine:
             for m_idx, oi in enumerate(opponent_idx):
                 opp = self.env_pop[oi] if oi is not None else None
                 segs, k_adv = self._match_segments(opp, cfg.segments_per_match)
+                kw = self._kw(opp)                   # one perturbation draw per match
                 tp.train_on_segments(
                     trader, self.pool.df, self.feature_columns, segs,
-                    self.env_kwargs, cfg.timesteps_per_match,
+                    kw, cfg.timesteps_per_match,
                 )
                 score, per_seg = tp.evaluate_on_segments(
                     trader, self.pool.df, self.feature_columns, segs,
-                    self.env_kwargs, cfg.fitness_metric,
+                    kw, cfg.fitness_metric,
                 )
                 no_trade = [m["no_trade"] for m in per_seg]
                 trader.record(score, float(np.mean(no_trade)))
@@ -675,7 +712,7 @@ class CoevolutionEngine:
             # matches against archived adversaries: evaluation only, so the
             # trader cannot forget how to beat old opponents (anti-cycling)
             for h, entry in enumerate(self.env_hof.sample(cfg.hof_matches)):
-                segs = entry.payload.select_segments(self.pool, cfg.segments_per_match, self.rng)
+                segs = self._adv_select(entry.payload, cfg.segments_per_match)
                 score, per_seg = tp.evaluate_on_segments(
                     trader, self.pool.df, self.feature_columns, segs,
                     self.env_kwargs, cfg.fitness_metric,
@@ -695,12 +732,24 @@ class CoevolutionEngine:
             for ind in self.env_pop:
                 for entry in self.trader_hof.sample(cfg.env_hof_matches):
                     shell.model.set_parameters(entry.payload)
-                    segs = ind.select_segments(self.pool, cfg.segments_per_match, self.rng)
+                    segs = self._adv_select(ind, cfg.segments_per_match)
                     score, per_seg = tp.evaluate_on_segments(
                         shell, self.pool.df, self.feature_columns, segs,
-                        self.env_kwargs, cfg.fitness_metric,
+                        self._kw(ind), cfg.fitness_metric,
                     )
                     ind.record(self._adversary_score(segs, per_seg, score))
+
+    def _kw(self, ind):
+        """env kwargs for a match served by adversary `ind` (None = uniform)."""
+        if ind is None or not self._obs_idx:
+            return self.env_kwargs
+        b = self.cfg.obs_bound or (np.inf, np.inf)
+        shift = float(np.clip(ind.shift, -b[0], b[0]))
+        if self.cfg.obs_sign_random:                 # adversary sets the size, the sign is a coin flip
+            shift = abs(shift) * self.rng.choice([-1.0, 1.0])
+        return {**self.env_kwargs,
+                "obs_affine": (self._obs_idx, shift,
+                               float(np.exp(np.clip(ind.log_scale, -b[1], b[1]))))}
 
     def _shared_exam(self):
         """Overwrite match-based fitness with common-ground scores (see shared_exam)."""
@@ -710,19 +759,39 @@ class CoevolutionEngine:
             t.fitness, _ = tp.evaluate_on_segments(
                 t, self.pool.df, self.feature_columns, exam,
                 self.env_kwargs, cfg.fitness_metric)
+        pending = []                                 # progress fitness, scored after all adversaries
         for ind in self.env_pop or []:
-            segs = ind.select_segments(self.pool, cfg.segments_per_match, self.rng)
-            scores = []
+            segs = self._adv_select(ind, cfg.segments_per_match)
+            scores, per_trader = [], []
+            kw = self._kw(ind)                       # same perturbation for every trader
             for t in self.traders:
                 score, per_seg = tp.evaluate_on_segments(
                     t, self.pool.df, self.feature_columns, segs,
-                    self.env_kwargs, cfg.fitness_metric)
-                scores.append(self._adversary_score(segs, per_seg, score))
+                    kw, cfg.fitness_metric)
+                per_trader.append([m[cfg.fitness_metric] for m in per_seg])
+                if cfg.env_fitness not in ("pop_regret", "learnability", "progress"):
+                    scores.append(self._adversary_score(segs, per_seg, score))
+            if cfg.env_fitness == "pop_regret":
+                S = np.array(per_trader)                     # traders x windows
+                scores = list(S.max(axis=0) - S.mean(axis=0))
+            elif cfg.env_fitness == "learnability":
+                p = (np.array(per_trader) > np.array([self._ref_by_start[st] for st, _ in segs])).mean(axis=0)
+                scores = list(p * (1 - p))
+            elif cfg.env_fitness == "progress":
+                pending.append((ind, [(st, v) for (st, _), v in zip(segs, np.array(per_trader).mean(axis=0))]))
+                continue
             ind.raw_fitness, ind.evaluated = float(np.mean(scores)), True
+        alp = [[abs(v - self._seg_hist[st]) if st in self._seg_hist else None for st, v in sv] for _, sv in pending]
+        seen = [a for L in alp for a in L if a is not None]
+        for (ind, sv), L in zip(pending, alp):
+            ind.raw_fitness = float(np.mean([np.mean(seen) if seen and a is None else (a or 0.0) for a in L]))
+            ind.evaluated = True
+        for _, sv in pending:
+            self._seg_hist.update(sv)
 
     def _adversary_score(self, segs, per_seg, score):
         """What the adversary earns for a match it served (higher = harder)."""
-        if self.cfg.env_fitness == "regret":
+        if self.cfg.env_fitness in ("regret", "regret_bh"):
             return float(np.mean([
                 self._ref_by_start[st] - m[self.cfg.fitness_metric]
                 for (st, _), m in zip(segs, per_seg)

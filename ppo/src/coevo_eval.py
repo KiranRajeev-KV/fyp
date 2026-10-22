@@ -69,14 +69,17 @@ def prepare(sym, cfg):
     from build_features import FEATURE_COLUMNS
     df = load_coin(sym)
     wins = fold_windows(df)
-    cols = list(FEATURE_COLUMNS) + (FLOW + POS if cfg.get("flow_pos", True) else [])
-    rh = rhat_feature(df, list(FEATURE_COLUMNS) + FLOW + POS, wins, cfg["rhat"]) if cfg.get("rhat") else None
-    feats = cols + (["rhat"] if rh else [])
+    cols = cfg.get("features") or list(FEATURE_COLUMNS) + (FLOW + POS if cfg.get("flow_pos", True) else [])
+    # rhat: one horizon (feature "rhat") or a list of horizons (features "rhat<h>")
+    hs = cfg.get("rhat") or []
+    names = {hs: "rhat"} if isinstance(hs, int) else {h: f"rhat{h}" for h in hs}
+    rh = {n: rhat_feature(df, list(FEATURE_COLUMNS) + FLOW + POS, wins, h) for h, n in names.items()}
+    feats = cols + list(rh)
     data = {}
     for w in wins:
         d = df.copy()
-        if rh:
-            d["rhat"] = rh[w["fold"]]
+        for n, r in rh.items():
+            d[n] = r[w["fold"]]
         train = d.iloc[w["train_start"]:w["train_end"]].reset_index(drop=True)
         test = d.iloc[w["test_start"]:w["test_end"]].reset_index(drop=True)
         mu, sd = train[feats].mean(), train[feats].std().replace(0, 1)
@@ -84,6 +87,19 @@ def prepare(sym, cfg):
             x.loc[:, feats] = ((x[feats] - mu) / sd).clip(-10, 10).fillna(0.0)
         data[w["fold"]] = (train, test)
     return data, feats, wins
+
+
+def merged_pool(frames):
+    """One segment pool over several coins' train frames; no segment crosses a coin boundary."""
+    import dataclasses
+    from segments import SegmentPool, build_segment_pool
+    dfs, segs, off = [], [], 0
+    for f in frames:
+        p = build_segment_pool(f.reset_index(drop=True), segment_length=SEG, stride=POOL_STRIDE)
+        segs += [dataclasses.replace(sg, start=sg.start + off, end=sg.end + off) for sg in p.segments]
+        dfs.append(p.df)
+        off += len(p.df)
+    return SegmentPool(df=pd.concat(dfs, ignore_index=True), segments=segs)
 
 
 def engine_config(cfg, arm, seed, sym):
@@ -100,13 +116,13 @@ def train_job(job):
     import torch
     torch.set_num_threads(1)
     from coevo.engine import CoevolutionEngine
-    from segments import build_segment_pool
     train, _ = DATA[fold]
     if os.path.exists(os.path.join(out_dir, "best_trader.zip")):
         return job, 0.0
     random.seed(seed); np.random.seed(seed); torch.manual_seed(seed)
     val = train.iloc[-VAL_SPAN:].reset_index(drop=True)
-    pool = build_segment_pool(train.iloc[:-VAL_SPAN].reset_index(drop=True), segment_length=SEG, stride=POOL_STRIDE)
+    # aux coins (node "aux_coins"): their bars from the same calendar train window, val span cut too
+    pool = merged_pool([train.iloc[:-VAL_SPAN]] + [AUX[c][fold][0].iloc[:-VAL_SPAN] for c in AUX])
     t0 = time.time()
     import contextlib
     with open(os.path.join(os.path.dirname(out_dir), f"{os.path.basename(out_dir)}.log"), "w") as log, \
@@ -115,20 +131,40 @@ def train_job(job):
     return job, time.time() - t0
 
 
+class SoftVote:
+    """An arm's final population as one policy: argmax of the mean action probabilities."""
+
+    def __init__(self, models):
+        self.models = models
+
+    def predict(self, obs, deterministic=True):
+        import torch
+        with torch.no_grad():
+            p = [m.policy.get_distribution(m.policy.obs_to_tensor(obs)[0]).distribution.probs.numpy()[0]
+                 for m in self.models]
+        return int(np.mean(p, axis=0).argmax()), None
+
+
 def eval_job(job):
-    fold, path, mult = job
+    coin, fold, path, mult = job
     import torch
     torch.set_num_threads(1)
     from types import SimpleNamespace
     from stable_baselines3 import PPO
     from coevo.trader_population import evaluate_on_segments
-    _, test = DATA[fold]
+    _, test = TEST[coin][fold]
     segs = [(s, s + SEG) for s in range(0, len(test) - SEG + 1, SEG)]
     kw = {"initial_balance": 10000.0, "trading_fee": AGENT_FEE * mult, "slippage": AGENT_SLIP * mult,
           "trade_penalty": 0.0, "funding_col": "funding_paid",
           "decision_every": CFG.get("engine", {}).get("decision_every", 1),
-          "start_long": CFG.get("engine", {}).get("start_long", False)}
-    _, rows = evaluate_on_segments(SimpleNamespace(model=PPO.load(path, device="cpu")), test, FEATS, segs, kw)
+          "start_long": CFG.get("engine", {}).get("start_long", False),
+          "target_position": CFG.get("engine", {}).get("target_position", False)}
+    if CFG.get("score") == "vote":       # the seed's final population votes (single: 1 trader)
+        d = os.path.join(os.path.dirname(path), "final_traders")
+        model = SoftVote([PPO.load(os.path.join(d, f), device="cpu") for f in sorted(os.listdir(d)) if f.endswith(".zip")])
+    else:
+        model = PPO.load(path, device="cpu")
+    _, rows = evaluate_on_segments(SimpleNamespace(model=model), test, FEATS, segs, kw)
     return job, [(r["sharpe"], r["exposure"]) for r in rows]
 
 
@@ -146,17 +182,22 @@ def baselines(test, mult):
 
 
 def main():
-    global DATA, FEATS, CFG, SYM
+    global DATA, FEATS, CFG, SYM, AUX, TEST
     ap = argparse.ArgumentParser()
     ap.add_argument("--coin", default="BTCUSDT")
     ap.add_argument("--workers", type=int, default=11)
     ap.add_argument("--folds", type=int, nargs="*", default=None, help="smoke tests only")
+    ap.add_argument("--test-coins", nargs="*", default=None,
+                    help="zero-shot test coins (V8); default: the node's test_coins, else --coin")
     args = ap.parse_args()
     import coevo_node
     CFG, SYM = coevo_node.CONFIG, args.coin
     from evaluate import paired_bootstrap
 
     DATA, FEATS, wins = prepare(SYM, CFG)
+    AUX = {c: prepare(c, CFG)[0] for c in CFG.get("aux_coins", []) if c != SYM}
+    test_coins = args.test_coins or CFG.get("test_coins") or [SYM]
+    tag = "" if test_coins == [SYM] else "_" + "_".join(test_coins)   # zero-shot results never overwrite the dev ones
     folds = args.folds if args.folds is not None else [w["fold"] for w in wins]
     out_root = os.path.join(OUT_BASE, CFG["name"], SYM)
     os.makedirs(out_root, exist_ok=True)
@@ -173,31 +214,34 @@ def main():
         for (k, arm, s, _), sec in pool.imap_unordered(train_job, jobs):
             print(f"  trained fold {k} {arm} seed {s} in {sec / 60:.1f} min  [{(time.time() - t0) / 60:.0f} min]",
                   flush=True)
-        ev = [(k, os.path.join(out_root, f"fold{k}", f"{arm}_seed{s}", "best_trader.zip"), m)
-              for arm in ARMS for k in folds for s in seeds for m in (1.0, 2.0)]
+    # test coins load after training (a training run needs no test data); fresh workers see TEST
+    TEST = {c: DATA if c == SYM else prepare(c, CFG)[0] for c in test_coins}
+    with ctx.Pool(args.workers) as pool:
+        ev = [(c, k, os.path.join(out_root, f"fold{k}", f"{arm}_seed{s}", "best_trader.zip"), m)
+              for c in test_coins for arm in ARMS for k in folds for s in seeds for m in (1.0, 2.0)]
         res = dict(pool.map(eval_job, ev))
 
     rows = []
-    for k in folds:
-        b1, b2 = baselines(DATA[k][1], 1.0), baselines(DATA[k][1], 2.0)
+    for c, k in [(c, k) for c in test_coins for k in folds]:
+        b1, b2 = baselines(TEST[c][k][1], 1.0), baselines(TEST[c][k][1], 2.0)
         for i in range(len(b1)):
-            row = {"fold": k, "seg": i, "move": b1[i]["move"], "buy_hold": b1[i]["buy_hold"],
+            row = {"coin": c, "fold": k, "seg": i, "move": b1[i]["move"], "buy_hold": b1[i]["buy_hold"],
                    "ma_crossover": b1[i]["ma_crossover"], "buy_hold_2x": b2[i]["buy_hold"],
                    "ma_crossover_2x": b2[i]["ma_crossover"]}
             for arm in ARMS:
                 for m, suf in ((1.0, ""), (2.0, "_2x")):
-                    vals = [res[(k, os.path.join(out_root, f"fold{k}", f"{arm}_seed{s}", "best_trader.zip"), m)][i]
+                    vals = [res[(c, k, os.path.join(out_root, f"fold{k}", f"{arm}_seed{s}", "best_trader.zip"), m)][i]
                             for s in seeds]
                     row[arm + suf] = float(np.mean([v[0] for v in vals]))
                     if m == 1.0:
                         row[arm + "_expo"] = float(np.mean([v[1] for v in vals]))
             rows.append(row)
     seg = pd.DataFrame(rows)
-    seg.to_csv(os.path.join(out_root, "per_segment.csv"), index=False)
+    seg.to_csv(os.path.join(out_root, f"per_segment{tag}.csv"), index=False)
 
     c = seg.coevolution.values
     others = ["single", "population", "buy_hold", "ma_crossover"]
-    res = {"coin": SYM, "node": CFG["name"], "n_segments": len(seg),
+    res = {"coin": "+".join(test_coins), "train_coin": SYM, "node": CFG["name"], "n_segments": len(seg),
            **{a: float(seg[a].mean()) for a in ARMS + ["buy_hold", "ma_crossover"]},
            "gaps": {o: float((c - seg[o].values).mean()) for o in others},
            "p": {o: paired_bootstrap(c, seg[o].values) for o in others},
@@ -207,11 +251,12 @@ def main():
            "timing": {a: float(seg[a + "_expo"][seg.move > 0].mean() - seg[a + "_expo"][seg.move < 0].mean())
                       for a in ARMS},
            "per_fold_gap_bh": seg.assign(g=c - seg.buy_hold).groupby("fold").g.mean().round(3).to_dict(),
+           "per_coin_gap_pop": seg.assign(g=c - seg.population).groupby("coin").g.mean().round(3).to_dict(),
            "minutes": round((time.time() - t0) / 60, 1)}
     res["pass"] = bool(all(res["gaps"][o] > 0 and res["p"][o] <= 0.10 for o in others)
                        and res["coevolution_2x"] > res["buy_hold_2x"])
-    json.dump(res, open(os.path.join(out_root, "result.json"), "w"), indent=2)
-    print(f"node {CFG['name']} on {SYM}: " + "  ".join(f"{a} {res[a]:+.3f}" for a in ARMS + ["buy_hold", "ma_crossover"]))
+    json.dump(res, open(os.path.join(out_root, f"result{tag}.json"), "w"), indent=2)
+    print(f"node {CFG['name']} on {res['coin']}: " + "  ".join(f"{a} {res[a]:+.3f}" for a in ARMS + ["buy_hold", "ma_crossover"]))
     print("  coevolution gap / P: " + "  ".join(f"{o} {res['gaps'][o]:+.3f}/{res['p'][o]:.3f}" for o in others)
           + f"  2x {res['coevolution_2x']:+.3f} vs B&H {res['buy_hold_2x']:+.3f}"
           + f"  expo {res['exposure']}  {'PASS' if res['pass'] else '-'}")

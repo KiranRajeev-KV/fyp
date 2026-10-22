@@ -24,6 +24,8 @@ TEMP_BOUNDS = (0.2, 3.0)
 class EnvIndividual:
     weights: np.ndarray          # preference over descriptor features
     temperature: float
+    shift: float = 0.0           # added to the perturbed inputs (EngineConfig.obs_adversary)
+    log_scale: float = 0.0       # their scale is multiplied by exp(log_scale)
     fitness: float = 0.0
     raw_fitness: float = 0.0
     # diagnostics filled in each generation, logged so the adversary side of
@@ -53,8 +55,16 @@ class EnvIndividual:
         p = np.exp(logits)
         return p / p.sum()
 
-    def select_segments(self, pool, n, rng):
+    def select_segments(self, pool, n, rng, regimes=None):
         probs = self.selection_probs(pool.descriptor_matrix)
+        if regimes is not None:   # regime mix fixed by the caller; the adversary picks within each regime
+            labels = np.array([s.regime for s in pool.segments])
+            idx = []
+            for r in regimes:
+                p = probs * (labels == r)
+                p[idx] = 0.0
+                idx.append(int(rng.choice(len(pool), p=p / p.sum())))
+            return [(pool.segments[i].start, pool.segments[i].end) for i in idx]
         n = min(n, len(pool))
         idx = rng.choice(len(pool), size=n, replace=False, p=probs)
         return [(pool.segments[i].start, pool.segments[i].end) for i in idx]
@@ -77,6 +87,8 @@ def random_individual(rng):
     return EnvIndividual(
         weights=rng.uniform(-1.0, 1.0, size=len(DESCRIPTOR_NAMES)),
         temperature=float(rng.uniform(0.5, 1.5)),
+        shift=float(rng.uniform(-1.0, 1.0)),
+        log_scale=float(rng.uniform(-0.5, 0.5)),
     )
 
 
@@ -87,7 +99,10 @@ def crossover(a, b, rng):
         rng.uniform() * np.log(a.temperature) +
         (1 - rng.uniform()) * np.log(b.temperature)
     ))
-    return EnvIndividual(weights=weights, temperature=temperature)
+    u = rng.uniform()
+    return EnvIndividual(weights=weights, temperature=temperature,
+                         shift=u * a.shift + (1 - u) * b.shift,
+                         log_scale=u * a.log_scale + (1 - u) * b.log_scale)
 
 
 def mutate(ind, rng, weight_sigma=0.3, temp_sigma=0.15):
@@ -95,6 +110,8 @@ def mutate(ind, rng, weight_sigma=0.3, temp_sigma=0.15):
         ind.weights + rng.normal(0, weight_sigma, size=ind.weights.shape),
         -WEIGHT_BOUND, WEIGHT_BOUND,
     )
+    ind.shift = float(np.clip(ind.shift + rng.normal(0, weight_sigma), -2.0, 2.0))
+    ind.log_scale = float(np.clip(ind.log_scale + rng.normal(0, temp_sigma), -1.0, 1.0))
     ind.temperature = float(np.clip(
         ind.temperature * np.exp(rng.normal(0, temp_sigma)),
         *TEMP_BOUNDS,
@@ -155,6 +172,7 @@ def evolve(population, rng, elite_frac=0.25, tournament_k=3,
 
     elites = [
         EnvIndividual(weights=e.weights.copy(), temperature=e.temperature,
+                      shift=e.shift, log_scale=e.log_scale,
                       origin="elite")
         for e in eligible[:n_elite]
     ]
