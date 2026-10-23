@@ -40,6 +40,7 @@ from segments import build_segment_pool, walk_forward_folds
 from coevo.engine import CoevolutionEngine
 from engine_cli import add_engine_args, config_from_args
 import evaluate as ev
+from project_paths import project_path
 
 
 def load_feature_columns(path):
@@ -152,14 +153,14 @@ def describe_folds(df, folds, time_col="open_time"):
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--features", default="../data/features/btcusdt_features.parquet")
-    parser.add_argument("--feature-cols", default="../models/feature_columns.pkl")
+    parser.add_argument("--features", default=project_path("data/features/btcusdt_features.parquet"))
+    parser.add_argument("--feature-cols", default=project_path("models/feature_columns.pkl"))
     parser.add_argument("--modes", nargs="+",
                         default=["single", "population", "coevolution"],
                         help="engine modes to train; append ':name' to give a run a "
                              "different directory name, e.g. coevolution:coevolution_regret")
     parser.add_argument("--seeds", type=int, nargs="+", default=[42, 43, 44])
-    parser.add_argument("--out-root", default="../runs/walkforward")
+    parser.add_argument("--out-root", default=project_path("runs/walkforward"))
     # fold geometry (rows are 1h bars)
     parser.add_argument("--train-span", type=int, default=40000)
     parser.add_argument("--test-span", type=int, default=6000)

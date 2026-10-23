@@ -11,6 +11,7 @@ from stable_baselines3.common.monitor import Monitor
 
 from trading_env import TradingEnv
 from metrics import summarize
+from project_paths import project_path
 
 # ==========================================
 # FEATURE LIST
@@ -78,8 +79,8 @@ def main():
     parser = argparse.ArgumentParser(description="Train a single-agent PPO trading baseline")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--timesteps", type=int, default=500_000)
-    parser.add_argument("--data-dir", default="../data/processed")
-    parser.add_argument("--models-dir", default="../models")
+    parser.add_argument("--data-dir", default=project_path("data/processed"))
+    parser.add_argument("--models-dir", default=project_path("models"))
     parser.add_argument("--initial-balance", type=float, default=10000.0)
     parser.add_argument("--trading-fee", type=float, default=0.001)
     args = parser.parse_args()
@@ -115,7 +116,7 @@ def main():
         max_grad_norm=0.5,
         verbose=1,
         seed=args.seed,
-        tensorboard_log="./tensorboard_logs/"
+        tensorboard_log=project_path("src/tensorboard_logs")
     )
 
     model.learn(

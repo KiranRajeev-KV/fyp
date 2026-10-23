@@ -33,6 +33,7 @@ from sklearn.preprocessing import StandardScaler
 from build_features import FEATURE_COLUMNS
 from compare_arms import timing_score
 from metrics import sharpe_ratio
+from project_paths import project_path
 
 SEG, DAY, WEEK = 720, 24, 168
 COST = 0.0015   # fee 0.1% + slippage 0.05% per unit of position change
@@ -145,12 +146,12 @@ def arm_timing(compare_csv, arms=("coevolution", "single", "population"), kind="
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--features", default="../data/features/btcusdt_features.parquet")
-    ap.add_argument("--folds", default="../runs/walkforward/folds.json")
-    ap.add_argument("--compare", default="../runs/walkforward/compare.csv")
+    ap.add_argument("--features", default=project_path("data/features/btcusdt_features.parquet"))
+    ap.add_argument("--folds", default=project_path("runs/walkforward/folds.json"))
+    ap.add_argument("--compare", default=project_path("runs/walkforward/compare.csv"))
     ap.add_argument("--funding", default=None,
                     help="parquet with columns time (UTC-naive) and funding_rate")
-    ap.add_argument("--out", default="../runs/walkforward/signal_probe.json")
+    ap.add_argument("--out", default=project_path("runs/walkforward/signal_probe.json"))
     args = ap.parse_args()
 
     df = load(args.features, args.funding)

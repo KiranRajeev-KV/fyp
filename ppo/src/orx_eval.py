@@ -16,13 +16,14 @@ from evaluate import paired_bootstrap
 from metrics import sharpe_ratio
 from order_flow import load
 from signal_probe import COST, SEG, run_position
+from project_paths import project_path
 
 SEALED_START = 76000          # 2026-05-01 07:00 UTC: first bar of the sealed holdout
 
 
 def main():
     df = load().iloc[:SEALED_START]
-    folds = json.load(open("../runs/walkforward/folds.json"))["folds"]
+    folds = json.load(open(project_path("runs/walkforward/folds.json")))["folds"]
     assert max(f["test_end"] for f in folds) <= SEALED_START
     close = df["close"].values
     rows = []

@@ -43,6 +43,7 @@ import pandas as pd
 
 from segments import build_segment_pool
 import evaluate as ev
+from project_paths import project_path
 
 BASELINES = ["buy_hold", "ma_crossover"]
 
@@ -177,7 +178,7 @@ def main():
     ap.add_argument("--data", default=None, help="held-out parquet (single split)")
     ap.add_argument("--walkforward-root", default=None,
                     help="root with fold*/test_scaled.parquet; arm globs are relative to each fold dir")
-    ap.add_argument("--features", default="../models/feature_columns.pkl")
+    ap.add_argument("--features", default=project_path("models/feature_columns.pkl"))
     ap.add_argument("--segment-length", type=int, default=720)
     ap.add_argument("--segment-stride", type=int, default=720)
     ap.add_argument("--initial-balance", type=float, default=10000.0)

@@ -17,6 +17,7 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 
 import pandas as pd
+from project_paths import project_path
 
 BASE = "https://data.binance.vision/data"
 
@@ -66,12 +67,12 @@ def main():
     ap.add_argument("--end", default="2026-09")
     args = ap.parse_args()
     for sym in args.symbols:
-        todo = jobs(sym, args.end, f"../data/coins/{sym}")
+        todo = jobs(sym, args.end, project_path(f"data/coins/{sym}"))
         with ThreadPoolExecutor(16) as ex:
             res = list(ex.map(lambda j: fetch(*j), todo))
         bad = [j[0] for j, r in zip(todo, res) if r not in ("ok", "skip")]
         print(f"{sym}: {res.count('ok')} downloaded, {res.count('skip')} cached, {len(bad)} missing")
-        open(f"../data/coins/{sym}/missing.txt", "w").write("\n".join(bad))
+        open(project_path(f"data/coins/{sym}/missing.txt"), "w").write("\n".join(bad))
 
 
 if __name__ == "__main__":

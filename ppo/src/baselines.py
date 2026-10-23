@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from metrics import summarize
+from project_paths import project_path
 
 
 def buy_and_hold(df, initial_balance=10000.0, trading_fee=0.001, slippage=0.0):
@@ -64,7 +65,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Run buy-and-hold and MA-crossover baselines on a held-out split"
     )
-    parser.add_argument("--data", default="../data/processed/test.parquet")
+    parser.add_argument("--data", default=project_path("data/processed/test.parquet"))
     parser.add_argument("--initial-balance", type=float, default=10000.0)
     parser.add_argument("--trading-fee", type=float, default=0.001)
     parser.add_argument("--slippage", type=float, default=0.0005,

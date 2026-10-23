@@ -15,6 +15,12 @@ pip install -r requirements.txt
 ```
 Python 3.12; a CPU is enough.
 
+Python scripts resolve bundled inputs and default output locations relative to
+`ppo/`, so they can be launched from any working directory. For example, from
+the repo root, run `python ppo/src/coevo_eval.py`. Paths explicitly supplied
+through command-line options remain relative to your current directory;
+absolute paths also work. The shell launchers select their own working directory.
+
 ## Data
 
 Data lives in `ppo/data/` (gitignored).

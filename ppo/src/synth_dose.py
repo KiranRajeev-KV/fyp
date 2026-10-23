@@ -21,6 +21,7 @@ import pandas as pd
 
 import synth_market as sm
 from compare_arms import bootstrap_pair, seed_matrix, timing_score
+from project_paths import project_path
 
 SHARES = [0.13, 0.25, 0.40, 0.58, 0.75]
 N_SEG = 200
@@ -36,7 +37,7 @@ def build(out, first_seed=3000, n_blocks=250):
     p = sm.PARAMS
     df = pd.concat([sm.series(p["block_bars"], p["shift_mix"], first_seed + i)
                     for i in range(n_blocks)], ignore_index=True)
-    scaler = joblib.load("../data/synth_v1/feature_scaler.pkl")
+    scaler = joblib.load(project_path("data/synth_v1/feature_scaler.pkl"))
     df.loc[:, sm.FEATURES] = scaler.transform(df[sm.FEATURES])
     df.to_parquet(path, index=False)
     regs = pd.Series(sm.segment_regimes(df)).value_counts().to_dict()
@@ -124,8 +125,8 @@ def main():
     ap.add_argument("cmd", choices=["build", "analyse"])
     ap.add_argument("--out", required=True)
     ap.add_argument("--csv")
-    ap.add_argument("--fig", default="../figures/synth_dose_response.png")
-    ap.add_argument("--pool", default="../data/synth_v1_dose/pool.parquet")
+    ap.add_argument("--fig", default=project_path("figures/synth_dose_response.png"))
+    ap.add_argument("--pool", default=project_path("data/synth_v1_dose/pool.parquet"))
     a = ap.parse_args()
     build(a.out) if a.cmd == "build" else analyse(a.csv, a.out, a.fig, a.pool)
 

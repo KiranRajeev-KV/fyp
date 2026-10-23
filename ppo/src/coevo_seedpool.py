@@ -8,8 +8,9 @@ import argparse, json, os
 import numpy as np
 import pandas as pd
 from evaluate import paired_bootstrap
+from project_paths import project_path
 
-BASE = "../runs/coevo7"
+BASE = project_path("runs/coevo7")
 ap = argparse.ArgumentParser()
 ap.add_argument("nodes", nargs="+")
 a = ap.parse_args()

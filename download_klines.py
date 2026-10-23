@@ -23,7 +23,7 @@ INTERVAL = "1h"
 START = (2017, 8)     # BTCUSDT 1h data on Binance starts here
 END = (2026, 8)       # last complete month on Binance Vision as of 2026-09-12
 
-OUT_DIR = Path("ppo/data/raw")
+OUT_DIR = Path(__file__).resolve().parent / "ppo" / "data" / "raw"
 BASE_URL = "https://data.binance.vision/data/spot/monthly/klines/{symbol}/{interval}/{symbol}-{interval}-{year}-{month:02d}.zip"
 
 # Binance switched some CSVs to include a header row at some point.

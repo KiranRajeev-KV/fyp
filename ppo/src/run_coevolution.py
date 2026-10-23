@@ -23,6 +23,7 @@ import torch
 from segments import build_segment_pool
 from coevo.engine import CoevolutionEngine
 from engine_cli import add_engine_args, config_from_args
+from project_paths import project_path
 
 
 def main():
@@ -31,13 +32,13 @@ def main():
     parser.add_argument("--mode", choices=["single", "population", "coevolution"],
                         default="coevolution")
     parser.add_argument("--seeds", type=int, nargs="+", default=[42])
-    parser.add_argument("--train-data", default="../data/processed/train.parquet")
-    parser.add_argument("--val-data", default="../data/processed/val.parquet")
-    parser.add_argument("--out-root", default="../runs")
+    parser.add_argument("--train-data", default=project_path("data/processed/train.parquet"))
+    parser.add_argument("--val-data", default=project_path("data/processed/val.parquet"))
+    parser.add_argument("--out-root", default=project_path("runs"))
     parser.add_argument("--run-name", default=None,
                         help="directory name under --out-root (default: <mode>_seed<seed>); "
                              "use to keep two variants of one mode apart, e.g. coevolution_regret")
-    parser.add_argument("--features", default="../models/feature_columns.pkl",
+    parser.add_argument("--features", default=project_path("models/feature_columns.pkl"),
                         help="joblib list of feature columns (synthetic data ships its own)")
     parser.add_argument("--segment-length", type=int, default=720)
     parser.add_argument("--segment-stride", type=int, default=168)

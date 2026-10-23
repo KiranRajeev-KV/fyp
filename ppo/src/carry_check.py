@@ -15,16 +15,17 @@ import pandas as pd
 from evaluate import paired_bootstrap
 from metrics import sharpe_ratio
 from signal_probe import SEG
+from project_paths import project_path
 
 SPOT_COST, PERP_COST = 0.0015, 0.0010     # per unit change: fee + slippage
 COLS = ["open_time", "open", "high", "low", "close", "volume", "close_time", "quote_volume",
         "count", "taker_buy_volume", "taker_buy_quote_volume", "ignore"]
 
 
-def load(features_path="../data/features/btcusdt_features.parquet"):
+def load(features_path=project_path("data/features/btcusdt_features.parquet")):
     spot = pd.read_parquet(features_path, columns=["open_time", "close"])
     perp = pd.concat([pd.read_csv(f, header=None, names=COLS, dtype=str)
-                      for f in sorted(glob.glob("../data/external/perp/BTCUSDT-1h-*.csv"))])
+                      for f in sorted(glob.glob(project_path("data/external/perp/BTCUSDT-1h-*.csv")))])
     perp = perp[perp.open_time != "open_time"]
     perp = pd.Series(perp.close.astype(float).values,
                      index=pd.to_datetime(perp.open_time.astype("int64"), unit="ms"))
@@ -33,7 +34,7 @@ def load(features_path="../data/features/btcusdt_features.parquet"):
     df = pd.DataFrame({"t": t, "spot": spot.close.values,
                        "perp": perp.reindex(t.values).values})
 
-    f = pd.read_parquet("../data/funding/BTCUSDT_funding.parquet")
+    f = pd.read_parquet(project_path("data/funding/BTCUSDT_funding.parquet"))
     f["time"] = f["time"].astype("datetime64[ns]").dt.round("h")
     rate = f.groupby("time").funding_rate.last()
     close_t = df.t + pd.Timedelta(hours=1)               # bar i closes at open_time + 1h
@@ -72,7 +73,7 @@ def rules(seg):
 
 def main():
     df = load()
-    folds = json.load(open("../runs/walkforward/folds.json"))["folds"]
+    folds = json.load(open(project_path("runs/walkforward/folds.json")))["folds"]
     rows = []
     for fold in folds:
         for s in range(fold["test_start"], fold["test_end"] - SEG + 1, SEG):
@@ -105,8 +106,8 @@ def main():
     per_fold = long[long.cost == 1.0].groupby(["fold", "rule"]).sharpe.mean().unstack().round(2)
     print("\nper-fold mean Sharpe (cost 1x)\n", per_fold.to_string())
     json.dump({"results": out, "per_fold": per_fold.to_dict()},
-              open("../runs/walkforward/carry_check.json", "w"), indent=2)
-    print("written ../runs/walkforward/carry_check.json")
+              open(project_path("runs/walkforward/carry_check.json"), "w"), indent=2)
+    print("written", project_path("runs/walkforward/carry_check.json"))
 
 
 if __name__ == "__main__":

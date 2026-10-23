@@ -19,8 +19,9 @@ from build_features import FEATURE_COLUMNS
 from evaluate import paired_bootstrap
 from metrics import sharpe_ratio
 from signal_probe import COST, SEG, auc_table, fit_predict, run_position
+from project_paths import project_path
 
-EXT = "../data/external"
+EXT = project_path("data/external")
 CROSS = ["spx_r1", "spx_r5", "spx_r20", "vix", "vix_d5", "dxy_r5", "dxy_r20", "tnx_d5", "tnx_d20"]
 ONCHAIN = ["mvrv", "mvrv_d7", "adr_ratio", "tx_ratio", "netflow_7d", "splyex_d30", "hash_ratio"]
 MOM = ["mom_1w", "mom_4w"]
@@ -122,15 +123,15 @@ def run(df, folds, sets, rules, cost=COST):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--features", default="../data/features/btcusdt_features_ext.parquet")
-    ap.add_argument("--folds", default="../runs/walkforward/folds.json")
+    ap.add_argument("--features", default=project_path("data/features/btcusdt_features_ext.parquet"))
+    ap.add_argument("--folds", default=project_path("runs/walkforward/folds.json"))
     ap.add_argument("--confirm", nargs="*", help="configs to score ONCE on fold 6 (e.g. all@168h mom_4w@168h)")
-    ap.add_argument("--out", default="../runs/walkforward/signal_hunt.json")
+    ap.add_argument("--out", default=project_path("runs/walkforward/signal_hunt.json"))
     args = ap.parse_args()
 
     df = load(args.features)
     folds = json.load(open(args.folds))["folds"]
-    ref = pd.read_parquet("../data/features/btcusdt_features.parquet", columns=["open_time"])
+    ref = pd.read_parquet(project_path("data/features/btcusdt_features.parquet"), columns=["open_time"])
     assert (df["open_time"].values[:len(ref)] == ref["open_time"].values).all(), "fold indices misaligned"
 
     if args.confirm:

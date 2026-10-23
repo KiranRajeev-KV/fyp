@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # compare_arms for iter01 on one synth_v1 split: bash iter01_compare.sh dev_shift
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../src" && pwd)"
+cd "$SRC" || exit 1
 O=../runs/loop/iter01_taskB
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 ../.venv/bin/python compare_arms.py \
   --data ../data/synth_v1/$1.parquet --features ../data/synth_v1/feature_columns.pkl \

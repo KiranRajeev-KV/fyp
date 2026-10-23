@@ -1,7 +1,6 @@
 # Exposure floor: portfolio = f * B&H core + (1-f) * agent, for frozen BTC models (no retraining).
 #   MULT=1 python coevo_floor.py <node>  ->  <node>/BTCUSDT/floor[_x2].csv   (MULT = cost multiplier)
 import sys, os, json, multiprocessing as mp, numpy as np, pandas as pd
-os.chdir(os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ".")
 import coevo_eval as E
 FLOORS = (0.0, 0.25, 0.5, 0.75)
 node = sys.argv[1]

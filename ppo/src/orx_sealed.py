@@ -16,9 +16,10 @@ from evaluate import paired_bootstrap
 from metrics import sharpe_ratio
 from order_flow import load
 from signal_probe import COST, SEG, run_position
+from project_paths import project_path
 
 SEALED_START, C_M = 76000, 0.0003
-EXT = "../data/features/btcusdt_features_ext.parquet"
+EXT = project_path("data/features/btcusdt_features_ext.parquet")
 
 
 def run_perp(perp, paid, target, cost):
@@ -32,7 +33,7 @@ def run_perp(perp, paid, target, cost):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--strategy-dir", required=True)
-    ap.add_argument("--out", default="../runs/walkforward/orx_sealed.json")
+    ap.add_argument("--out", default=project_path("runs/walkforward/orx_sealed.json"))
     ap.add_argument("--features", default=EXT)
     ap.add_argument("--start", type=int, default=SEALED_START, help="first scored bar")
     args = ap.parse_args()

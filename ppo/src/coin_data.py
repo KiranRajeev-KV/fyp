@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from build_features import COLUMNS, FEATURE_COLUMNS, add_features
+from project_paths import project_path
 
 FLOW = ["ofi_1h", "ofi_4h", "ofi_24h", "ofi_z"]
 POS = ["oi_d1", "oi_d24", "ls_top", "ls_all", "taker_ls"]
@@ -24,9 +25,9 @@ SEALED_FROM = pd.Timestamp("2026-05-01 07:00")    # BTC bars from here on are sp
 
 def _paths(sym):
     # BTC: the original hand-assembled files if present, else the download_coin.py layout
-    if sym == "BTCUSDT" and os.path.isdir("../data/external/metrics/csv"):
-        return "../data/raw", "../data/external/metrics/csv", None
-    root = f"../data/coins/{sym}"
+    if sym == "BTCUSDT" and os.path.isdir(project_path("data/external/metrics/csv")):
+        return project_path("data/raw"), project_path("data/external/metrics/csv"), None
+    root = project_path(f"data/coins/{sym}")
     return f"{root}/raw", f"{root}/metrics", f"{root}/funding"
 
 
@@ -44,7 +45,7 @@ def _raw(raw_dir):
 
 def _funding(sym, fund_dir):
     if fund_dir is None:
-        f = pd.read_parquet("../data/funding/BTCUSDT_funding.parquet")
+        f = pd.read_parquet(project_path("data/funding/BTCUSDT_funding.parquet"))
         t, r = f.time, f.funding_rate
     else:
         f = pd.concat([pd.read_csv(p) for p in sorted(glob.glob(f"{fund_dir}/*.csv"))])
@@ -85,13 +86,13 @@ def load_coin(sym="BTCUSDT"):
     return df.replace([np.inf, -np.inf], np.nan)
 
 
-def fold_windows(df, folds_path="../runs/walkforward/folds.json", train_span=40000, min_train=8000):
+def fold_windows(df, folds_path=project_path("runs/walkforward/folds.json"), train_span=40000, min_train=8000):
     """The six BTC walk-forward folds as CALENDAR windows mapped onto df.
 
     Test windows cover the same dates as the BTC dev folds; train = the
     train_span bars before (fewer if the coin's history is shorter).
     """
-    btc_t = pd.read_parquet("../data/features/btcusdt_features_ext2.parquet", columns=["open_time"]).open_time
+    btc_t = pd.read_parquet(project_path("data/features/btcusdt_features_ext2.parquet"), columns=["open_time"]).open_time
     btc_t = btc_t.astype("datetime64[ns]")
     t = df.open_time.values
     out = []
@@ -107,9 +108,9 @@ def fold_windows(df, folds_path="../runs/walkforward/folds.json", train_span=400
 
 if __name__ == "__main__":
     b = load_coin("BTCUSDT")
-    ext = pd.read_parquet("../data/features/btcusdt_features_ext2.parquet")
+    ext = pd.read_parquet(project_path("data/features/btcusdt_features_ext2.parquet"))
     assert len(b) == len(ext) and np.allclose(b[FEATURE_COLUMNS].values, ext[FEATURE_COLUMNS].values)
-    folds = json.load(open("../runs/walkforward/folds.json"))["folds"]
+    folds = json.load(open(project_path("runs/walkforward/folds.json")))["folds"]
     w = fold_windows(b)
     assert [(x["test_start"], x["test_end"]) for x in w] == [(f["test_start"], f["test_end"]) for f in folds], w
     print("BTC reproduces ext2 features and fold indices;", len(b), "rows")

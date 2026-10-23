@@ -16,6 +16,7 @@ import pandas as pd
 from evaluate import paired_bootstrap
 from metrics import max_drawdown, sharpe_ratio
 from signal_probe import COST, DAY, SEG, run_position
+from project_paths import project_path
 
 WINDOWS = {"vt_168h": 168, "vt_24h": 24}
 
@@ -32,11 +33,11 @@ def main():
     args = ap.parse_args()
 
     # _ext is btcusdt_features extended to 2026-08 (identical prefix), needed for fold 6
-    close = pd.read_parquet("../data/features/btcusdt_features_ext.parquet", columns=["close"]).close
+    close = pd.read_parquet(project_path("data/features/btcusdt_features_ext.parquet"), columns=["close"]).close
     lr = np.log(close).diff()
     # sigma at bar i uses returns up to close[i] only
     sigma = {name: lr.rolling(n).std().values for name, n in WINDOWS.items()}
-    folds = json.load(open("../runs/walkforward/folds.json"))["folds"]
+    folds = json.load(open(project_path("runs/walkforward/folds.json")))["folds"]
     names = list(WINDOWS)
     if args.confirm:
         n = len(close)
@@ -81,7 +82,7 @@ def main():
               f"P {a['p_le_bh']:.3f}  {'PASS' if v['pass'] else '-'}")
     per_fold = long[long.cost == 1.0].groupby(["fold", "rule"]).sharpe.mean().unstack().round(2)
     print("\nper-fold mean Sharpe (cost 1x)\n", per_fold.to_string())
-    path = "../runs/walkforward/vol_target" + ("_confirm" if args.confirm else "") + ".json"
+    path = project_path("runs/walkforward/vol_target") + ("_confirm" if args.confirm else "") + ".json"
     json.dump({"n_segments": n_seg, "results": out, "per_fold": per_fold.to_dict()}, open(path, "w"), indent=2)
     print("written", path)
 

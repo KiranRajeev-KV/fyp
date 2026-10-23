@@ -18,6 +18,7 @@ import pandas as pd
 import signal_hunt
 from build_features import COLUMNS, FEATURE_COLUMNS
 from signal_probe import COST
+from project_paths import project_path
 
 FLOW = ["ofi_1h", "ofi_4h", "ofi_24h", "ofi_z"]
 POS = ["oi_d1", "oi_d24", "ls_top", "ls_all", "taker_ls"]
@@ -27,7 +28,7 @@ RULES = ["ofi_1h", "ofi_4h"]
 
 def taker_flow():
     raw = pd.concat([pd.read_csv(f, header=None, names=COLUMNS, usecols=["open_time", "volume", "taker_buy_base_volume"])
-                     for f in sorted(glob.glob("../data/raw/*.csv"))], ignore_index=True)
+                     for f in sorted(glob.glob(project_path("data/raw/*.csv")))], ignore_index=True)
     ts = raw.open_time.astype("int64")
     ts = ts.where(ts.astype(str).str.len() != 16, ts // 1000)      # us -> ms from Jan 2025, as build_features
     raw["open_time"] = pd.to_datetime(ts, unit="ms")
@@ -35,12 +36,12 @@ def taker_flow():
 
 
 def positioning():
-    m = pd.concat([pd.read_csv(f) for f in sorted(glob.glob("../data/external/metrics/csv/*.csv"))])
+    m = pd.concat([pd.read_csv(f) for f in sorted(glob.glob(project_path("data/external/metrics/csv/*.csv")))])
     m["t"] = pd.to_datetime(m.create_time).astype("datetime64[ns]")
     return m.drop_duplicates("t").sort_values("t")
 
 
-def load(path="../data/features/btcusdt_features_ext.parquet"):
+def load(path=project_path("data/features/btcusdt_features_ext.parquet")):
     df = pd.read_parquet(path)
     t = df.open_time.astype("datetime64[ns]")
     raw = taker_flow().reindex(t.values)
@@ -70,7 +71,7 @@ def main():
     signal_hunt.HORIZONS = {1: 1, 4: 4}
 
     df = load()
-    folds = json.load(open("../runs/walkforward/folds.json"))["folds"]
+    folds = json.load(open(project_path("runs/walkforward/folds.json")))["folds"]
     sets, rules = SETS, RULES
     if args.confirm:
         n = len(df)
@@ -96,7 +97,7 @@ def main():
               f"2x {v['sharpe_2x']:+.3f}  0x {v['sharpe_0x']:+.3f} (B&H {v['buy_hold_0x']:+.3f})  "
               f"P {v['p_timer_le_bh']:.3f}  wins {v['wins_vs_bh']}/{len(seg)}  expo {v['exposure']:.2f}  "
               f"timing {v['timing']:+.3f}  {'PASS' if v['pass'] else '-'}")
-    out = "../runs/walkforward/order_flow" + ("_confirm" if args.confirm else "") + ".json"
+    out = project_path("runs/walkforward/order_flow") + ("_confirm" if args.confirm else "") + ".json"
     json.dump({"n_segments": len(seg), "results": res}, open(out, "w"), indent=2)
     print("written", out)
 

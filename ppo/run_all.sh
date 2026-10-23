@@ -15,6 +15,7 @@
 # ---------------------------------------------------------------------------
 set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+mkdir -p "$REPO/ppo/runs"
 say() { echo "[$(date '+%F %T')] run_all: $*"; }
 
 if pgrep -f "run_coevolution.py|run_walkforward.py" >/dev/null; then

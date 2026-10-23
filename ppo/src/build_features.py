@@ -31,6 +31,7 @@ import pandas as pd
 from ta.momentum import RSIIndicator
 from ta.trend import MACD
 from ta.volatility import AverageTrueRange, BollingerBands
+from project_paths import project_path
 
 COLUMNS = ["open_time", "open", "high", "low", "close", "volume", "close_time",
            "quote_asset_volume", "number_of_trades", "taker_buy_base_volume",
@@ -118,9 +119,9 @@ def check_reproduction(new, existing_path):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--raw-dir", default="../data/raw")
-    ap.add_argument("--existing-features", default="../data/features/btcusdt_features.parquet")
-    ap.add_argument("--scaler", default="../models/feature_scaler.pkl")
+    ap.add_argument("--raw-dir", default=project_path("data/raw"))
+    ap.add_argument("--existing-features", default=project_path("data/features/btcusdt_features.parquet"))
+    ap.add_argument("--scaler", default=project_path("models/feature_scaler.pkl"))
     ap.add_argument("--test-from", default="2025-10-01",
                     help="start of the held-out window (same as train_test.ipynb)")
     ap.add_argument("--suffix", default="_ext")
@@ -134,9 +135,9 @@ def main():
     if args.check_only:
         return
 
-    cleaned_path = f"../data/cleaned/btcusdt_1h_clean{args.suffix}.parquet"
-    feat_path = f"../data/features/btcusdt_features{args.suffix}.parquet"
-    test_path = f"../data/processed/test{args.suffix}.parquet"
+    cleaned_path = project_path(f"data/cleaned/btcusdt_1h_clean{args.suffix}.parquet")
+    feat_path = project_path(f"data/features/btcusdt_features{args.suffix}.parquet")
+    test_path = project_path(f"data/processed/test{args.suffix}.parquet")
     for p in (cleaned_path, feat_path, test_path):
         if os.path.exists(p):
             raise FileExistsError(f"{p} exists; delete it first or use another --suffix")
