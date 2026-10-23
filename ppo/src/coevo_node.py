@@ -1,10 +1,15 @@
-"""Run settings for coevo_eval.py (the final BTC configuration). coevo_eval.py itself is fixed."""
+"""Settings for one final BTC run; see ppo/README.md for the four-run matrix.
+
+The evaluator fixes costs, folds, segments, and the pass rule. This node chooses
+features, seeds, engine overrides, and whether populations vote or one saved
+best trader is scored.
+"""
 
 CONFIG = {
     "name": "r21a-pure-alp", "score": "vote",
     "seeds": [42, 43, 44, 45, 46, 47],
-    "flow_pos": True,          # add order-flow + positioning features
-    "features": ["volatility_168h", "ema50_ema200_ratio"],   # explicit inputs (overrides the above)
+    "flow_pos": True,          # used for observation inputs only when explicit features are absent
+    "features": ["volatility_168h", "ema50_ema200_ratio"],   # observation inputs; forecasts still use base/flow predictors
     "rhat": [4, 24, 72],       # ridge forecast horizons (int = one feature "rhat", 0 = off)
     "engine": {                # EngineConfig overrides, all arms
         "generations": 12, "n_traders": 6, "n_env": 12, "matches_per_trader": 2,

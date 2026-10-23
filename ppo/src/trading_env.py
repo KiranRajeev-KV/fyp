@@ -10,7 +10,13 @@ class TradingEnv(gym.Env):
 
     Costs: a proportional trading fee plus symmetric slippage — buys fill
     above close, sells fill below close — so reward is net of realistic
-    execution costs from the start.
+    execution costs from the start. Optional funding is deducted while long;
+    trade_penalty, when nonzero, adds reward shaping beyond portfolio log return.
+
+    Observations contain the current feature row and three account values.
+    Legacy actions are hold/buy/sell; target_position uses cash/long instead.
+    decision_every holds each decision for multiple bars. start_long opens a
+    position at reset without incrementing the executed-trade counter.
 
     Segments: if `segments` is given (list of (start, end) iloc ranges into
     df), each episode plays one segment; which one is chosen on reset —

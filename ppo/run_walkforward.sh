@@ -8,10 +8,11 @@
 # Safe to relaunch after a shutdown: finished shards are skipped and partial
 # ones resume from their per-generation checkpoint (see ppo/run_all.sh).
 #
-# Uses the SAME engine flags as run_v5.sh (via engine_cli.py) so every fold's
-# config.json matches V5's except mode/seed. Default 20 generations (the V3/V4
-# finding: 30 bought nothing over 20) and 3 seeds for the population arms;
-# the single arm is cheap, so it gets all 6.
+# Shares the legacy engine flag surface with run_v5.sh (engine_cli.py).
+# Full configs differ: this defaults to 20 generations versus V5's 30.
+# The 20-generation default follows the historical V3/V4 comparison of 20
+# versus 30 generations. Population arms use 3 seeds; the cheaper single
+# arm uses all 6.
 #
 # Fold geometry (1h bars): train 40,000 / val tail 4,000 / test 6,000, stepping
 # 6,000 -> 6 folds whose test windows run Mar 2022 .. Apr 2026 (bear, bull and
@@ -92,8 +93,9 @@ run_one() {
 export -f run_one arm_flags
 export VENV CFG GEOM OUTDIR LOGDIR THREADS
 
-# fold 0's test_scaled.parquet etc. are written by whichever shard runs first;
-# writes are idempotent (only-if-absent) so concurrent shards are safe.
+# Shards skip existing test_scaled.parquet files. The existence check and
+# write are not atomic; this does not guarantee concurrent publication safety.
+# Prepare fold files before launching concurrent readers/writers when needed.
 jobs_list() {
   for f in $FOLDS; do for a in $ARMS; do
     if [ "$a" = "single" ]; then seeds="$SINGLE_SEEDS"; else seeds="$SEEDS"; fi

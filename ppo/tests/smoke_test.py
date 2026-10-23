@@ -5,8 +5,11 @@ the segment pool, runs a tiny run of each engine mode for 2 generations,
 and runs the evaluation harness pieces. Verifies the machinery executes —
 it says nothing about trading performance.
 
-Run (from ppo/tests, with the ppo/.venv active):
-    python smoke_test.py
+Run from the repo root with ppo/.venv active:
+    python ppo/tests/smoke_test.py
+
+Resume checks cover ledger/model plumbing, not exact preservation of the
+learning-progress history, which the engine currently omits from checkpoints.
 """
 
 import json

@@ -9,8 +9,10 @@ Examples (from ppo/src):
     python run_coevolution.py --mode population --seeds 42 43 44
     python run_coevolution.py --mode coevolution --seeds 42 43 44
 
-All engine knobs live in engine_cli.py and are shared with run_walkforward.py,
-so the same flags produce the same EngineConfig in both drivers.
+The legacy engine flags are shared with run_walkforward.py through
+engine_cli.py. This is a subset of EngineConfig; the final BTC evaluator uses
+coevo_node.py for additional settings. Explicit overrides must be compared
+when reproducing runs from different drivers.
 """
 
 import argparse

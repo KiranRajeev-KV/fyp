@@ -3,8 +3,13 @@
 Long-only BTC sized as min(1, target / trailing sigma), rebalanced every 24 bars.
 Target = median trailing sigma over the fold's train window. No fitting on test.
 
+Examples from ppo/src:
     python vol_target.py              # trials 36-37 on folds 0-5
     python vol_target.py --confirm vt_168h   # once, fold 6 (2026-05 -> 2026-08)
+
+The --confirm examples reproduce the original one-time protocol. The
+May–September 2026 evaluation windows are already spent historical data.
+The CLI does not enforce one-time use; see experiment notes section 9i.
 """
 
 import argparse

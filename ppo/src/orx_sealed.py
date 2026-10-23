@@ -1,8 +1,13 @@
-"""Score ONE orx strategy ONCE on the sealed span under maker model M
-(the experiment ledger, "MAKER-FEE QUESTION"). Bars >= 76000 (2026-05-01 07:00 ->
-2026-08-31), trained on the preceding 40,000 bars, 4 segments of 720 bars.
+"""Reproduce the historical ORX maker-cost holdout evaluation.
 
-    python orx_sealed.py --strategy-dir <folder holding orx_strategy.py>
+The original input covered May–August 2026 from bar 76000, with four complete
+720-bar scoring segments and a preceding 40,000-bar training window.
+--features and --start change the scored span. The historical protocol called
+for one evaluation; this CLI does not enforce one-shot use. May–September
+2026 has already been evaluated and is spent (experiment notes section 9i).
+
+From the repo root:
+    python ppo/src/orx_sealed.py --strategy-dir <folder holding orx_strategy.py>
 """
 
 import argparse
@@ -23,7 +28,7 @@ EXT = project_path("data/features/btcusdt_features_ext.parquet")
 
 
 def run_perp(perp, paid, target, cost):
-    """Same as the maker orx_eval.run_perp."""
+    """Perp returns net of funding and turnover costs under historical maker model M."""
     r = perp[1:] / perp[:-1] - 1
     pos = target[:-1]
     change = np.abs(np.diff(np.concatenate([[0.0], pos])))

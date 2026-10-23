@@ -1,10 +1,12 @@
-"""GOAL MODE fixed run contract (the experiment ledger, "GOAL MODE").
+"""Historical ORX development contract (local ledger label: GOAL MODE).
 
-Scores orx_strategy.positions() on the 48 dev segments (walk-forward folds 0-5)
-against buy-and-hold. Never reads the sealed span (bars >= SEALED_START).
-Prints a summary and one machine-readable line starting with ORX_RESULT.
+Scores orx_strategy.positions() on the 48 development segments against
+buy-and-hold. Data loaders can read full files; scoring excludes bars from
+SEALED_START onward. The May–September 2026 checks are spent historical data,
+not fresh holdouts. ORX_RESULT is the retained machine-readable output prefix.
 
-    python orx_eval.py
+From the repo root:
+    python ppo/src/orx_eval.py
 """
 
 import json

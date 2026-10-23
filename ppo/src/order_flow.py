@@ -4,8 +4,13 @@ Do taker buy/sell imbalance (klines) or Binance futures positioning (open intere
 long/short ratios) predict BTC direction at 1h / 4h well enough for a long/flat
 timer to beat buy-and-hold after costs? Same machinery as signal_hunt.py.
 
+Examples from ppo/src:
     python order_flow.py
     python order_flow.py --confirm flow@4h     # once, fold 6 (2026-05 -> 2026-08)
+
+The --confirm examples reproduce the original one-time protocol. The
+May–September 2026 evaluation windows are already spent historical data.
+The CLI does not enforce one-time use; see experiment notes section 9i.
 """
 
 import argparse

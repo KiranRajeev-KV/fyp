@@ -2,8 +2,8 @@
 
 The environment population never invents prices — it can only *select* real
 historical windows (segments) from a pool built here. Each segment carries a
-descriptor vector (volatility percentile, trend strength, drawdown depth,
-regime-transition presence) that environment individuals express preferences
+descriptor vector (volatility percentile, trend strength, trend direction,
+drawdown depth, regime-transition count) that environment individuals express preferences
 over.
 """
 

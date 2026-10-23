@@ -1,7 +1,7 @@
 """Hall of fame archives for both populations — the anti-cycling guardrail.
 
 Traders are also evaluated against archived environment individuals, so the
-population cannot "forget" how to handle old adversaries; environment
+population is compared with historical opponents; environment
 individuals are scored against snapshots of past traders analogously.
 Trader snapshots are stored as SB3 parameter dicts (cheap, in-memory for
 small MLP policies).

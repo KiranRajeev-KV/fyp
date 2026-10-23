@@ -5,9 +5,11 @@ segment descriptor features plus a temperature. It scores every segment in
 the pool as descriptor . weights and samples segments through a softmax —
 it can only choose among real historical windows, never invent prices.
 
-Fitness is the inverted trader score on the segments it served, with
-competitive fitness sharing so individuals are rewarded for being difficult
-in *different* ways (guards against diversity collapse).
+The engine supplies fitness under its configured objective: negated trader
+score, regret, population regret, learnability, or absolute learning progress.
+Shared exams can replace match scores. Competitive fitness sharing penalizes
+overlapping selection distributions to encourage environment diversity.
+Optional shift/scale genes perturb observation inputs, not market prices.
 """
 
 from dataclasses import dataclass, field
@@ -70,9 +72,8 @@ class EnvIndividual:
         return [(pool.segments[i].start, pool.segments[i].end) for i in idx]
 
     def record(self, adversary_score):
-        # Higher = the match was harder for the trader. The engine decides how
-        # that is measured (EngineConfig.env_fitness): -trader_score for the
-        # original objective, or regret against the best trivial policy.
+        # Store the score computed by the engine's configured objective.
+        # Higher means more favored by that objective; progress need not mean harder.
         self._scores.append(float(adversary_score))
 
     def finalize_raw_fitness(self):
@@ -123,8 +124,9 @@ def apply_fitness_sharing(population, descriptor_matrix, sharing_strength=1.0):
     """Penalize individuals whose selection distributions overlap.
 
     Similarity between two individuals is the Bhattacharyya coefficient of
-    their softmax selection distributions over the pool. Shared fitness =
-    raw / (1 + strength * mean similarity to others).
+    their softmax selection distributions over the pool. With
+    niche = 1 + strength * mean similarity, positive raw fitness is divided
+    by niche; nonpositive raw fitness is multiplied by niche.
     """
     probs = [ind.selection_probs(descriptor_matrix) for ind in population]
     n = len(population)
@@ -138,7 +140,7 @@ def apply_fitness_sharing(population, descriptor_matrix, sharing_strength=1.0):
         ]
         niche = 1.0 + sharing_strength * float(np.mean(sims))
         ind.niche = niche
-        # shift-invariant sharing: divide the advantage, not the raw value
+        # Sign-aware penalty: overlap reduces fitness for positive and negative scores.
         ind.fitness = ind.raw_fitness / niche if ind.raw_fitness > 0 else ind.raw_fitness * niche
 
 
@@ -146,15 +148,15 @@ def evolve(population, rng, elite_frac=0.25, tournament_k=3,
            weight_sigma=0.3, temp_sigma=0.15, fresh_frac=0.0):
     """Truncation elitism + tournament-selected crossover/mutation offspring.
 
-    weight_sigma / temp_sigma set the adversary variation rate — raise them to
-    keep the environment population engaged (mitigates disengagement, where the
-    adversary is outrun by the trader and its fitness collapses).
+    weight_sigma / temp_sigma set variation rates. They were explored as
+    disengagement controls; higher variation does not guarantee engagement
+    when the objective itself has a flat fitness landscape.
 
     fresh_frac injects that fraction of brand-new random individuals each
     generation ("fresh blood"). Once the population converges on the few segment
     types a strong trader has already mastered, its fitness collapses; fresh
-    random adversaries keep probing unexplored regions of the segment pool,
-    slowing that collapse. 0.0 = disabled (original behavior).
+    random adversaries probe other parts of the pool. This is a diversity
+    mechanism, not a guarantee against collapse. 0.0 = disabled.
     """
     ranked = sorted(population, key=lambda ind: ind.fitness, reverse=True)
     n = len(ranked)

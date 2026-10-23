@@ -15,9 +15,9 @@
 #   * baselines pay the same slippage as the agent
 #   * config.json records the git revision
 #   * out_dir overwrite guard (a V4 relaunch destroyed 16/18 ledgers)
-# and a FOURTH arm, coevolution_regret: identical to coevolution except the
-# adversary is scored on regret vs the best trivial policy per segment
-# instead of -Sharpe (removes the fitness ceiling at 0 that ends the arms race).
+# and a FOURTH arm, coevolution_regret: uses regret against the best trivial
+# policy instead of -Sharpe, and leaves no-trade filtering disabled (the
+# coevolution arm enables it). Regret changes the original fitness ceiling.
 #
 # Override for a quick plumbing check:
 #   GENERATIONS=2 SEEDS="99" TIMESTEPS=512 NTRADERS=4 NENV=4 SEGS=2 MATCHES=2 \

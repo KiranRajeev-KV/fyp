@@ -1,18 +1,12 @@
-"""One-shot overnight orchestrator: arms-race tuning -> ablation -> evaluation.
+"""Legacy V2 overnight orchestrator: tuning -> ablation -> evaluation.
 
-Runs the whole strengthened-results pipeline unattended:
+Phase 1 chooses adversary variation settings by late-stage environment fitness;
+Phase 3 runs the three-way ablation; Phase 4 writes per-arm evaluation JSONs.
+The numbering is retained from the original experiment plan (no Phase 2 is
+implemented here). This is not the final BTC pipeline; see ppo/README.md.
 
-  Phase 1  Try a few adversary-variation settings (short, 1 seed) and AUTO-PICK
-           the one that best keeps the arms race engaged (highest late-stage
-           environment-population fitness -> least disengagement / collapse).
-  Phase 3  Run the full three-way ablation (single/population/coevolution) with
-           the chosen settings, multiple seeds, into runs/v2/ (does NOT overwrite
-           the original runs/<mode>_seed* results).
-  Phase 4  Evaluate each arm on the held-out test split, writing *_eval.json.
-
-Usage (from ppo/src; nohup to survive logout):
-    nohup ../.venv/bin/python run_overnight.py > ../runs/overnight.log 2>&1 &
-    tail -f ../runs/overnight.log
+From the repo root, after creating ppo/runs for the redirected log:
+    python ppo/src/run_overnight.py
 """
 
 import argparse

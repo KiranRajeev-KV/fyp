@@ -1,14 +1,18 @@
 """Competitive coevolutionary engine.
 
 One engine, three modes — which IS the paper's three-way ablation:
-  single      — 1 trader, uniform random segments, no evolution (control)
-  population  — trader population + PBT, uniform random segments (no adversary)
+  single      — 1 trader, sampled segments, no evolution (control)
+  population  — trader population + PBT, sampled segments (no adversary)
   coevolution — trader population + PBT vs. evolving environment population
+
+Non-adversary sampling defaults to uniform; regime_balanced is an option.
+Shared exams can replace match-based selection fitness. Adversary objectives
+include learning progress; the final BTC node selects it explicitly.
 
 Every generation logs two ledgers separately (the anti-Red-Queen guardrail):
   internal — relative fitness inside the arms race (proves nothing alone)
-  external — best trader evaluated on fixed held-out segments against fixed
-             baselines (the objective yardstick).
+  external — all traders evaluated on fixed validation data against fixed
+             baselines, with the internal best also in the generation summary.
 """
 
 import csv
@@ -92,15 +96,14 @@ class EngineConfig:
     # fitness is the mean over its own matches, i.e. over DIFFERENT segments, so
     # PBT ranks mostly on which segments it drew (within-trader match sd 1.17 >
     # between-trader sd 0.82). K > 0: after training, every trader sits the same
-    # K uniform segments and PBT ranks on that score; each adversary proposes
-    # segments_per_match segments and is credited with the mean over ALL traders.
+    # K sampled segments and PBT ranks on that score; each adversary proposes
+    # segments_per_match segments, scored by its configured objective over all traders.
     shared_exam: int = 0
-    # A match in which the trader never traded on ANY segment scores Sharpe 0
-    # for every adversary that served it, so it measures the trader's collapse,
-    # not the adversary's skill -- and it is common-mode noise across the whole
-    # adversary population, which corrupts their relative ranking. Enable to
-    # drop such matches from adversary fitness. Default False reproduces the
-    # original behaviour (and the published V1-V3 numbers).
+    # Skip matches with no executed trades on the adversary's served segments.
+    # With cash starts this filters flat portfolios; with start_long=True,
+    # no executed trades does not imply zero exposure or zero return.
+    # This filter does not remove scores assigned by the shared exam.
+    # Default False retains the original setting.
     env_skip_no_trade_matches: bool = False
     # How the adversary is scored on each segment it served:
     #   neg_sharpe -- the original: -(trader fitness metric on that segment).
@@ -127,9 +130,9 @@ class EngineConfig:
     # Refuse to start in an out_dir that already holds a populated
     # generations.csv (a relaunch destroyed the V4 ledgers). True = overwrite.
     overwrite: bool = False
-    # Continue from out_dir/checkpoint/ (written after every generation) if
-    # one exists; otherwise start fresh. Two overnight shutdowns have killed
-    # multi-hour runs; with this, a shutdown costs one generation.
+    # Restore a usable per-generation checkpoint when present. A partial
+    # generation may be repeated. Learning-progress history is not saved,
+    # so progress fitness after resume need not match uninterrupted training.
     resume: bool = False
     # V7 env options (TradingEnv); defaults reproduce the original env
     decision_every: int = 1            # hold each action for k bars
@@ -245,7 +248,7 @@ class CoevolutionEngine:
         # actually served can be logged (not just the genome that chose it)
         self._regime_by_start = {sg.start: sg.regime for sg in pool.segments}
         # progress fitness: last population-mean exam score per window start
-        # ponytail: not checkpointed, a resumed run restarts the history
+        # Not checkpointed: a resumed run restarts this learning-progress history.
         self._seg_hist = {}
         # a fixed probe batch for measuring how far apart the policies are.
         # Seeded independently of the run so it is identical across seeds.
@@ -365,9 +368,9 @@ class CoevolutionEngine:
     def _checkpoint_dir(self):
         """Path of a usable checkpoint, or None.
 
-        `checkpoint/` is the committed one; `checkpoint_new/` exists only if
-        the process died between writing the new one and swapping it in, in
-        which case it is complete and newer.
+        checkpoint_new is written before replacing checkpoint. Either may
+        remain after a crash; only a directory with state.pkl is usable.
+        A complete checkpoint_new is preferred because it is newer.
         """
         for name in ("checkpoint_new", "checkpoint"):
             d = os.path.join(self.out_dir, name)
@@ -376,7 +379,7 @@ class CoevolutionEngine:
         return None
 
     def save_checkpoint(self, next_gen):
-        """Everything needed to continue from generation `next_gen`."""
+        """Save models, populations, archives, and RNGs; excludes progress history."""
         final = os.path.join(self.out_dir, "checkpoint")
         new = os.path.join(self.out_dir, "checkpoint_new")
         shutil.rmtree(new, ignore_errors=True)
@@ -574,8 +577,8 @@ class CoevolutionEngine:
                 "temperature": ind.temperature,
                 "shift": ind.shift, "log_scale": ind.log_scale,
                 "selection_entropy": ind.selection_entropy(dm),
-                # False => never drawn as an opponent, so raw_fitness 0.0 is a
-                # placeholder, not a measurement; excluded from elites/parents
+                # False means no counted scoring evidence; the individual may
+                # have been drawn but filtered. Excluded from elites/parents.
                 "evaluated": ind.evaluated,
                 **self._env_extras(env_id, ind),
                 "origin": ind.origin,
@@ -641,9 +644,9 @@ class CoevolutionEngine:
 
         env_adversary_frac 1.0 reproduces the original behaviour exactly. Below
         1.0 the trader still gets the adversary's curriculum but keeps seeing the
-        rest of the pool, so it cannot collapse onto whatever the adversary
-        happens to be serving (it stopped buying entirely under a bear
-        curriculum). The adversary is scored only on its own k segments.
+        rest of the pool. This improves coverage without guaranteeing against
+        policy collapse. Match scoring credits the adversary only for its k
+        segments; shared-exam scoring is a separate subsequent step.
         """
         if opp is None:
             return self._uniform_segments(n), 0
@@ -709,8 +712,8 @@ class CoevolutionEngine:
                     "adversary" if opp is not None else "uniform",
                     oi, segs, score, per_seg, counted, n_adversary_segments=k_adv))
 
-            # matches against archived adversaries: evaluation only, so the
-            # trader cannot forget how to beat old opponents (anti-cycling)
+            # Archived-adversary matches add historical evaluation evidence.
+            # Shared exams, when enabled, subsequently replace match fitness.
             for h, entry in enumerate(self.env_hof.sample(cfg.hof_matches)):
                 segs = self._adv_select(entry.payload, cfg.segments_per_match)
                 score, per_seg = tp.evaluate_on_segments(
@@ -935,10 +938,10 @@ class CoevolutionEngine:
         model_path = os.path.join(self.out_dir, "best_trader")
         best_trader.model.save(model_path)
 
-        # The final-generation internal rank has ~zero correlation with
-        # held-out performance, so "best_trader" is one draw from the final
-        # population. Keep every final trader so evaluation can report the
-        # population mean as well as the rank-0 pick.
+        # Legacy V5 diagnostics found near-zero internal-rank/held-out
+        # correlation; this is an observation for those runs, not every mode.
+        # Save all final traders for population-mean or voting evaluation as
+        # well as the internally selected best_trader.
         final_dir = os.path.join(self.out_dir, "final_traders")
         os.makedirs(final_dir, exist_ok=True)
         ranked = sorted(self.traders, key=lambda t: t.fitness, reverse=True)

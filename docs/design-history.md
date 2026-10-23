@@ -2,8 +2,10 @@
 
 The project's architecture has changed twice since Panel Review 1. This note
 exists so nobody picks up an older design's vocabulary or mechanism by
-mistake — **`context.md` at the repo root is the current, authoritative
-design.**
+mistake. The **current implementation** section in
+[`context.md`](../context.md#current-implementation-final-btc-configuration)
+summarizes the final BTC node; [`ppo/README.md`](../ppo/README.md) gives its
+run matrix. The milestones in the design reference are the original plan.
 
 ## PR1 (2026-02-23) — TensorNEAT-PPO hybrid
 Proposed NEAT evolving network topology, with PPO doing gradient-based weight
@@ -39,5 +41,6 @@ opponent population of traders fighting each other, and no MAP-Elites
 archive of trader behaviors. Instead, one side (traders) is optimized against
 an adversarial other side (environment/segment selectors), with an external,
 held-out evaluation harness guarding against Red Queen dynamics. See
-`context.md` for the full design, milestone plan, and evaluation
-non-negotiables.
+`context.md` for the current learning-progress objective, shared exam, optional
+observation drift, and voting evaluation. The original milestone plan remains
+there as historical planning context.

@@ -1,10 +1,11 @@
 """Walk-forward ablation: train + evaluate across multiple rolling windows.
 
-The chronological single split (train<2025 / test Oct2025+) has NO bull regime
-in the test window and only 9 non-overlapping test segments, so it can neither
-test bull-market generalization nor reach significance at the observed effect
-size. This driver rolls train/test folds across the FULL feature history, so
-different folds land on different regimes (including bull), and runs the
+The original Oct2025–Jun2026 test file had nine non-overlapping segments
+and no bull segments under trailing-majority labels; its own net-move labels
+do include a bull window (September audit F7). It provided limited regime
+coverage and statistical power. This driver rolls train/test folds across
+the supplied feature history, so different folds cover different regimes,
+and runs the
 ablation (single / population / coevolution, optionally a variant such as
 coevolution with the regret adversary) per fold.
 
@@ -14,15 +15,16 @@ yardstick, the trader trains on the rest, and the frozen traders are evaluated
 per-regime on the fold's held-out test window against buy-and-hold and
 MA-crossover under the same fee + slippage model.
 
-Two phases, so the work can be sharded across processes (each fold x mode x
+Examples from ppo/src. Two phases allow sharding (each fold x mode x
 seed is one independent job; see run_walkforward.sh):
 
   train      python run_walkforward.py --folds 0 1 --modes coevolution --seeds 42 \
                  [any engine flag from engine_cli.py] --out-root ../runs/walkforward
   aggregate  python run_walkforward.py --aggregate-only --out-root ../runs/walkforward
 
-Engine knobs are the SAME flags as run_coevolution.py (engine_cli.py), so a
-walk-forward run with V5's flags uses V5's exact EngineConfig.
+The exposed legacy flags are shared with run_coevolution.py (engine_cli.py),
+not the full final BTC node surface. Compare explicit settings: the V5 shell
+launcher defaults to 30 generations, versus 20 in run_walkforward.sh.
 """
 
 import argparse

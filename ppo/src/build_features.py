@@ -1,24 +1,22 @@
-"""Scripted, reproducible version of the three data notebooks.
+"""Extend and numerically compare the original notebook feature pipeline.
 
-data_collect.ipynb -> feature_engineering.ipynb -> train_test.ipynb, as one
-command, so the held-out window can be extended when Binance publishes new
-months WITHOUT re-running notebooks by hand or touching the files the
-published results were computed from.
+Requires raw CSVs, the existing base feature file, a fitted feature scaler,
+and prepared data/cleaned, data/features, and data/processed directories.
+This is an extension/reproduction tool, not a bootstrap for the three notebooks.
+It leaves the saved scaler fitted on the original pre-2025 training data.
 
-By default it writes only NEW files:
+Default new outputs under ppo/:
     data/cleaned/btcusdt_1h_clean_ext.parquet
     data/features/btcusdt_features_ext.parquet
-    data/processed/test_ext.parquet      (>= --test-from, scaled with the SAVED scaler)
-and verifies that the rows it shares with the existing
-data/features/btcusdt_features.parquet are identical -- the features are
-causal (EMA / rolling), so appending months must not change earlier rows.
+    data/processed/test_ext.parquet      (>= --test-from, transformed by saved scaler)
 
-    python build_features.py                       # extend, verify, write *_ext files
-    python build_features.py --check-only          # just the reproduction check
+Existing output paths are refused. The overlap check compares feature values,
+but its current left-join/NaN handling does not fully validate missing matches
+or nonfinite values. The indicator formulas match feature_engineering.ipynb.
 
-Every indicator is computed exactly as in feature_engineering.ipynb (same
-`ta` calls, same windows). The scaler is NOT refit: test_ext is transformed
-with models/feature_scaler.pkl, fit on train (< 2025) only.
+From the repo root:
+    python ppo/src/build_features.py
+    python ppo/src/build_features.py --check-only
 """
 
 import argparse

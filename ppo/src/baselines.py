@@ -1,6 +1,7 @@
 """Buy-and-hold and moving-average crossover baselines, using the same fee
-model as TradingEnv, so PPO results have a real, reproducible comparison
-point instead of the unreproducible figures cited in the PR2 report.
+mechanics as TradingEnv. Callers choose fee/slippage rates; the final BTC
+contract intentionally uses spot costs for buy-and-hold and perp execution
+rates for the agent and MA crossover.
 """
 
 import argparse

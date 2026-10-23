@@ -1,12 +1,56 @@
 # Project context: CC-PPO adversarial crypto trading (BTech final year project)
 
-This file is read automatically by Claude Code at the start of a session in this
-repo. It captures the design decisions already made so every session — and every
-teammate — starts from the same shared understanding. Update it as decisions
-change; don't let it go stale.
+This is the shared design reference for the repository. Read it alongside
+`ppo/README.md` for setup and `docs/experiment-notes.md` for dated results.
+Automatic loading by an assistant depends on that assistant's configuration.
 
 ## Team
 4 members, BTech CSE final year project. ~6-7 month timeline.
+
+## Current implementation (final BTC configuration)
+
+`ppo/src/coevo_node.py` selects the final BTC run; `EngineConfig` defaults and
+legacy V4–V6 scripts describe earlier variants. The current settings are:
+
+- Three arms: single PPO, population + PBT, and population + PBT with an
+  evolving environment population. PBT evolves learning rate, entropy
+  coefficient, and clipping range; PPO updates network weights.
+- Six seeds per named run, 12 generations, six traders for population arms
+  (one for single), and 12 adversaries in the coevolution arm.
+- Five market inputs: `volatility_168h`, `ema50_ema200_ratio`, and cross-fitted
+  ridge forecasts `rhat4`, `rhat24`, `rhat72`, plus three account values.
+  The shared 19-feature base schema is in `feature_columns.py`; explicit
+  node inputs override the base observation list.
+- Two target-position actions: cash or long, every four hourly bars. Episodes
+  start invested. Costs are maker fee 0.02%, slippage 0.01%, and funding;
+  the spot buy-and-hold benchmark pays 0.1% plus 0.05% slippage.
+- In coevolution, half of each training match's segments come from the adversary. Regime lock
+  preserves the uniform pool's regime mix while the adversary selects within
+  each regime. An eight-segment shared exam ranks coevolution traders on common
+  windows; the other arms retain their match-based fitness.
+- Adversaries use absolute learning progress: change in population-mean
+  performance on a window since its previous exam. Other engine objectives
+  remain available for historical experiments.
+- Final populations vote by the mean action probabilities, then results are
+  averaged across seeds. The headline pools four runs, with and without
+  bounded observation drift; the run matrix is in `ppo/README.md`.
+
+The six development folds end before 2026-05-01 07:00 UTC. Earlier fold tests
+can enter later training windows. May–September 2026 was used in historical
+holdout/prospective checks and is spent; it is not fresh evaluation data.
+The final BTC headline is a development result. October 12 conclusions in
+the experiment notes refer to earlier configurations and cost contracts.
+
+The BTC evaluator uses paired segment bootstrap probabilities. The legacy
+`compare_arms.py` also reports seed and hierarchical bootstraps; the final
+evaluator does not automatically run a deflated-Sharpe or reality-check test.
+Forecast training inputs are cross-fitted across blocks, including later
+training blocks; external test forecasts use purged training labels.
+
+Current limitations: learning-progress history is not checkpointed, so resume
+resets that history. Synthetic benchmarks use named versions and saved
+parameters; source-file hash metadata and checks have been removed. Changing
+benchmark parameters should be treated as a new experiment.
 
 ## The core question and why it matters
 The real risk with RL-for-trading projects is not "can we show a profit" (trivial
@@ -53,9 +97,10 @@ actually happened. This is the single most important design constraint in the
 project — do not relax it without a very good reason and a plan to handle the
 consequences.
 
-(Future extension, only if time allows: bounded perturbations — small
-shifts/noise on prices within realistic volatility limits, layered on top of
-segment selection. Segment selection is the safer, more honest starting point.)
+The implemented optional perturbation changes selected observation inputs by
+bounded shifts and scales; it does not fabricate price paths. Bounded price
+perturbations remain an unimplemented proposal. Synthetic benchmarks provide
+separate, explicitly generated datasets rather than modifying BTC prices.
 
 ## How evolutionary operators apply differently to the two populations
 This is a common point of confusion — the two populations are different kinds
@@ -72,8 +117,8 @@ of objects and the operators mean different things on each.
   different order, so blending weights usually breaks both), and weight
   mutation competes with the PPO gradient rather than complementing it.
   Instead, evolve **hyperparameters** via Population-Based Training (PBT):
-  crossover/mutation act on learning rate, entropy coefficient, clip range,
-  reward-shaping weights, lookback window, etc. PPO's gradient still does all
+  crossover/mutation act on learning rate, entropy coefficient, and clip range.
+  Reward shaping and lookback evolution are proposals, not implemented PBT dimensions. PPO's gradient still does all
   the actual weight learning inside each individual.
 
 ## Known failure modes of two-sided coevolution (guard against these from day one)
@@ -126,7 +171,7 @@ in from the start, don't retrofit them:
    environment population later draws from.
 
 2. **Market simulator (gym environment):**
-   Wraps the segment pool. Defines observation (feature window + portfolio
+   Wraps the segment pool. Defines observation (current feature row + portfolio
    state), action space, and reward net of transaction costs and slippage.
    Parameterized by which segment it's given — this is how the environment
    population exerts control.
@@ -135,8 +180,11 @@ in from the start, don't retrofit them:
    - Trader population (PPO agents, agent side) and environment population
      (segment-selection strategies, environment side) interact through the
      simulator each generation.
-   - Environment population selects a segment → trader trades it → PnL signal
-     flows back as the (inverted) fitness for the environment population.
+   - Environment population selects windows → traders train and are examined →
+     the configured objective supplies adversary fitness. The original objective
+     negates trader fitness; the final BTC node uses learning progress.
+   - With a shared exam, traders are ranked on the same sampled windows before
+     PBT. Optional observation drift applies only to configured inputs.
    - Selection + variation (crossover + mutation) applied to **both**
      populations each generation — PBT-style hyperparameter evolution for the
      trader, direct genome crossover/mutation for the environment population.
@@ -145,18 +193,22 @@ in from the start, don't retrofit them:
    Held-out, non-adversarial real regimes. Fixed baselines: buy-and-hold,
    MA-crossover, single-agent PPO (no coevolution). Risk-adjusted metrics:
    Sharpe, Sortino, max drawdown, Calmar. Multiple seeds, variance reported.
-   Statistical significance check (e.g. deflated Sharpe / reality-check style)
-   so outperformance isn't just data-mined luck. This stage is deliberately
+   Paired bootstrap comparisons quantify uncertainty under the selected
+   resampling scheme. Development-time model selection remains a limitation;
+   the historical ORX deflated-Sharpe calculation is a separate reported analysis. This stage is deliberately
    **outside** the coevolutionary arms race — it answers "did this generalize
    to real unseen data," not "did the trader beat its own adversary" (which
    proves nothing). The external-objective feedback line from here back into
    the engine is what guards against Red Queen dynamics (see failure modes).
 
-5. **Prospective validation:**
-   Freeze a model, then forward paper-trade for ~4-8 weeks on data that didn't
+5. **Prospective validation (original proposal):**
+   This stage is not an automated workflow in the committed code. The historical
+   September 2026 check in the experiment notes used data downloaded later.
+   The original proposal was to freeze a model, then forward paper-trade for ~4-8 weeks on data that didn't
    exist when the model was frozen (Binance testnet is fine for the demo here,
    or live mainnet data paper-traded). This is the strongest form of
-   out-of-sample evidence precisely because overfitting to it is impossible.
+   out-of-sample evidence when model and selection rules stay frozen before
+   the new observations arrive.
    Do NOT make testnet the main evidence — testnet liquidity/fills aren't real
    and it's non-reproducible. The historical walk-forward backtest (stage 4) is
    the real evidentiary backbone; prospective validation is the compelling
@@ -179,7 +231,10 @@ adversarial coevolution (both populations evolving). These three comparisons
 are the core empirical contribution — design experiments explicitly around
 them.
 
-## Milestone plan (~24 weeks, ~6 months; spend slack from the 7-month budget)
+## Original proposed milestone plan (~24 weeks)
+This schedule records the initial planning assumptions, not a live task list.
+Implemented behavior is summarized above; dated experiments are in the notes.
+
 - **Weeks 1-3 — Foundations:** data pipeline, gym environment with realistic
   costs/slippage, regime labeling, reproducibility harness (seeding, config
   management, logging e.g. Weights & Biases, walk-forward split scaffolding).
@@ -202,7 +257,7 @@ them.
 prospective validation window elapses while the team writes — don't leave it
 until the end.
 
-## Suggested team role split (pair up across boundaries in weeks 1-7, diverge after)
+## Original proposed team role split
 1. Data & environment: pipeline, feature engineering, gym env, cost/slippage
    model, regime labels.
 2. RL / trader: PPO implementation and tuning, single-agent baseline, trader

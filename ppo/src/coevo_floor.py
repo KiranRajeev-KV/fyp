@@ -1,6 +1,7 @@
 """Exposure floor: portfolio = f * B&H core + (1-f) * agent, without retraining.
 
-    MULT=1 python coevo_floor.py <node>
+From the repo root:
+    MULT=1 python ppo/src/coevo_floor.py <node>
 
 Writes <node>/BTCUSDT/floor[_x2].csv; MULT is the cost multiplier.
 """

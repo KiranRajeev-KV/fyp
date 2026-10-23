@@ -1,8 +1,13 @@
-"""Pool reruns of one frozen node config that differ only in seeds.
+"""Pool aligned per-segment results from completed BTC runs.
 
-Per segment, each arm's score is averaged over the runs' seed-means; the dev rule is applied once.
+For each segment, take an equal-weight mean of run-level seed means. This
+checks fold/segment alignment, not configuration equivalence. With unequal
+seed counts, runs still receive equal weight. The final README headline pools
+both pure and input-drift configurations; the two-run example below pools
+only the pure configuration's seed batches.
 
-    python coevo_seedpool.py r21a-pure-alp r22a-pure-alp-seeds48-53
+From the repo root:
+    python ppo/src/coevo_seedpool.py r21a-pure-alp r22a-pure-alp-seeds48-53
 """
 import argparse
 import json

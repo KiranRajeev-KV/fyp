@@ -5,8 +5,13 @@ direction well enough for a long/flat timer to beat buy-and-hold after costs?
 Same machinery as signal_probe.py (logistic C=0.1, scaler fit per fold, purged
 labels, 0.15% per unit position change), on the 6 walk-forward folds.
 
+Examples from ppo/src:
     python signal_hunt.py                       # dev: 12 trials on folds 0-5
     python signal_hunt.py --confirm all@168h    # once, fold 6 (2026-05 -> 2026-08)
+
+The --confirm examples reproduce the original one-time protocol. The
+May–September 2026 evaluation windows are already spent historical data.
+The CLI does not enforce one-time use; see experiment notes section 9i.
 """
 
 import argparse

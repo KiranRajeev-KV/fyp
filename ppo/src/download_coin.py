@@ -1,9 +1,11 @@
 """Download a Binance symbol's history into data/coins/<SYM>/.
 
 spot 1h klines (monthly), USDⓈ-M perp 1h klines (monthly), funding (monthly),
-futures metrics (daily, open interest + long/short ratios). Each archive is unzipped to CSV next to it; existing CSVs are skipped.
+futures metrics (daily, open interest + long/short ratios). Archives are read
+in memory; only extracted CSVs are retained. Existing CSVs are skipped.
 
-    python download_coin.py BTCUSDT --end 2026-08
+From the repo root:
+    python ppo/src/download_coin.py BTCUSDT --end 2026-08
 """
 
 import argparse

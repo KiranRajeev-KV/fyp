@@ -130,7 +130,7 @@ def create_trader(trader_id, df, feature_columns, env_kwargs, seed, rng,
 
 
 PPO_DIAGNOSTICS = [
-    "train/clip_fraction",          # 0 => clip_range never binds, i.e. is inert
+    "train/clip_fraction",          # 0 => clipping did not bind in the observed updates
     "train/approx_kl",              # how far each update actually moved the policy
     "train/explained_variance",     # <=0 => the value head is learning nothing
     "train/entropy_loss",           # how random the policy still is
@@ -179,12 +179,10 @@ def evaluate_on_segments(trader, df, feature_columns, segments, env_kwargs,
             steps += len(bars)
         metrics = summarize(values)
         metrics["exposure"] = float(in_market / steps) if steps else 0.0
-        # A trader that never trades holds a flat portfolio, so the return std
-        # is 0 and sharpe_ratio returns its documented 0.0. That is a fine
-        # convention, but it makes "did nothing" indistinguishable from "traded
-        # and broke even" -- and the former says nothing about the adversary
-        # that served the window. Record the distinction rather than changing
-        # the metric, which every published number depends on.
+        # With a cash start, zero trades leaves a flat portfolio (Sharpe 0).
+        # With start_long=True, reset opens a position without incrementing the
+        # trade counter, so zero trades can still have market exposure/returns.
+        # Record executed trades separately from performance and exposure.
         metrics["trades"] = trades
         metrics["no_trade"] = trades == 0
         per_segment.append(metrics)

@@ -4,6 +4,19 @@ A from-scratch reference for the competitive coevolutionary PPO (CC-PPO) crypto-
 project: what was done, how the two evolution loops work in code, the terminology, the
 metrics, and the first results. Written to be readable with **no prior background**.
 
+**Historical record through October 12, 2026.** Sections 1–8 teach the original
+engine and its defaults; sections 9–10 retain the results and conclusions at
+each stage. They do not describe every setting of the later final BTC node.
+See [the final-state addendum](#11-final-btc-configuration-and-reproduction-status)
+and [the current design](../context.md#current-implementation-final-btc-configuration)
+for learning progress, cash/long actions every four bars, five selected market
+inputs, maker costs/funding, shared exams, and population voting.
+
+Referenced datasets, models, private ledgers, ORX worktrees, and most run
+outputs were local artifacts. Their historical existence is recorded here;
+this checkout includes only a subset of result JSONs. “Held out”, “headline”,
+and “remaining work” below refer to their dated experiment stage.
+
 - Design doc (authoritative): [`../context.md`](../context.md)
 - Design history: [`design-history.md`](design-history.md)
 - Code: [`../ppo/src/`](../ppo/src/)
@@ -20,7 +33,8 @@ metrics, and the first results. Written to be readable with **no prior backgroun
 7. [The metrics (Sharpe, Return %, Max DD, Calmar)](#7-metrics)
 8. [Fitness function — what you can/should use](#8-fitness)
 9. [First results & the two failure modes](#9-results)
-10. [Next steps](#10-next-steps)
+10. [Historical conclusions and remaining work](#10-next-steps)
+11. [Final BTC configuration and reproduction status](#11-final-btc-configuration-and-reproduction-status)
 
 ---
 
@@ -158,10 +172,13 @@ p = softmax(logits)         # high prob to windows matching its preferences
 **Hard constraint:** it can only *select real historical windows*, never fabricate prices.
 
 ### How it's scored
-The adversary wins when the trader loses, so it records the **negated** trader score:
+For the original `neg_sharpe` objective, the engine negates the trader score
+before passing it to the adversary. Other objectives, including the final
+learning-progress objective, use different scores. The recorder stores the
+already-computed adversary score:
 ```python
-def record(self, trader_score):
-    self._scores.append(-trader_score)
+def record(self, adversary_score):
+    self._scores.append(float(adversary_score))
 ```
 
 ### The evolution (genetic algorithm — `evolve()`)
@@ -237,13 +254,15 @@ the weight learning; PBT steers which configurations survive.**
 
 **File:** `ppo/src/coevo/engine.py` (`run`). Each generation:
 1. **Matches** — each trader is handed windows *chosen by an adversary* (coevolution mode) or
-   random (other modes), trains on them (PPO), and is scored. Adversary records the inverted score.
-   Extra matches vs. Hall-of-Fame archives guard against "forgetting."
-2. **Finalize fitness** for both sides; apply adversary fitness sharing.
+   random (other modes), trains on them (PPO), and is scored. The engine supplies the
+   configured adversary score. Archive matches add historical comparisons.
+2. **Finalize fitness** for both sides. If enabled, a shared exam replaces
+   match-based fitness before adversary fitness sharing.
 3. **Log two ledgers separately:**
    - **internal** — who's winning the arms race (proves nothing alone).
-   - **external** — the best trader tested on fixed held-out data vs. fixed baselines (the honest
-     yardstick). Kept separate to catch "Red Queen" illusions.
+   - **external** — every trader is tested on fixed validation data against fixed
+     baselines; the generation summary also identifies the internal best trader.
+     Final BTC evaluation separately uses the node's voting rule.
 4. **Evolve both** — `ep.evolve(...)` for adversaries, `tp.pbt_step(...)` for traders.
 
 Round after round: adversaries get better at picking painful windows → traders get better at
@@ -322,11 +341,11 @@ The engine already supports **any single metric** as fitness via `EngineConfig.f
 <a name="9-results"></a>
 ## 9. Results & the two failure modes
 
-Three runs exist:
+The initial three experiment versions were:
 - **V1** (`runs/`) — 3 seeds, all defaults.
 - **V2** (`runs/v2/`) — 6 seeds (42–47), tuned adversary variation
   (`env-weight-σ 0.7`, `env-temp-σ 0.35`, `n-env 16`, `segments-per-match 6`).
-- **V3** (`runs/v3/`) — **the headline.** V2 settings plus the diagnostic-driven fixes:
+- **V3** (`runs/v3/`) — **the headline at that stage.** V2 settings plus the diagnostic-driven fixes:
   `trade-penalty 0.003`, `gamma 0.997`, `ent-coef-max 0.02`, `env-fresh-frac 0.25`.
 
 **V3 test set (Oct 2025 – Jun 2026; 9 segments: 6 sideways, 3 bear; 6 seeds; mean ± std):**
@@ -391,7 +410,6 @@ does not reliably *exit* downtrends — being long-only, its only defense is mov
 
 ---
 
-<a name="10-next-steps"></a>
 ### 9b. September 2026 audit (read before quoting any V4 number)
 
 Full write-up: [`audit-2026-09.md`](audit-2026-09.md). The short version:
@@ -415,6 +433,7 @@ Full write-up: [`audit-2026-09.md`](audit-2026-09.md). The short version:
 - Baselines now pay slippage; every final trader is saved; `config.json` records the git hash;
   the engine refuses to overwrite a finished run.
 
+<a name="9c-v5-walkforward"></a>
 ### 9c. V5 and walk-forward (2026-09-14/15) — the result that changes the framing
 
 **V5** (`runs/v5/`, V4 config on the fixed engine, four arms incl. `coevolution_regret`, 6 seeds × 30 gens):
@@ -501,7 +520,8 @@ regret arm's buy-and-hold collapse (9c).
 training method in this project can learn to time the market. Each arm instead settles on a **constant
 exposure** fixed by its training distribution, and coevolution's adversary sets that constant low. The
 curriculum changes in 9c-9d only move this exposure dial. Reproduce with
-`python ppo/src/signal_probe.py [--funding ../data/funding/BTCUSDT_funding.parquet]` (6 walk-forward folds,
+`python ppo/src/signal_probe.py` from the repo root; optionally add
+`--funding ppo/data/funding/BTCUSDT_funding.parquet` (6 walk-forward folds,
 48 test segments of 720 bars, scaler and classifier fit on each fold's train span only, the last H train labels
 purged). Output: `ppo/runs/walkforward/signal_probe.json`.
 
@@ -570,13 +590,13 @@ known regime and a deliberate train/test regime shift.
 **Why a synthetic market.** §9e shows that real BTC has no usable direction signal. On real BTC every arm therefore reduces to an exposure dial, and the question the project asks cannot be tested there: does coevolution generalise better under a regime shift when there *is* something to learn? A generated market isolates that question. In it the regime is known, it is partly observable, and its mix is deliberately shifted between train and test. This is a controlled test of the training method, not evidence about BTC. The two benchmarks are never compared with each other.
 
 **How.**
-- SYNTH_V1 (`ppo/src/synth_market.py`, sha256[:16] `8070ed6ffe695667`, frozen before any arm ran):
+- SYNTH_V1 (`ppo/src/synth_market.py`, named benchmark parameters fixed before the reported runs):
   - semi-Markov bull / sideways / bear regimes, mean duration 480 bars;
   - hourly drift +0.0004 / 0 / −0.0008, vol 0.006 / 0.006 / 0.009;
   - a noisy observed `regime_signal`, plus the 19 engine features from `build_features.add_features`.
 - Mixes: train and control sets are 10% bear; the shifted test sets are 50% bear.
 - Logistic probe AUC 0.60, against 0.53 on real BTC.
-- SYNTH_V2 (`ppo/src/synth_market_v2.py`, `bd5b061d7886a3ae`) is the weaker-predictability market, AUC 0.55.
+- SYNTH_V2 (`ppo/src/synth_market_v2.py`) is the weaker-predictability market, AUC 0.55.
   - It raises signal noise 2 → 12 and multiplies all drifts by 0.6.
   - This deviates from the pre-registered "change only the signal". Noise alone cannot lower the AUC, because the price features carry the regime. The user approved the change before the freeze.
 
@@ -613,7 +633,7 @@ known regime and a deliberate train/test regime shift.
 
 ### 9g. Shared exam (`--shared-exam 16`) — the best variant, synthetic only
 
-**Why.** Selection is a lottery (§9e, B2 in the audit). One trader's match-to-match sd (1.17) is larger than the spread between traders (0.82).
+**Why.** Selection is a lottery (§9e, F6 in the September audit). One trader's match-to-match sd (1.17) is larger than the spread between traders (0.82).
 
 **Change** (`EngineConfig.shared_exam`, `engine._shared_exam`):
 - Each generation, every trader sits the *same* 16 uniform segments, and PBT, `best_trader` and the hall of fame rank on that score.
@@ -666,7 +686,8 @@ Each attempt was pre-registered in the ledger and used the same 48 walk-forward 
   - *Short-horizon mean reversion in crypto* (2608.21888) reports the same "detectable, but too small to clear costs" pattern.
 
 **Protocol.**
-- Fixed run contract `ppo/src/orx_eval.py`. It scores `orx_strategy.positions()` on the 48 dev segments and never reads bars ≥ 76000 (2026-05-01 07:00).
+- Fixed run contract `ppo/src/orx_eval.py`. It scores `orx_strategy.positions()` on the 48 dev segments,
+  excluding bars ≥ 76000 (2026-05-01 07:00 UTC) from those scores. Its loader may read the full data files.
 - One orx node per idea, on its own git branch (worktree `../fyp-orx`). Each round was pre-registered in the ledger.
 - DEV PASS = gap > 0, P ≤ 0.10, and still ahead at 2× cost.
 - The goal counts as met only if the best DEV PASS node also beats B&H on the sealed span (scored once), AND its deflated Sharpe ratio on dev is > 0.5.
@@ -727,7 +748,8 @@ Each attempt was pre-registered in the ledger and used the same 48 walk-forward 
   - `ppo/runs/walkforward/orx_sealed.json`, `orx_prospective_sep2026.json`;
   - the orx project `fyp` (dashboard `orx up`).
 
-## 10. Conclusions and what remains
+<a name="10-next-steps"></a>
+## 10. Historical conclusions and remaining work (October 12, 2026)
 
 **What the project shows.**
 1. **Real BTC, 2022-2026: no method in this project and no simple rule beats buy & hold robustly.**
@@ -757,12 +779,42 @@ Each attempt was pre-registered in the ledger and used the same 48 walk-forward 
   - a one-page panel Q&A;
   - the report chapters (results and discussion from §9c-§10);
   - slides 8-13 last;
-  - merging `loop/experiments` into `main`.
+  - the then-planned merge of `loop/experiments` into `main` (historical todo; that branch is not available in this checkout).
 - Not done, and outside the current framing (flag before starting):
   - a short side or a different action space;
   - a non-Sharpe objective;
   - other synthetic generators.
-- Prospective data: May-Sep 2026 has now been used (§9i). The only untouched real-BTC data is October 2026 onward.
+- Prospective data status at October 12: May-Sep 2026 had been used (§9i).
+  October 2026 onward was the proposed next window; freshness must be checked
+  against any later experiments before treating it as untouched.
 
 ---
 *Notes generated 2026-07-22; updated 2026-07-27 (V3), 2026-09/10 (§9b-9e), 2026-10-12 (§9f-9i, §10 rewritten and updated with goal mode).*
+
+
+## 11. Final BTC configuration and reproduction status
+
+The final node now committed in `ppo/src/coevo_node.py` differs from the
+October 12 experiments summarized above. It uses learning-progress
+adversaries, an eight-window shared exam, a half-uniform curriculum with
+regime lock, cash/long actions every four hours, maker fees and funding,
+two selected base features plus three ridge forecasts, and final-population
+voting. The root README reports Sharpe 1.24 for both coevolution and PBT,
+0.91 for single PPO, 0.97 for spot buy-and-hold, and 0.15 for MA crossover.
+Those are final development-fold results, not a rerun of the historical
+cost contracts or a new prospective confirmation of their conclusions.
+
+The headline pools four six-seed runs across two input-drift settings:
+24 seed/configuration runs with 12 distinct seed IDs. See the
+[run matrix](../ppo/README.md#final-btc-run-matrix) for the exact settings.
+The `coevo7` contracts, per-segment CSVs, result JSONs, and saved models are
+not tracked, so these final headline figures cannot be independently
+verified from this checkout alone. Keep the reported tables and this
+provenance limitation together when presenting them.
+
+Synthetic benchmarks are identified by their names and saved parameters.
+Source-file hash metadata and checks were removed during maintenance;
+existing historical artifacts may still contain those fields. No historical
+result values were recalculated by that maintenance change. Task A denotes
+the signal probe, Task B the synthetic benchmark, and Task C shared-exam
+selection; R-number references refer to the original local experiment ledger.

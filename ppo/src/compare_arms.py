@@ -19,17 +19,19 @@ internal rank 0, which is one noisy draw from the final population). With
 --final-traders every trader in final_traders/ is evaluated too and each seed
 is represented by its population MEAN (rank-0 is still reported).
 
+Examples below run from ppo/src; quote name=glob arguments for zsh.
+
 Single split:
     python compare_arms.py --data ../data/processed/test.parquet \
-        --arms coevolution=../runs/v5/coevolution_seed*/best_trader.zip \
-               population=../runs/v5/population_seed*/best_trader.zip \
-               single=../runs/v5/single_seed*/best_trader.zip \
+        --arms "coevolution=../runs/v5/coevolution_seed*/best_trader.zip" \
+               "population=../runs/v5/population_seed*/best_trader.zip" \
+               "single=../runs/v5/single_seed*/best_trader.zip" \
         --final-traders --out ../runs/v5/compare.json
 
 Walk-forward (globs are relative to each fold directory; segments pool across folds):
     python compare_arms.py --walkforward-root ../runs/walkforward \
-        --arms coevolution=coevolution_seed*/best_trader.zip \
-               single=single_seed*/best_trader.zip --out ../runs/walkforward/compare.json
+        --arms "coevolution=coevolution_seed*/best_trader.zip" \
+               "single=single_seed*/best_trader.zip" --out ../runs/walkforward/compare.json
 """
 
 import argparse

@@ -1,10 +1,10 @@
-"""Shared command-line surface for EngineConfig.
+"""Shared legacy command-line subset of EngineConfig.
 
-Every driver that trains with CoevolutionEngine (run_coevolution.py,
-run_walkforward.py) must build its config through here, so a walk-forward
-run and a single-split run with the same flags are guaranteed to use the same
-engine settings. Before this existed, run_walkforward.py silently used V1-era
-defaults for every knob it did not expose.
+run_coevolution.py and run_walkforward.py use this module for the same exposed
+flags. It does not expose every engine field: the final BTC evaluator builds
+its config from coevo_node.py, including additional objectives and observation
+options. Equal flag values give equal shared fields; driver defaults or
+explicit overrides can still differ.
 """
 
 from coevo.engine import EngineConfig

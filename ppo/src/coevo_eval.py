@@ -1,17 +1,20 @@
-"""Coevolution evaluation: the fixed run contract for BTC.
+"""Final BTC evaluation on six rolling development folds (48 scoring segments).
 
-Trains the three engine arms (single, population, coevolution) on each of the
-six BTC walk-forward folds with the node's settings (coevo_node.py), then
-scores every arm's frozen best trader (mean over seeds) on the 48 dev test
-segments against spot buy-and-hold and MA crossover. Never reads BTC bars
-from 2026-05-01 07:00 on (sealed / spent).
+The node in coevo_node.py selects features, engine overrides, seeds, and policy
+scoring. With score='vote', each seed's final traders vote by their mean action
+probabilities; otherwise its saved best_trader is scored. Segment scores are
+averaged over seeds before paired segment bootstrap comparisons.
 
-FIXED here, whatever the node says: the cost model (agent = perp maker 0.02%
-fee + 0.01% slippage per side + funding while long; B&H = spot 0.1% + 0.05%;
-MA crossover = the agent's fee/slippage, no funding), the folds, the
-segments, the selection rule (best_trader per seed), the pass rule.
+Fixed costs: agents use perp maker fee 0.02% + slippage 0.01% per side and
+funding while long; spot buy-and-hold uses 0.1% + 0.05%; MA crossover uses the
+agent fee/slippage without funding. The fold geometry, scoring segments, and
+pass rule are fixed independently of node settings. Loaders may read full
+files, but training/scoring excludes BTC bars from 2026-05-01 07:00 UTC onward.
+Historical checks have spent May–September 2026; these are development folds,
+not a new prospective test. See ppo/README.md for the four-run headline matrix.
 
-    python coevo_eval.py
+From the repo root:
+    python ppo/src/coevo_eval.py
 """
 
 import argparse
@@ -35,11 +38,12 @@ OUT_BASE = project_path("runs/coevo7")
 
 
 def rhat_feature(df, cols, folds_win, horizon):
-    """Ridge forecast of the next `horizon`-bar log return, no lookahead.
+    """Ridge forecast with block-cross-fitted training inputs and purged test fits.
 
     Train rows get 5-block cross-fitted predictions (purged by `horizon` at
-    block edges) so PPO never sees an in-sample fit; test rows get the
-    prediction of a fit on the whole train window (labels purged at its end).
+    block edges); the other training blocks include later rows, so training
+    predictions are out of sample but not strictly chronological. Test rows
+    use a fit on the whole train window with its last `horizon` labels removed.
     """
     from sklearn.linear_model import Ridge
     from sklearn.preprocessing import StandardScaler

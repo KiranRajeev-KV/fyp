@@ -2,15 +2,19 @@
 
 Competitive coevolutionary PPO for Bitcoin trading (CC-PPO): a population of
 PPO trading agents is trained against an adversary population that chooses
-which real historical BTC market windows the traders practise on. The
-adversary rewards windows where the traders are still learning (learning
-progress), so training keeps moving to the market conditions the traders
-handle worst.
+which real historical BTC market windows the traders practise on. In the final
+configuration, the adversary rewards changes in population performance on
+previously examined windows (absolute learning progress).
 
-## Result
+## Reported final BTC development result
 
-Scored on six BTC periods (Mar 2022 – May 2026) that no agent trained on,
-24 seeds, realistic perpetual-futures costs:
+The final configuration reports mean per-segment Sharpe across six rolling
+BTC evaluation folds (2022-03-23 to 2026-05-01, UTC). Each model's test window
+is excluded from its own training; earlier test windows can enter later
+folds' training data. The headline pools four six-seed configuration runs:
+24 seed/configuration runs per arm and fold, using 12 distinct seed IDs
+(42–53) with and without input drift. Agents pay perpetual-futures costs;
+buy & hold uses spot costs.
 
 | Strategy | Sharpe |
 |---|---|
@@ -36,15 +40,15 @@ Coevolution beats the single agent (P < 0.001) and the MA crossover
 ## Quick start
 
 ```bash
-cd ppo
-python3.12 -m venv .venv && source .venv/bin/activate
-python -m pip install -r requirements-cpu.txt
-cd tests && python smoke_test.py        # end-to-end check on synthetic data, no download needed
+python3.12 -m venv ppo/.venv && source ppo/.venv/bin/activate
+python -m pip install -r ppo/requirements-cpu.txt
+python ppo/tests/smoke_test.py        # end-to-end check on synthetic data, no download needed
 ```
 Preparing the BTC data and running the full evaluation are described in
 [`ppo/README.md`](ppo/README.md).
 
 ### Members
+
 - [Kiran Rajeev](https://github.com/KiranRajeev-KV)
 - [Nandgopal R Nair](https://github.com/Nandgopal-R/)
 - [Adarssh KG](https://github.com/adar-ssh)
