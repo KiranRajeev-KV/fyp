@@ -1,22 +1,28 @@
-# Exposure floor: portfolio = f * B&H core + (1-f) * agent, for frozen BTC models (no retraining).
-#   MULT=1 python coevo_floor.py <node>  ->  <node>/BTCUSDT/floor[_x2].csv   (MULT = cost multiplier)
-import sys, os, json, multiprocessing as mp, numpy as np, pandas as pd
-import coevo_eval as E
+"""Exposure floor: portfolio = f * B&H core + (1-f) * agent, without retraining.
+
+    MULT=1 python coevo_floor.py <node>
+
+Writes <node>/BTCUSDT/floor[_x2].csv; MULT is the cost multiplier.
+"""
+
+import argparse
+from functools import partial
+import json
+import multiprocessing as mp
+import os
+
 FLOORS = (0.0, 0.25, 0.5, 0.75)
-node = sys.argv[1]
-M = float(os.environ.get("MULT", "1"))
-root = f"{E.OUT_BASE}/{node}/BTCUSDT"
-E.CFG = json.load(open(f"{root}/contract.json"))["config"]
-seeds = E.CFG["seeds"]
-assert E.CFG.get("score") == "vote"   # rollout below loads final_traders as SoftVote, like eval_job
 
 
-def bh_values(seg):
+def bh_values(seg, mult):
+    import coevo_eval as E
     from baselines import buy_and_hold
-    return buy_and_hold(seg, 10000.0, E.SPOT_FEE * M, E.SPOT_SLIP * M)
+    return buy_and_hold(seg, 10000.0, E.SPOT_FEE * mult, E.SPOT_SLIP * mult)
 
 
-def job(j):
+def job(j, mult):
+    import numpy as np
+    import coevo_eval as E
     k, path = j
     import torch
     torch.set_num_threads(1)
@@ -31,7 +37,7 @@ def job(j):
     out = []
     for i, (s, e) in enumerate(segs):
         env = TradingEnv(df=test, feature_columns=E.FEATS, segments=segs, initial_balance=10000.0,
-                         trading_fee=E.AGENT_FEE * M, slippage=E.AGENT_SLIP * M, trade_penalty=0.0,
+                         trading_fee=E.AGENT_FEE * mult, slippage=E.AGENT_SLIP * mult, trade_penalty=0.0,
                          funding_col="funding_paid", decision_every=eng.get("decision_every", 1),
                          start_long=eng.get("start_long", False), target_position=eng.get("target_position", False))
         obs, _ = env.reset(seed=0, options={"segment": i})
@@ -39,25 +45,45 @@ def job(j):
         while not done:
             obs, _, done, _, info = env.step(model.predict(obs)[0])
             v.extend(info["bar_values"])
-        bh = bh_values(test.iloc[s:e].reset_index(drop=True))
+        bh = bh_values(test.iloc[s:e].reset_index(drop=True), mult)
         n = min(len(v), len(bh))
         v, bh = np.asarray(v[:n]), np.asarray(bh[:n])
         out.append([summarize(f * bh + (1 - f) * v)["sharpe"] for f in FLOORS])
     return j, out
 
 
-E.DATA, E.FEATS, _ = E.prepare(E.SYM, E.CFG)
-jobs = [(k, f"{root}/fold{k}/{a}_seed{s}/best_trader.zip") for a in E.ARMS for k in sorted(E.DATA) for s in seeds]
-with mp.get_context("fork").Pool(11) as p:
-    res = dict(p.map(job, jobs))
-rows = []
-for k in sorted(E.DATA):
-    b = E.baselines(E.DATA[k][1], M)
-    for i in range(len(b)):
-        r = {"fold": k, "seg": i, "buy_hold": b[i]["buy_hold"], "ma_crossover": b[i]["ma_crossover"]}
-        for a in E.ARMS:
-            sh = np.mean([res[(k, f"{root}/fold{k}/{a}_seed{s}/best_trader.zip")][i] for s in seeds], axis=0)
-            for f, x in zip(FLOORS, sh):
-                r[f"{a}_f{f:g}"] = float(x)
-        rows.append(r)
-pd.DataFrame(rows).to_csv(f"{root}/floor{'' if M == 1 else f'_x{M:g}'}.csv", index=False)
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("node")
+    args = ap.parse_args(argv)
+
+    import numpy as np
+    import pandas as pd
+    import coevo_eval as E
+
+    mult = float(os.environ.get("MULT", "1"))
+    root = f"{E.OUT_BASE}/{args.node}/BTCUSDT"
+    with open(f"{root}/contract.json") as contract:
+        E.CFG = json.load(contract)["config"]
+    seeds = E.CFG["seeds"]
+    assert E.CFG.get("score") == "vote"   # job loads final_traders as SoftVote, like eval_job
+
+    E.DATA, E.FEATS, _ = E.prepare(E.SYM, E.CFG)
+    jobs = [(k, f"{root}/fold{k}/{a}_seed{s}/best_trader.zip") for a in E.ARMS for k in sorted(E.DATA) for s in seeds]
+    with mp.get_context("fork").Pool(11) as p:
+        res = dict(p.map(partial(job, mult=mult), jobs))
+    rows = []
+    for k in sorted(E.DATA):
+        b = E.baselines(E.DATA[k][1], mult)
+        for i in range(len(b)):
+            r = {"fold": k, "seg": i, "buy_hold": b[i]["buy_hold"], "ma_crossover": b[i]["ma_crossover"]}
+            for a in E.ARMS:
+                sh = np.mean([res[(k, f"{root}/fold{k}/{a}_seed{s}/best_trader.zip")][i] for s in seeds], axis=0)
+                for f, x in zip(FLOORS, sh):
+                    r[f"{a}_f{f:g}"] = float(x)
+            rows.append(r)
+    pd.DataFrame(rows).to_csv(f"{root}/floor{'' if mult == 1 else f'_x{mult:g}'}.csv", index=False)
+
+
+if __name__ == "__main__":
+    main()
