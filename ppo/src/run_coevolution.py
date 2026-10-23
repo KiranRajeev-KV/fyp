@@ -52,7 +52,7 @@ def main():
         import joblib
         feature_columns = joblib.load(args.features)
     except FileNotFoundError:
-        from train_ppo import FEATURE_COLUMNS as feature_columns
+        from feature_columns import FEATURE_COLUMNS as feature_columns
 
     pool = build_segment_pool(
         train_df,

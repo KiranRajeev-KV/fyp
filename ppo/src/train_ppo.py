@@ -9,43 +9,10 @@ import joblib
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 
+from feature_columns import FEATURE_COLUMNS
 from trading_env import TradingEnv
 from metrics import summarize
 from project_paths import project_path
-
-# ==========================================
-# FEATURE LIST
-# ==========================================
-
-FEATURE_COLUMNS = [
-    "return",
-    "log_return",
-    "high_low_spread",
-    "open_close_spread",
-
-    "ema20_ema50_ratio",
-    "ema50_ema200_ratio",
-
-    "rsi",
-
-    "macd",
-    "macd_signal",
-    "macd_hist",
-
-    "atr",
-
-    "volatility_24h",
-    "volatility_168h",
-
-    "volume_ratio",
-    "volume_change",
-
-    "bb_width",
-    "bb_position",
-
-    "price_vs_ema50",
-    "price_vs_ema200"
-]
 
 
 def set_global_seed(seed):

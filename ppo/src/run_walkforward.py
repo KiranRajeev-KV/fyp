@@ -48,7 +48,7 @@ def load_feature_columns(path):
         import joblib
         return joblib.load(path)
     except FileNotFoundError:
-        from train_ppo import FEATURE_COLUMNS
+        from feature_columns import FEATURE_COLUMNS
         return FEATURE_COLUMNS
 
 

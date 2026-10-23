@@ -72,6 +72,7 @@ src/
 ├── baselines.py        # buy & hold, MA crossover (same cost model)
 ├── metrics.py          # Sharpe, Sortino, Calmar, max drawdown
 ├── build_features.py   # data pipeline (reproduces the notebooks)
+├── feature_columns.py  # shared ordered list of base input features
 ├── coin_data.py        # bars + order flow + positioning + funding for one symbol
 ├── coevo_node.py       # run settings (final configuration)
 ├── coevo_eval.py       # fixed evaluation contract (see above)
