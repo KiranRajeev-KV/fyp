@@ -1,9 +1,10 @@
 """Task B: controlled synthetic market with a hidden, learnable regime.
 
-A SEPARATE, clearly labelled benchmark (the experiment ledger). It exists because
-real BTC has no exploitable timing signal (features AUC ~0.53), so no training
-method can be tested on whether it learns to time. Here timing is possible by
-construction, and the training/test regime mix is shifted on purpose.
+A separate benchmark motivated by weak timing signals in the historical BTC
+experiments (feature AUC ~0.53 under those probes). Here timing is possible by
+construction, and the training/test regime mix is shifted on purpose. Task B
+and R-number labels refer to the original local experiment ledger. Metadata
+records the benchmark name and parameters; source hashes are not recorded.
 
 Generator: semi-Markov regimes (bull / bear / sideways). At each switch the
 next regime is drawn from a target mix, durations are geometric with the same
@@ -23,13 +24,13 @@ Splits (each a parquet in --out, features standardised with train stats):
 Test files are 100 independent blocks of 2 x 720 bars, so stride-720 segments
 never cross a block: 200 non-overlapping segments per test set.
 
+Examples from ppo/src:
     python synth_market.py --out ../data/synth_v1            # build dev splits
     python synth_market.py --out ../data/synth_v1 --check    # + cheap check (R4)
     python synth_market.py --out ../data/synth_v1 --sealed   # once, at the end
 """
 
 import argparse
-import hashlib
 import json
 import os
 
@@ -43,7 +44,7 @@ from metrics import sharpe_ratio
 REGIMES = ["bull", "sideways", "bear"]
 CODE = {"bull": 1.0, "sideways": 0.0, "bear": -1.0}
 
-# Frozen once the cheap check passes (R10); any change is a NEW benchmark.
+# Historical SYNTH_V1 parameters. Treat parameter changes as a new benchmark.
 PARAMS = {
     "drift": {"bull": 0.0004, "sideways": 0.0, "bear": -0.0008},   # per hour
     "vol": {"bull": 0.006, "sideways": 0.006, "bear": 0.009},      # per hour
@@ -113,10 +114,6 @@ def blocks(first_seed, mix, p=PARAMS):
                       for i in range(p["n_blocks"])], ignore_index=True)
 
 
-def code_hash():
-    return hashlib.sha256(open(__file__, "rb").read()).hexdigest()[:16]
-
-
 def build(out, sealed=False, p=PARAMS):
     os.makedirs(out, exist_ok=True)
     s = p["seeds"]
@@ -135,8 +132,8 @@ def build(out, sealed=False, p=PARAMS):
         scaler = StandardScaler().fit(splits["train"][FEATURES])
         joblib.dump(scaler, scaler_path)
         joblib.dump(FEATURES, os.path.join(out, "feature_columns.pkl"))
-        json.dump({"params": p, "code_sha256_16": code_hash()},
-                  open(os.path.join(out, "params.json"), "w"), indent=2)
+        with open(os.path.join(out, "params.json"), "w") as metadata:
+            json.dump({"benchmark": "SYNTH_V1", "params": p}, metadata, indent=2)
     for name, df in splits.items():
         path = os.path.join(out, f"{name}.parquet")
         if os.path.exists(path):

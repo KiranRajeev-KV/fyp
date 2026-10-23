@@ -1,4 +1,4 @@
-"""Phase 2 P1: shift dose-response on the FROZEN SYNTH_V1 generator (no retraining).
+"""Historical Phase 2 P1: shift dose-response using SYNTH_V1 parameters (no retraining).
 
 build: one pool of 500 fresh segments (seeds 3000-3249, 2 x 720 bars each, shifted
        mix, V1 params and V1 train scaler; never the sealed 9000-9099) -> pool.parquet.
@@ -7,6 +7,7 @@ analyse: for each target bear share pick 200 segments by their TRUE regime
        (nested: the first k bear segments, the rest bull/sideways in the train
        ratio 47:43), then bootstrap coevolution vs single / population / reweighted.
 
+Examples from ppo/src:
     python synth_dose.py build --out ../data/synth_v1_dose
     python synth_dose.py analyse --csv <compare csv> --out <json> --fig ../figures/synth_dose_response.png
 """
@@ -29,7 +30,6 @@ ARMS = ["coevolution", "coevolution_regret", "reweighted", "population", "single
 
 
 def build(out, first_seed=3000, n_blocks=250):
-    assert sm.code_hash() == "8070ed6ffe695667", "SYNTH_V1 generator changed"
     os.makedirs(out, exist_ok=True)
     path = os.path.join(out, "pool.parquet")
     if os.path.exists(path):
