@@ -6,8 +6,8 @@ into ppo/data/raw/.
 Usage:
     python download_klines.py
 
-Requires: requests
-    pip install requests
+Install dependencies from the repo root:
+    python -m pip install -r ppo/requirements-cpu.txt
 """
 
 import io

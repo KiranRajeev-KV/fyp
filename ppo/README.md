@@ -9,11 +9,30 @@ weight learning. See `../context.md` for the design.
 ## Setup
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install torch --index-url https://download.pytorch.org/whl/cpu
-pip install -r requirements.txt
+cd ppo    # from the repo root
+python3.12 -m venv .venv && source .venv/bin/activate
+python -m pip install -r requirements-cpu.txt
+python -m pip check
 ```
-Python 3.12; a CPU is enough.
+Use Python 3.12; a CPU is enough. `requirements.txt` pins the direct runtime
+dependencies; `requirements-cpu.txt` selects the matching CPU-only PyTorch
+build. For a GPU environment, install `requirements.txt` instead and select
+the appropriate PyTorch build for your hardware.
+
+For a CPU notebook environment (including the Excel export), install:
+
+```bash
+python -m pip install -r requirements-cpu.txt -r requirements-notebooks.txt
+```
+
+For GPU notebooks, use `requirements-notebooks.txt` with your selected
+PyTorch build. The notebook requirements reuse the runtime pins. The CPU
+runtime baseline passes the synthetic smoke test on Python 3.12.13.
+These files pin direct
+dependencies, rather than the complete transitive dependency tree. After
+changing versions, run `python -m pip check`,
+`python -m unittest discover -s tests -p 'test_*.py'`, and
+`python tests/smoke_test.py` before recording a new baseline.
 
 Python scripts resolve bundled inputs and default output locations relative to
 `ppo/`, so they can be launched from any working directory. For example, from

@@ -18,6 +18,7 @@ set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$REPO/ppo/src"
 VENV="$REPO/ppo/.venv"
+PYTHON_BIN="${PYTHON_BIN:-python3.12}"
 
 GENERATIONS="${GENERATIONS:-30}"
 SEEDS="${SEEDS:-42 43 44 45 46 47}"
@@ -39,12 +40,8 @@ say() { echo "[$(date +%H:%M:%S)] $*"; }
 # --- 1. environment -------------------------------------------------------
 if [ ! -x "$VENV/bin/python" ]; then
   say "creating $VENV (torch CPU wheels, ~200MB)"
-  python3 -m venv "$VENV" || { say "FATAL: could not create venv"; exit 1; }
-  "$VENV/bin/pip" install -q --upgrade pip
-  # CPU index first, so the ~2GB CUDA build is never downloaded
-  "$VENV/bin/pip" install -q torch --index-url https://download.pytorch.org/whl/cpu \
-    || { say "FATAL: torch install failed"; exit 1; }
-  "$VENV/bin/pip" install -q -r "$REPO/ppo/requirements.txt" \
+  "$PYTHON_BIN" -m venv "$VENV" || { say "FATAL: could not create venv"; exit 1; }
+  "$VENV/bin/python" -m pip install -q -r "$REPO/ppo/requirements-cpu.txt" \
     || { say "FATAL: requirements install failed"; exit 1; }
 fi
 if ! "$VENV/bin/python" -c "import torch, stable_baselines3, pandas, gymnasium, pyarrow, joblib" 2>/dev/null; then

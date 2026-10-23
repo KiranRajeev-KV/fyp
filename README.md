@@ -37,8 +37,8 @@ Coevolution beats the single agent (P < 0.001) and the MA crossover
 
 ```bash
 cd ppo
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+python3.12 -m venv .venv && source .venv/bin/activate
+python -m pip install -r requirements-cpu.txt
 cd tests && python smoke_test.py        # end-to-end check on synthetic data, no download needed
 ```
 Preparing the BTC data and running the full evaluation are described in
