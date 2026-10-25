@@ -5,9 +5,11 @@ segment descriptor features plus a temperature. It scores every segment in
 the pool as descriptor . weights and samples segments through a softmax —
 it can only choose among real historical windows, never invent prices.
 
-Fitness is the inverted trader score on the segments it served, with
-competitive fitness sharing so individuals are rewarded for being difficult
-in *different* ways (guards against diversity collapse).
+The engine supplies fitness under its configured objective: negated trader
+score, regret, population regret, learnability, or absolute learning progress.
+Shared exams can replace match scores. Competitive fitness sharing penalizes
+overlapping selection distributions to encourage environment diversity.
+Optional shift/scale genes perturb observation inputs, not market prices.
 """
 
 from dataclasses import dataclass, field
@@ -24,6 +26,8 @@ TEMP_BOUNDS = (0.2, 3.0)
 class EnvIndividual:
     weights: np.ndarray          # preference over descriptor features
     temperature: float
+    shift: float = 0.0           # added to the perturbed inputs (EngineConfig.obs_adversary)
+    log_scale: float = 0.0       # their scale is multiplied by exp(log_scale)
     fitness: float = 0.0
     raw_fitness: float = 0.0
     # diagnostics filled in each generation, logged so the adversary side of
@@ -53,15 +57,24 @@ class EnvIndividual:
         p = np.exp(logits)
         return p / p.sum()
 
-    def select_segments(self, pool, n, rng):
+    def select_segments(self, pool, n, rng, regimes=None):
         probs = self.selection_probs(pool.descriptor_matrix)
+        if regimes is not None:   # regime mix fixed by the caller; the adversary picks within each regime
+            labels = np.array([s.regime for s in pool.segments])
+            idx = []
+            for r in regimes:
+                p = probs * (labels == r)
+                p[idx] = 0.0
+                idx.append(int(rng.choice(len(pool), p=p / p.sum())))
+            return [(pool.segments[i].start, pool.segments[i].end) for i in idx]
         n = min(n, len(pool))
         idx = rng.choice(len(pool), size=n, replace=False, p=probs)
         return [(pool.segments[i].start, pool.segments[i].end) for i in idx]
 
-    def record(self, trader_score):
-        # adversary wants the trader to do badly
-        self._scores.append(-trader_score)
+    def record(self, adversary_score):
+        # Store the score computed by the engine's configured objective.
+        # Higher means more favored by that objective; progress need not mean harder.
+        self._scores.append(float(adversary_score))
 
     def finalize_raw_fitness(self):
         # raw_fitness stays 0.0 for an untested individual only so the sorting
@@ -75,6 +88,8 @@ def random_individual(rng):
     return EnvIndividual(
         weights=rng.uniform(-1.0, 1.0, size=len(DESCRIPTOR_NAMES)),
         temperature=float(rng.uniform(0.5, 1.5)),
+        shift=float(rng.uniform(-1.0, 1.0)),
+        log_scale=float(rng.uniform(-0.5, 0.5)),
     )
 
 
@@ -85,7 +100,10 @@ def crossover(a, b, rng):
         rng.uniform() * np.log(a.temperature) +
         (1 - rng.uniform()) * np.log(b.temperature)
     ))
-    return EnvIndividual(weights=weights, temperature=temperature)
+    u = rng.uniform()
+    return EnvIndividual(weights=weights, temperature=temperature,
+                         shift=u * a.shift + (1 - u) * b.shift,
+                         log_scale=u * a.log_scale + (1 - u) * b.log_scale)
 
 
 def mutate(ind, rng, weight_sigma=0.3, temp_sigma=0.15):
@@ -93,6 +111,8 @@ def mutate(ind, rng, weight_sigma=0.3, temp_sigma=0.15):
         ind.weights + rng.normal(0, weight_sigma, size=ind.weights.shape),
         -WEIGHT_BOUND, WEIGHT_BOUND,
     )
+    ind.shift = float(np.clip(ind.shift + rng.normal(0, weight_sigma), -2.0, 2.0))
+    ind.log_scale = float(np.clip(ind.log_scale + rng.normal(0, temp_sigma), -1.0, 1.0))
     ind.temperature = float(np.clip(
         ind.temperature * np.exp(rng.normal(0, temp_sigma)),
         *TEMP_BOUNDS,
@@ -104,8 +124,9 @@ def apply_fitness_sharing(population, descriptor_matrix, sharing_strength=1.0):
     """Penalize individuals whose selection distributions overlap.
 
     Similarity between two individuals is the Bhattacharyya coefficient of
-    their softmax selection distributions over the pool. Shared fitness =
-    raw / (1 + strength * mean similarity to others).
+    their softmax selection distributions over the pool. With
+    niche = 1 + strength * mean similarity, positive raw fitness is divided
+    by niche; nonpositive raw fitness is multiplied by niche.
     """
     probs = [ind.selection_probs(descriptor_matrix) for ind in population]
     n = len(population)
@@ -119,7 +140,7 @@ def apply_fitness_sharing(population, descriptor_matrix, sharing_strength=1.0):
         ]
         niche = 1.0 + sharing_strength * float(np.mean(sims))
         ind.niche = niche
-        # shift-invariant sharing: divide the advantage, not the raw value
+        # Sign-aware penalty: overlap reduces fitness for positive and negative scores.
         ind.fitness = ind.raw_fitness / niche if ind.raw_fitness > 0 else ind.raw_fitness * niche
 
 
@@ -127,15 +148,15 @@ def evolve(population, rng, elite_frac=0.25, tournament_k=3,
            weight_sigma=0.3, temp_sigma=0.15, fresh_frac=0.0):
     """Truncation elitism + tournament-selected crossover/mutation offspring.
 
-    weight_sigma / temp_sigma set the adversary variation rate — raise them to
-    keep the environment population engaged (mitigates disengagement, where the
-    adversary is outrun by the trader and its fitness collapses).
+    weight_sigma / temp_sigma set variation rates. They were explored as
+    disengagement controls; higher variation does not guarantee engagement
+    when the objective itself has a flat fitness landscape.
 
     fresh_frac injects that fraction of brand-new random individuals each
     generation ("fresh blood"). Once the population converges on the few segment
     types a strong trader has already mastered, its fitness collapses; fresh
-    random adversaries keep probing unexplored regions of the segment pool,
-    slowing that collapse. 0.0 = disabled (original behavior).
+    random adversaries probe other parts of the pool. This is a diversity
+    mechanism, not a guarantee against collapse. 0.0 = disabled.
     """
     ranked = sorted(population, key=lambda ind: ind.fitness, reverse=True)
     n = len(ranked)
@@ -153,6 +174,7 @@ def evolve(population, rng, elite_frac=0.25, tournament_k=3,
 
     elites = [
         EnvIndividual(weights=e.weights.copy(), temperature=e.temperature,
+                      shift=e.shift, log_scale=e.log_scale,
                       origin="elite")
         for e in eligible[:n_elite]
     ]

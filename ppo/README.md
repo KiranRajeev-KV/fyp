@@ -1,174 +1,210 @@
-# Bitcoin Trading Agent using PPO
+# CC-PPO code
 
-This project implements a custom algorithmic trading environment using OpenAI's `gymnasium` and trains a Reinforcement Learning agent to trade Bitcoin using Proximal Policy Optimization (PPO) via `stable-baselines3`.
+Competitive coevolution of PPO trading agents for BTC. Traders learn through
+PPO and evolve three hyperparameters through population-based training (PBT).
+The environment population selects historical windows. The final BTC node
+uses absolute learning progress, shared exams, and population voting; earlier
+scripts retain other objectives. See [the current design](../context.md#current-implementation-final-btc-configuration)
+and [the dated experiment record](../docs/experiment-notes.md).
 
-## The Project Approach
+## Setup
 
-The project aims to create a profitable trading strategy by providing an RL agent with historical Bitcoin data combined with various technical indicators. The agent learns when to buy, sell, or hold its position to maximize the portfolio's value over time. 
+All shell examples in this README start from the **repository root** and use
+an activated environment. Use Python 3.12; a CPU is enough.
 
-The project is split into an exploratory phase (Jupyter Notebooks) and a script-based execution phase.
-
-> **Note:** the single-agent PPO here is the *control* for the project's
-> real contribution — the competitive coevolutionary engine in `src/coevo/`
-> (trader population evolved via PBT vs. an adversarial environment
-> population that selects real historical segments). See `../context.md` for
-> the design and `../docs/design-history.md` for how the architecture got here.
-
-## Dependencies
-
-Install with `pip install -r requirements.txt`. The core libraries used:
-- `pandas` - For data manipulation and feature engineering.
-- `numpy` - For numerical operations.
-- `gymnasium` - For creating the custom RL trading environment.
-- `stable-baselines3` (and its `torch` dependency) - For the PPO algorithm implementation.
-- `joblib` - For saving and loading the feature columns and scaler.
-- `tensorboard` - For monitoring training progress.
-- `scikit-learn` - For feature scaling (`StandardScaler`).
-- `ta` - For technical indicator computation.
-- `openpyxl` - For the Excel export in `feature_engineering.ipynb`.
-
-## Project Structure
-
-```text
-├── data/                  # Data pipeline files
-│   ├── raw/               # Raw downloaded bitcoin data
-│   ├── cleaned/           # Cleaned data
-│   ├── features/          # Data enriched with technical indicators
-│   └── processed/         # Final training/testing parquet files
-├── jupyter_project/       # Exploratory notebooks
-│   ├── data_collect.ipynb         # Web scraping / API data collection
-│   ├── feature_engineering.ipynb  # Adding technical indicators to data
-│   ├── trading_env.ipynb          # Imports TradingEnv from src/ (kept in sync, not duplicated)
-│   └── train_test.ipynb           # Train/val/test split + feature scaling
-├── models/                # Saved trained models and metadata
-│   ├── feature_columns.pkl        # Saved list of features
-│   ├── feature_scaler.pkl         # StandardScaler fit on train only
-│   ├── ppo_btc_seed<N>.zip        # Trained PPO agent for seed N
-│   └── val_portfolio_curve_seed<N>.csv  # Held-out validation portfolio curve
-├── runs/                  # Coevolution run outputs (gitignored): config.json,
-│                          #   generations.csv, best_trader.zip per (mode, seed)
-├── src/                   # Executable Python scripts
-│   ├── trading_env.py     # Custom Gymnasium env (fees + slippage, segment-parameterized)
-│   ├── train_ppo.py       # Legacy single-run PPO script (seeded, held-out eval)
-│   ├── regimes.py         # Bull/bear/sideways regime labeling (trailing, no lookahead)
-│   ├── segments.py        # Segment pool + descriptors + walk-forward folds
-│   ├── baselines.py       # Buy-and-hold and MA-crossover baselines
-│   ├── metrics.py         # Shared risk-adjusted metrics (Sharpe, Sortino, Calmar, max DD)
-│   ├── run_coevolution.py # Entry point: single / population / coevolution, multi-seed
-│   ├── evaluate.py        # Held-out per-regime evaluation + bootstrap significance
-│   └── coevo/
-│       ├── engine.py             # Generation loop, internal vs external ledgers
-│       ├── trader_population.py  # PPO traders + PBT (hyperparam crossover/mutation)
-│       ├── env_population.py     # Adversarial segment selectors + fitness sharing
-│       └── hall_of_fame.py       # Archives for both populations (anti-cycling)
-├── tests/
-│   └── smoke_test.py      # End-to-end run on synthetic data (no real data needed)
-├── requirements.txt       # Python dependencies
-└── README.md              # This file
-```
-
-## Coevolutionary engine (`src/coevo/`)
-
-The core contribution. Two populations interact through the market simulator
-each generation:
-
-- **Trader population** — PPO agents. Evolution touches *hyperparameters
-  only* (PBT: exploit copies weights from a stronger agent, hyperparams come
-  from crossover of two top parents plus mutation). PPO's gradient does all
-  weight learning.
-- **Environment population** — segment-selection strategies: preference
-  weights over segment descriptors (volatility percentile, trend
-  strength/direction, drawdown depth, regime transitions) sampled through a
-  softmax. They can only *select* real historical windows, never invent
-  prices. Fitness is the inverted trader score, with competitive fitness
-  sharing so adversaries are rewarded for being difficult in different ways.
-
-Guardrails built in from day one: halls of fame on both sides (anti-cycling),
-fitness sharing (anti diversity-collapse), and a per-generation **external
-yardstick** — the best trader is evaluated every generation on fixed held-out
-data against fixed baselines, logged separately from internal fitness
-(anti Red Queen).
-
-Run the three-way ablation (this is the paper's core experiment):
 ```bash
-cd src
-python run_coevolution.py --mode single       --seeds 42 43 44
-python run_coevolution.py --mode population   --seeds 42 43 44
-python run_coevolution.py --mode coevolution  --seeds 42 43 44
+python3.12 -m venv ppo/.venv
+source ppo/.venv/bin/activate
+python -m pip install -r ppo/requirements-cpu.txt
+python -m pip check
 ```
 
-Then evaluate frozen models per-regime on the untouched test split:
+| File | Purpose |
+|---|---|
+| `requirements.txt` | Pinned direct runtime dependencies, including download and plotting tools |
+| `requirements-cpu.txt` | Runtime pins plus the matching CPU-only PyTorch build |
+| `requirements-notebooks.txt` | Runtime pins plus Jupyter, kernel support, and Excel export |
+
+For CPU notebooks, install both sets and open the notebook directory:
+
 ```bash
-python evaluate.py --models ../runs/coevolution_seed*/best_trader.zip \
-    --data ../data/processed/test.parquet --out ../runs/coevolution_eval.json
+python -m pip install -r ppo/requirements-cpu.txt -r ppo/requirements-notebooks.txt
+jupyter lab ppo/jupyter_project
 ```
 
-## Prospective validation (stage 5)
+The notebooks use relative paths: their kernel working directory must be
+`ppo/jupyter_project/`. For GPU use, install the runtime or notebook file
+with the matching PyTorch build for your hardware. Direct dependencies are
+pinned; transitive dependencies are not fully locked. The CPU baseline was
+checked on Python 3.12.13 with the synthetic smoke test.
 
-Freeze a model (note the freeze date), keep collecting new Binance data with
-`data_collect.ipynb` + `feature_engineering.ipynb`, and after 4–8 weeks run
-`evaluate.py` pointing `--data` at a parquet containing **only bars after the
-freeze date**, scaled with the already-saved `feature_scaler.pkl`. Because
-that data did not exist at freeze time, overfitting to it is impossible.
-Start this around month 4–5 so the window elapses while the report is being
-written — it runs in wall-clock time.
+Python script defaults resolve relative to `ppo/`, independent of the caller's
+working directory. Explicit CLI paths resolve relative to the caller's directory.
+Shell launchers select their own directory. `coevo_seedpool.py` and
+`coevo_floor.py` run through guarded `main()` functions, so importing them
+does not read run files or launch workers.
 
-## Smoke test
+## Data and evaluation windows
 
-`tests/smoke_test.py` runs the entire machinery (regimes, segment pool,
-env with slippage, baselines, all three engine modes, halls of fame) on
-synthetic data in a few minutes, no real data required:
+Data, scalers, and models are generated files under `ppo/data/` and `ppo/models/`.
+They are not included in a clean checkout.
+
+1. Run `python download_klines.py` to download spot hourly bars into
+   `ppo/data/raw/`. Its fixed experiment cutoff is August 2026.
+2. Run `data_collect.ipynb`, `feature_engineering.ipynb`, and `train_test.ipynb`
+   in order, with the notebook working directory described above. They create
+   the cleaned/base feature files, processed splits, and fitted feature scaler.
+3. Back at the repo root, extend/check the base features and download the
+   coin-layout inputs through the same fixed August cutoff:
+
+   ```bash
+   python ppo/src/build_features.py --suffix _ext2
+   python ppo/src/download_coin.py BTCUSDT --end 2026-08
+   ```
+
+`build_features.py` requires existing raw files, the base feature file, fitted
+scaler, and output directories; it is an extension tool, not a complete
+notebook replacement. Its numerical overlap check does not fully validate
+missing timestamp matches or nonfinite values. The BTC loader also supports
+an older local metrics/funding layout; see `coin_data._paths` and `_funding`
+if using archived data instead of the coin downloader's directory layout.
+
+The tracked `runs/walkforward/folds.json` defines six development folds,
+covering 2022-03-23 05:00 through 2026-05-01 06:00 UTC. Each fold supplies eight
+non-overlapping 720-bar scoring segments; residual bars are not scored. Test
+windows follow each corresponding model's training window; earlier tests can
+be included in later folds' training history.
+
+The final BTC evaluator excludes bars from 2026-05-01 07:00 UTC onward from
+training and scoring, although loaders may read the full data files. The
+historical May–September 2026 holdout/prospective checks have been consumed.
+Their spent status is recorded in the experiment notes; they are not fresh
+future evidence. Those notes proposed October onward as the next window at
+October 12, and later usage must be checked before claiming freshness.
+
+## Final BTC run matrix
+
+`src/coevo_node.py` contains one `CONFIG`. It currently selects the third row
+below. To produce the headline, run each row separately: edit `CONFIG['name']`,
+`CONFIG['seeds']`, and the coevolution arm's drift options, then execute
+`python ppo/src/coevo_eval.py` before moving to the next row. Keep the other
+settings unchanged. These are four configurations, not four commands that
+are automatically expanded by the evaluator.
+
+| Run name | Seeds | Input drift in coevolution arm |
+|---|---|---|
+| `r18a-progress-6-seeds` | 42–47 | Enabled |
+| `r19a-progress-seeds48-53` | 48–53 | Enabled |
+| `r21a-pure-alp` | 42–47 | Disabled |
+| `r22a-pure-alp-seeds48-53` | 48–53 | Disabled |
+
+For the enabled rows, add these keys to
+`CONFIG['arm_overrides']['coevolution']`; remove them for the disabled rows:
+
+```python
+"obs_adversary": ["rhat4", "rhat24", "rhat72"],
+"obs_bound": [0.75, 0.4],
+"obs_sign_random": True,
+```
+
+Each run writes `ppo/runs/coevo7/<name>/BTCUSDT/`, including `contract.json`,
+per-fold models and `final_traders/`, `per_segment.csv`, and `result.json`.
+The four completed per-segment CSVs must exist before pooling:
+
 ```bash
-cd tests && python smoke_test.py
+python ppo/src/coevo_seedpool.py r18a-progress-6-seeds r19a-progress-seeds48-53 \
+    r21a-pure-alp r22a-pure-alp-seeds48-53
+python ppo/src/coevo_floor.py r21a-pure-alp
 ```
 
-## Data Pipeline
+The floor evaluator additionally needs the named run's contract, final
+populations, and source data. It writes a CSV for buy-and-hold exposure floors
+0, 0.25, 0.5, and 0.75; `MULT=2` selects doubled costs.
 
-The data pipeline progresses through four distinct stages:
-1. **Raw (`data/raw/`)**: Initial raw Bitcoin pricing data.
-2. **Cleaned (`data/cleaned/`)**: Data with missing values imputed and structured correctly.
-3. **Features (`data/features/`)**: The step where technical indicators (like RSI, MACD, Bollinger Bands, EMAs, and ATR) are calculated and appended.
-4. **Processed (`data/processed/`)**: The final structured dataset (using `.parquet`) used directly by the training environment.
+The headline averages four run-level seed means with equal weight: 24
+seed/configuration runs, using 12 distinct seed IDs. Pooling checks fold and
+segment alignment, but does not verify configuration equivalence or weight
+individual seeds across unequal-size runs. The four runs above each have six
+seeds. Their generated `coevo7` artifacts are not tracked, so the reported
+headline cannot be independently verified from this checkout alone.
 
-## The Trading Environment (`src/trading_env.py`)
+## Final evaluation contract
 
-A custom `gymnasium.Env` environment has been built with the following characteristics:
+- Node settings: 12 generations and six traders (one in the single arm).
+  Coevolution uses 12 adversaries, a half-uniform training curriculum, an
+  eight-window shared exam, and learning progress with regime lock. Other
+  arms retain match-based selection fitness.
+- Observations: `volatility_168h`, `ema50_ema200_ratio`, three ridge forecasts
+  (`rhat4`, `rhat24`, `rhat72`), and three account values. Explicit selected
+  inputs override the base list; forecast predictors still use base/flow data.
+- Actions: target cash or long every four hourly bars; episodes start long.
+- Scoring: `score='vote'` averages final traders' action probabilities and
+  chooses the maximum, then averages scores across seeds. Other node values
+  use the saved internally ranked `best_trader.zip`.
+- Costs per side: agents pay 0.02% fee + 0.01% slippage and funding while long;
+  spot buy-and-hold pays 0.1% + 0.05%; MA crossover uses the agent fee/slippage
+  without funding.
+- Significance: paired bootstrap over segment differences after averaging
+  seeds; the historical `compare_arms.py` also has seed/hierarchical tests.
+  The final evaluator does not implement a deflated-Sharpe selection correction.
+- Pass rule: positive coevolution gaps against all four references, bootstrap
+  probabilities ≤ 0.10, and a higher Sharpe than buy-and-hold at doubled costs.
+  A reported mean advantage does not by itself satisfy this rule.
 
-### 1. Observation Space
-The agent observes the environment at each time step. The observation is an array consisting of:
-- **19 Technical Indicators**: Includes log returns, EMAs, RSI, MACD, ATR, volatility, volume ratios, and Bollinger Band metrics.
-- **3 Account metrics**: The current position type (0 or 1), the ratio of cash in the portfolio, and the ratio of asset value in the portfolio.
+Training forecasts use purged block cross-fitting with other training blocks
+on both sides of the held-out block. This is not strictly chronological
+training prediction; external test forecasts fit purged training labels.
+Learning-progress history is currently omitted from checkpoints, so resume
+restarts that part of the adversary state.
 
-### 2. Action Space
-The agent uses a discrete action space of size 3:
-- **0: Hold** - Do nothing.
-- **1: Buy** - Uses all available cash to buy Bitcoin (minus trading fees).
-- **2: Sell** - Sells all held Bitcoin for cash (minus trading fees).
+## Layout and earlier experiments
 
-### 3. Reward Function
-The reward for each step is the **log return** of the total portfolio value between the previous step and the current step:
-`reward = log(new_portfolio_value / old_portfolio_value)`
-This logically incentivizes the agent to exponentially grow the overall portfolio value over time.
+| Location | Role |
+|---|---|
+| `src/coevo/` | Engine, trader PBT, adversary evolution, and archives |
+| `src/trading_env.py` | Fee/slippage/funding environment; current-row features and account state |
+| `src/feature_columns.py` | Shared ordered 19-feature base schema |
+| `src/project_paths.py` | Paths relative to the project rather than the caller's directory |
+| `src/build_features.py`, `coin_data.py` | Feature extension and BTC evaluation inputs |
+| `src/coevo_node.py`, `coevo_eval.py` | Final BTC settings and evaluation |
+| `src/coevo_seedpool.py`, `coevo_floor.py` | Run pooling and exposure-floor evaluation |
+| `src/segments.py`, `regimes.py` | Segment descriptors, regime labels, and rolling folds |
+| `src/baselines.py`, `metrics.py` | Baselines with caller-selected costs and performance metrics |
+| `src/engine_cli.py`, `run_coevolution.py`, `run_walkforward.py` | Shared subset of engine flags for legacy entry points |
+| `src/evaluate.py`, `compare_arms.py` | Legacy per-regime and arm-vs-arm evaluation |
+| `tests/test_cli_imports.py` | Fast regression tests for import behavior and CLI wiring |
+| `tests/test_synthetic_metadata.py` | Named benchmark metadata and dose-response build regression tests |
+| `tests/smoke_test.py` | End-to-end synthetic engine check |
+| `jupyter_project/` | Original notebooks; retain their own working-directory assumptions |
+| `run_*.sh` | Legacy multi-seed launchers, not the final BTC run matrix |
 
-## Training (`src/train_ppo.py`)
+The original notebook feature lists are historical copies; maintained Python
+scripts share `feature_columns.py`. The V5 launcher defaults to 30 generations,
+while the older walk-forward launcher defaults to 20, so their full configs
+are not identical. `run_overnight.py` is the earlier V2 tuning pipeline.
 
-Training is executed using the `train_ppo.py` script. The script applies the Proximal Policy Optimization (PPO) algorithm for 500,000 timesteps (configurable) against the `.parquet` train data, then evaluates the trained policy on the **held-out validation split** (`val.parquet`), not the training data itself.
+Side experiments: signal diagnostics (`signal_probe.py`, `signal_hunt.py`,
+`order_flow.py`, `vol_target.py`, `carry_check.py`), synthetic benchmarks
+(`synth_market.py`, `synth_market_v2.py`, `synth_dose.py`), and historical ORX
+strategy checks (`orx_*.py`). Task A/B/C refer respectively to signal diagnosis,
+the synthetic benchmark, and shared exams. R-number labels identify entries
+in the original local experiment ledger, which is not included here.
 
-To run the training:
+Synthetic metadata records benchmark names and parameters. Source-file hash
+fields and checks have been removed; older local metadata may retain them.
+The benchmark parameters and recorded historical result tables are unchanged.
+
+## Checks
+
+From the repo root, with the environment active:
+
 ```bash
-cd src
-python train_ppo.py --seed 42 --timesteps 500000
+python -m pip check
+python -m unittest discover -s ppo/tests -p 'test_*.py'
+python ppo/tests/smoke_test.py
 ```
 
-Runs are fully seeded (`--seed`, default 42) — `numpy`, `torch`, and the PPO model itself all take the same seed, and `TradingEnv` uses gymnasium's seeded `self.np_random` rather than global numpy state, so a given seed reproduces the same episode start points and training run. This makes multi-seed sweeps (`for s in 42 43 44 45; do python train_ppo.py --seed $s; done`) safe to run in parallel without clobbering each other's model/curve outputs.
-
-Features and generated models are saved into the `models/` directory, namespaced by seed. During training, live telemetry is recorded and can be monitored via TensorBoard logs configured in `src/tensorboard_logs/`.
-
-## Baselines and metrics (`src/baselines.py`, `src/metrics.py`)
-
-Before trusting any PPO result, compare it against real baselines computed on the same held-out split and cost model:
-```bash
-cd src
-python baselines.py --data ../data/processed/val.parquet
-```
-This reports buy-and-hold and a 20/50 MA-crossover strategy, using the same `metrics.summarize()` (total return, Sharpe, Sortino, max drawdown, Calmar) that `train_ppo.py` uses for the PPO agent — so all three are directly comparable.
+The smoke test exercises the environment, segments, baselines, engine modes,
+archives, checkpoint/resume plumbing, and shared exams using synthetic data.
+It verifies execution, not trading performance or identical progress-state
+continuation after a restart. No real data download is required.

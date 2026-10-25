@@ -25,18 +25,26 @@ from segments import build_segment_pool
 from baselines import buy_and_hold, ma_crossover
 from metrics import summarize
 from coevo.trader_population import evaluate_on_segments
+from project_paths import project_path
 
 METRIC_KEYS = ["total_return_pct", "sharpe", "sortino", "max_drawdown_pct", "calmar"]
 
 
-def eval_baselines_per_segment(pool, initial_balance, trading_fee):
+def eval_baselines_per_segment(pool, initial_balance, trading_fee, slippage=0.0):
+    """Baselines on every segment under the SAME fee + slippage model as the agent.
+
+    slippage defaults to 0.0 so older callers reproduce the V1-V4 numbers;
+    evaluate.py's CLI passes the env's slippage.
+    """
     rows = []
     for seg in pool.segments:
         seg_df = pool.slice(seg)
         rows.append({
             "regime": seg.regime,
-            "buy_hold": summarize(buy_and_hold(seg_df, initial_balance, trading_fee)),
-            "ma_crossover": summarize(ma_crossover(seg_df, initial_balance, trading_fee)),
+            "buy_hold": summarize(buy_and_hold(
+                seg_df, initial_balance, trading_fee, slippage)),
+            "ma_crossover": summarize(ma_crossover(
+                seg_df, initial_balance, trading_fee, slippage=slippage)),
         })
     return rows
 
@@ -62,8 +70,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--models", nargs="+", required=True,
                         help="one or more best_trader.zip paths (one per seed)")
-    parser.add_argument("--data", default="../data/processed/test.parquet")
-    parser.add_argument("--features", default="../models/feature_columns.pkl")
+    parser.add_argument("--data", default=project_path("data/processed/test.parquet"))
+    parser.add_argument("--features", default=project_path("models/feature_columns.pkl"))
     parser.add_argument("--segment-length", type=int, default=720)
     parser.add_argument("--segment-stride", type=int, default=720,
                         help="non-overlapping by default for independent segments")
@@ -88,7 +96,7 @@ def main():
     }
 
     baseline_rows = eval_baselines_per_segment(
-        pool, args.initial_balance, args.trading_fee)
+        pool, args.initial_balance, args.trading_fee, args.slippage)
 
     per_model = {}
     for path in args.models:

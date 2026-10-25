@@ -28,17 +28,18 @@ HYPERPARAM_BOUNDS = {
 }
 
 
-def make_bounds(ent_coef_max=None):
-    """Copy of HYPERPARAM_BOUNDS with the ent_coef upper bound optionally lowered.
+def make_bounds(ent_coef_max=None, ent_coef_min=None):
+    """Copy of HYPERPARAM_BOUNDS with the ent_coef range optionally narrowed.
 
     High ent_coef (up to 0.1) drives random action-flipping, which the diagnostic
-    tied to churn-driven losses. Capping it (e.g. 0.02) lets PBT prefer calmer
-    policies. None keeps the original 0.1 ceiling.
+    tied to churn-driven losses, so capping it (e.g. 0.02) lets PBT prefer calmer
+    policies. The opposite failure is the coevolution arm's: entropy decays, the
+    policy settles on "hold" and never re-enters the market, so a floor
+    (e.g. 0.005) keeps some exploration alive. 0/None leaves that end alone.
     """
-    if ent_coef_max is None:
-        return HYPERPARAM_BOUNDS
-    lo, _ = HYPERPARAM_BOUNDS["ent_coef"]
-    return {**HYPERPARAM_BOUNDS, "ent_coef": (lo, ent_coef_max)}
+    lo, hi = HYPERPARAM_BOUNDS["ent_coef"]
+    return {**HYPERPARAM_BOUNDS,
+            "ent_coef": (ent_coef_min or lo, ent_coef_max or hi)}
 
 
 def sample_hyperparams(rng, bounds=HYPERPARAM_BOUNDS):
@@ -129,7 +130,7 @@ def create_trader(trader_id, df, feature_columns, env_kwargs, seed, rng,
 
 
 PPO_DIAGNOSTICS = [
-    "train/clip_fraction",          # 0 => clip_range never binds, i.e. is inert
+    "train/clip_fraction",          # 0 => clipping did not bind in the observed updates
     "train/approx_kl",              # how far each update actually moved the policy
     "train/explained_variance",     # <=0 => the value head is learning nothing
     "train/entropy_loss",           # how random the policy still is
@@ -171,18 +172,17 @@ def evaluate_on_segments(trader, df, feature_columns, segments, env_kwargs,
         while not done:
             action, _ = trader.model.predict(obs, deterministic=True)
             obs, _, done, _, info = env.step(action)
-            values.append(info["portfolio_value"])
+            bars = info["bar_values"]
+            values.extend(bars)
             trades = info["trade_count"]
-            in_market += 1 if info["btc_held"] > 0 else 0
-            steps += 1
+            in_market += len(bars) if info["btc_held"] > 0 else 0
+            steps += len(bars)
         metrics = summarize(values)
         metrics["exposure"] = float(in_market / steps) if steps else 0.0
-        # A trader that never trades holds a flat portfolio, so the return std
-        # is 0 and sharpe_ratio returns its documented 0.0. That is a fine
-        # convention, but it makes "did nothing" indistinguishable from "traded
-        # and broke even" -- and the former says nothing about the adversary
-        # that served the window. Record the distinction rather than changing
-        # the metric, which every published number depends on.
+        # With a cash start, zero trades leaves a flat portfolio (Sharpe 0).
+        # With start_long=True, reset opens a position without incrementing the
+        # trade counter, so zero trades can still have market exposure/returns.
+        # Record executed trades separately from performance and exposure.
         metrics["trades"] = trades
         metrics["no_trade"] = trades == 0
         per_segment.append(metrics)

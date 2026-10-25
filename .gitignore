@@ -30,3 +30,22 @@ tensorboard_logs/
 
 # Coevolution run outputs
 ppo/runs/
+
+# Presentation material and documents (kept locally, not part of the code submission)
+reviews/
+templates/
+team_100_pr3_v1/
+*.pptx
+*.docx
+*.pdf
+docs/artifacts/
+docs/site/
+docs/references.md
+docs/one-generation-walkthrough.md
+docs/loop/PROMPT.md
+make_figures.py
+ppo/1_presentation.tex
+ppo/ref.bib
+ppo/figures/*
+!ppo/figures/synth_dose_response.png
+docs/loop/

@@ -1,18 +1,12 @@
-"""One-shot overnight orchestrator: arms-race tuning -> ablation -> evaluation.
+"""Legacy V2 overnight orchestrator: tuning -> ablation -> evaluation.
 
-Runs the whole strengthened-results pipeline unattended:
+Phase 1 chooses adversary variation settings by late-stage environment fitness;
+Phase 3 runs the three-way ablation; Phase 4 writes per-arm evaluation JSONs.
+The numbering is retained from the original experiment plan (no Phase 2 is
+implemented here). This is not the final BTC pipeline; see ppo/README.md.
 
-  Phase 1  Try a few adversary-variation settings (short, 1 seed) and AUTO-PICK
-           the one that best keeps the arms race engaged (highest late-stage
-           environment-population fitness -> least disengagement / collapse).
-  Phase 3  Run the full three-way ablation (single/population/coevolution) with
-           the chosen settings, multiple seeds, into runs/v2/ (does NOT overwrite
-           the original runs/<mode>_seed* results).
-  Phase 4  Evaluate each arm on the held-out test split, writing *_eval.json.
-
-Usage (from ppo/src; nohup to survive logout):
-    nohup ../.venv/bin/python run_overnight.py > ../runs/overnight.log 2>&1 &
-    tail -f ../runs/overnight.log
+From the repo root, after creating ppo/runs for the redirected log:
+    python ppo/src/run_overnight.py
 """
 
 import argparse
@@ -23,6 +17,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+from project_paths import SRC_DIR, project_path
 
 PY = sys.executable  # the venv python running this script
 
@@ -59,8 +54,8 @@ def main():
                     help="shorter runs for the Phase 1 tuning sweep")
     ap.add_argument("--segments-per-match", type=int, default=6)
     ap.add_argument("--n-traders", type=int, default=8)
-    ap.add_argument("--out-root", default="../runs/v2")
-    ap.add_argument("--test-data", default="../data/processed/test.parquet")
+    ap.add_argument("--out-root", default=project_path("runs/v2"))
+    ap.add_argument("--test-data", default=project_path("data/processed/test.parquet"))
     ap.add_argument("--skip-tuning", action="store_true",
                     help="use FALLBACK settings and skip Phase 1")
     args = ap.parse_args()
@@ -75,8 +70,8 @@ def main():
         print("=" * 60)
         scores = {}
         for name, cfg in CANDIDATES.items():
-            out = f"../runs/tune/{name}"
-            ok = run([PY, "run_coevolution.py", "--mode", "coevolution", "--seeds", 42,
+            out = project_path(f"runs/tune/{name}")
+            ok = run([PY, str(SRC_DIR / "run_coevolution.py"), "--mode", "coevolution", "--seeds", 42,
                       "--generations", args.tune_generations,
                       "--segments-per-match", args.segments_per_match,
                       "--n-env", cfg["n_env"],
@@ -104,7 +99,7 @@ def main():
     print(f"PHASE 3 - three-way ablation, seeds {args.seeds} -> {args.out_root}")
     print("=" * 60)
     for mode in ["single", "population", "coevolution"]:
-        run([PY, "run_coevolution.py", "--mode", mode, "--seeds", *args.seeds,
+        run([PY, str(SRC_DIR / "run_coevolution.py"), "--mode", mode, "--seeds", *args.seeds,
              "--generations", args.generations,
              "--n-traders", args.n_traders,
              "--segments-per-match", args.segments_per_match,
@@ -123,7 +118,7 @@ def main():
         if not models:
             print(f"  [{mode}] no models found - skipping")
             continue
-        run([PY, "evaluate.py", "--models", *models,
+        run([PY, str(SRC_DIR / "evaluate.py"), "--models", *models,
              "--data", args.test_data,
              "--out", f"{args.out_root}/{mode}_eval.json"])
 

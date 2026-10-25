@@ -6,8 +6,8 @@ into ppo/data/raw/.
 Usage:
     python download_klines.py
 
-Requires: requests
-    pip install requests
+Install dependencies from the repo root:
+    python -m pip install -r ppo/requirements-cpu.txt
 """
 
 import io
@@ -21,14 +21,14 @@ import requests
 SYMBOL = "BTCUSDT"
 INTERVAL = "1h"
 START = (2017, 8)     # BTCUSDT 1h data on Binance starts here
-END = (2026, 6)       # last complete month per your listing
+END = (2026, 8)       # fixed experiment download cutoff, selected on 2026-09-12
 
-OUT_DIR = Path("ppo/data/raw")
+OUT_DIR = Path(__file__).resolve().parent / "ppo" / "data" / "raw"
 BASE_URL = "https://data.binance.vision/data/spot/monthly/klines/{symbol}/{interval}/{symbol}-{interval}-{year}-{month:02d}.zip"
 
 # Binance switched some CSVs to include a header row at some point.
 # We detect this per-file and normalize so every output CSV is headerless,
-# OR you can flip NORMALIZE_HEADERS=False if your notebook expects headers.
+# OR you can flip NORMALIZE_TO_HEADERLESS=False if your notebook expects headers.
 NORMALIZE_TO_HEADERLESS = True
 EXPECTED_COLUMNS = 12  # open_time, open, high, low, close, volume, close_time,
                        # quote_asset_volume, number_of_trades,

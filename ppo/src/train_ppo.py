@@ -9,42 +9,10 @@ import joblib
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 
+from feature_columns import FEATURE_COLUMNS
 from trading_env import TradingEnv
 from metrics import summarize
-
-# ==========================================
-# FEATURE LIST
-# ==========================================
-
-FEATURE_COLUMNS = [
-    "return",
-    "log_return",
-    "high_low_spread",
-    "open_close_spread",
-
-    "ema20_ema50_ratio",
-    "ema50_ema200_ratio",
-
-    "rsi",
-
-    "macd",
-    "macd_signal",
-    "macd_hist",
-
-    "atr",
-
-    "volatility_24h",
-    "volatility_168h",
-
-    "volume_ratio",
-    "volume_change",
-
-    "bb_width",
-    "bb_position",
-
-    "price_vs_ema50",
-    "price_vs_ema200"
-]
+from project_paths import project_path
 
 
 def set_global_seed(seed):
@@ -78,8 +46,8 @@ def main():
     parser = argparse.ArgumentParser(description="Train a single-agent PPO trading baseline")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--timesteps", type=int, default=500_000)
-    parser.add_argument("--data-dir", default="../data/processed")
-    parser.add_argument("--models-dir", default="../models")
+    parser.add_argument("--data-dir", default=project_path("data/processed"))
+    parser.add_argument("--models-dir", default=project_path("models"))
     parser.add_argument("--initial-balance", type=float, default=10000.0)
     parser.add_argument("--trading-fee", type=float, default=0.001)
     args = parser.parse_args()
@@ -115,7 +83,7 @@ def main():
         max_grad_norm=0.5,
         verbose=1,
         seed=args.seed,
-        tensorboard_log="./tensorboard_logs/"
+        tensorboard_log=project_path("src/tensorboard_logs")
     )
 
     model.learn(

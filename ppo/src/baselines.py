@@ -1,6 +1,7 @@
 """Buy-and-hold and moving-average crossover baselines, using the same fee
-model as TradingEnv, so PPO results have a real, reproducible comparison
-point instead of the unreproducible figures cited in the PR2 report.
+mechanics as TradingEnv. Callers choose fee/slippage rates; the final BTC
+contract intentionally uses spot costs for buy-and-hold and perp execution
+rates for the agent and MA crossover.
 """
 
 import argparse
@@ -9,15 +10,23 @@ import numpy as np
 import pandas as pd
 
 from metrics import summarize
+from project_paths import project_path
 
 
-def buy_and_hold(df, initial_balance=10000.0, trading_fee=0.001):
+def buy_and_hold(df, initial_balance=10000.0, trading_fee=0.001, slippage=0.0):
+    """Buy once at the first close (filled above close by `slippage`, same as
+    TradingEnv), never sell. Default slippage 0.0 reproduces the published
+    V1-V4 baseline numbers; pass the env's slippage for a like-for-like fee model."""
     price = df["close"].values
-    btc = (initial_balance * (1 - trading_fee)) / price[0]
+    btc = (initial_balance * (1 - trading_fee)) / (price[0] * (1 + slippage))
     return btc * price
 
 
-def ma_crossover(df, initial_balance=10000.0, trading_fee=0.001, fast=20, slow=50):
+def ma_crossover(df, initial_balance=10000.0, trading_fee=0.001, fast=20, slow=50,
+                 slippage=0.0):
+    """20/50 MA crossover. Buys fill above close and sells below close by
+    `slippage`, mirroring TradingEnv.step, so the rule-based baseline pays the
+    same execution cost as the agent. Default 0.0 reproduces V1-V4 numbers."""
     price = df["close"].values
     fast_ma = df["close"].rolling(fast).mean().values
     slow_ma = df["close"].rolling(slow).mean().values
@@ -32,11 +41,11 @@ def ma_crossover(df, initial_balance=10000.0, trading_fee=0.001, fast=20, slow=5
             signal_long = fast_ma[i] > slow_ma[i]
             if signal_long and position == 0:
                 cash_to_spend = cash * (1 - trading_fee)
-                btc = cash_to_spend / price[i]
+                btc = cash_to_spend / (price[i] * (1 + slippage))
                 cash = 0.0
                 position = 1
             elif not signal_long and position == 1:
-                cash = btc * price[i] * (1 - trading_fee)
+                cash = btc * price[i] * (1 - slippage) * (1 - trading_fee)
                 btc = 0.0
                 position = 0
 
@@ -57,15 +66,18 @@ def main():
     parser = argparse.ArgumentParser(
         description="Run buy-and-hold and MA-crossover baselines on a held-out split"
     )
-    parser.add_argument("--data", default="../data/processed/test.parquet")
+    parser.add_argument("--data", default=project_path("data/processed/test.parquet"))
     parser.add_argument("--initial-balance", type=float, default=10000.0)
     parser.add_argument("--trading-fee", type=float, default=0.001)
+    parser.add_argument("--slippage", type=float, default=0.0005,
+                        help="per-side slippage, same as TradingEnv (0 = legacy numbers)")
     args = parser.parse_args()
 
     df = pd.read_parquet(args.data)
 
-    report("Buy & Hold", buy_and_hold(df, args.initial_balance, args.trading_fee))
-    report("MA Crossover (20/50)", ma_crossover(df, args.initial_balance, args.trading_fee))
+    report("Buy & Hold", buy_and_hold(df, args.initial_balance, args.trading_fee, args.slippage))
+    report("MA Crossover (20/50)", ma_crossover(df, args.initial_balance, args.trading_fee,
+                                                slippage=args.slippage))
 
 
 if __name__ == "__main__":

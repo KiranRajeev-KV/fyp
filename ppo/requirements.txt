@@ -1,11 +1,20 @@
-pandas
-numpy
-gymnasium
-stable-baselines3
-torch
-joblib
-pyarrow
-tensorboard
-scikit-learn
-ta
-openpyxl
+# Python 3.12 runtime; direct dependencies are pinned for repeatable setup.
+# Use requirements-cpu.txt for the CPU-only PyTorch build.
+
+# Data loading, features, and analysis
+joblib==1.5.2
+matplotlib==3.10.7
+numpy==2.2.6
+pandas==2.3.3
+pyarrow==21.0.0
+requests==2.32.5
+scikit-learn==1.7.2
+ta==0.11.0
+
+# Training, logging, and model.learn(progress_bar=True)
+gymnasium==1.2.1
+rich==14.2.0
+stable-baselines3==2.7.0
+tensorboard==2.20.0
+torch==2.8.0
+tqdm==4.67.1
